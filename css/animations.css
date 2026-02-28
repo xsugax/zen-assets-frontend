@@ -1,0 +1,226 @@
+/* ═══════════════════════════════════════════════════════════
+   ZEN ASSETS — OmniVest AI  ·  animations.css
+   Refined Professional Animations
+═══════════════════════════════════════════════════════════ */
+
+/* ── Boot Screen Animations ─────────────────────────────── */
+@keyframes hex-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes hex-rotate-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes hex-outline-pulse {
+  0%,100% { stroke: #d4a574; stroke-width:1.5; filter:drop-shadow(0 0 3px #d4a574); }
+  50%      { stroke: #e6b887; stroke-width:2;   filter:drop-shadow(0 0 6px #e6b887); }
+}
+@keyframes hex-inner-pulse {
+  0%,100% { stroke-dashoffset: 0; opacity:.5; }
+  50%      { stroke-dashoffset: 20; opacity:.8; }
+}
+@keyframes boot-z-glow {
+  0%,100% { text-shadow: 0 0 20px #d4a57480, 0 0 40px #d4a57440; }
+  50%      { text-shadow: 0 0 30px #e6b88780, 0 0 60px #e6b88750; }
+}
+@keyframes loader-fill {
+  0%   { width:0%; }
+  100% { width:100%; }
+}
+@keyframes scanlines-move {
+  from { background-position: 0 0; }
+  to   { background-position: 0 100%; }
+}
+@keyframes grid-pulse {
+  0%,100% { opacity:.03; }
+  50%      { opacity:.06; }
+}
+
+/* ── Fade / Slide Entries ───────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity:0; transform:translateY(-12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeInLeft {
+  from { opacity:0; transform:translateX(-16px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes fadeInRight {
+  from { opacity:0; transform:translateX(16px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity:0; transform:scale(0.92); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+/* ── Refined Glow Pulses ────────────────────────────────── */
+@keyframes glow-pulse-cyan {
+  0%,100% { box-shadow: 0 0 6px rgba(212,165,116,0.2), 0 0 14px rgba(212,165,116,0.1); }
+  50%      { box-shadow: 0 0 12px rgba(212,165,116,0.35), 0 0 24px rgba(212,165,116,0.15); }
+}
+@keyframes glow-pulse-green {
+  0%,100% { box-shadow: 0 0 6px rgba(95,179,142,0.2), 0 0 14px rgba(95,179,142,0.1); }
+  50%      { box-shadow: 0 0 12px rgba(95,179,142,0.35), 0 0 24px rgba(95,179,142,0.15); }
+}
+@keyframes glow-pulse-purple {
+  0%,100% { box-shadow: 0 0 6px rgba(212,165,116,0.2), 0 0 14px rgba(212,165,116,0.1); }
+  50%      { box-shadow: 0 0 12px rgba(212,165,116,0.35), 0 0 24px rgba(212,165,116,0.15); }
+}
+@keyframes glow-text-cyan {
+  0%,100% { text-shadow: 0 0 4px rgba(212,165,116,0.5); }
+  50%      { text-shadow: 0 0 10px rgba(212,165,116,0.7), 0 0 20px rgba(212,165,116,0.4); }
+}
+@keyframes border-glow-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Price Flash ────────────────────────────────────────── */
+@keyframes price-up-flash {
+  0%   { background: rgba(95,179,142,0.15); color: #5fb38e; }
+  100% { background: transparent; }
+}
+@keyframes price-down-flash {
+  0%   { background: rgba(214,93,93,0.15); color: #d65d5d; }
+  100% { background: transparent; }
+}
+.flash-up   { animation: price-up-flash   0.5s ease; }
+.flash-down { animation: price-down-flash 0.5s ease; }
+
+/* ── Orb / Ring Rotations ───────────────────────────────── */
+@keyframes orb-spin-out {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orb-spin-in {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes orb-breathe {
+  0%,100% { transform: scale(1);    opacity:.6; }
+  50%      { transform: scale(1.06); opacity:1; }
+}
+
+/* ── Whale Alert ────────────────────────────────────────── */
+@keyframes whale-slide-in {
+  from { opacity:0; transform: translateX(-30px); }
+  to   { opacity:1; transform: translateX(0); }
+}
+@keyframes whale-ping {
+  0%   { transform: scale(1);    opacity:.8; }
+  50%  { transform: scale(1.5);  opacity:.3; }
+  100% { transform: scale(1);    opacity:.8; }
+}
+
+/* ── Pulse Dot ──────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%,100% { transform:scale(1);   opacity:1;  }
+  50%      { transform:scale(1.6); opacity:.5; }
+}
+.pulse-dot { width:8px; height:8px; border-radius:50%; animation: pulse-dot 1.4s ease-in-out infinite; }
+.cyan-dot  { background: #00d4ff; box-shadow: 0 0 6px #00d4ff; }
+.green-dot { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+.red-dot   { background: #ff4757; box-shadow: 0 0 6px #ff4757; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+@keyframes toast-in {
+  from { opacity:0; transform: translateX(50px) scale(.9); }
+  to   { opacity:1; transform: translateX(0)    scale(1); }
+}
+@keyframes toast-out {
+  from { opacity:1; transform: translateX(0);   }
+  to   { opacity:0; transform: translateX(60px); }
+}
+.toast.in  { animation: toast-in  0.35s cubic-bezier(.16,1,.3,1) forwards; }
+.toast.out { animation: toast-out 0.3s ease-in forwards; }
+
+/* ── Ticker Scroll ──────────────────────────────────────── */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Signal Ping ────────────────────────────────────────── */
+@keyframes signal-ping {
+  0%   { transform:scale(0); opacity:1; }
+  100% { transform:scale(2); opacity:0; }
+}
+@keyframes neon-flicker {
+  0%,90%,100% { opacity:1; }
+  92%,98%     { opacity:.3; }
+}
+
+/* ── Shimmering Skeleton ────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #ffffff08 0%, #ffffff15 50%, #ffffff08 100%);
+  background-size: 200px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 4px;
+}
+
+/* ── Stagger Children ───────────────────────────────────── */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.45s ease forwards;
+}
+.stagger-children > *:nth-child(1)  { animation-delay: .05s; }
+.stagger-children > *:nth-child(2)  { animation-delay: .10s; }
+.stagger-children > *:nth-child(3)  { animation-delay: .15s; }
+.stagger-children > *:nth-child(4)  { animation-delay: .20s; }
+.stagger-children > *:nth-child(5)  { animation-delay: .25s; }
+.stagger-children > *:nth-child(6)  { animation-delay: .30s; }
+.stagger-children > *:nth-child(7)  { animation-delay: .35s; }
+.stagger-children > *:nth-child(8)  { animation-delay: .40s; }
+.stagger-children > *:nth-child(9)  { animation-delay: .45s; }
+.stagger-children > *:nth-child(10) { animation-delay: .50s; }
+
+/* ── Utility classes ────────────────────────────────────── */
+.animate-fade-in-up { animation: fadeInUp 0.4s ease both; }
+.animate-fade-in    { animation: fadeInUp 0.3s ease both; }
+.animate-scale-in   { animation: scaleIn  0.3s ease both; }
+.anim-glow-cyan     { animation: glow-pulse-cyan   2s ease-in-out infinite; }
+.anim-glow-green    { animation: glow-pulse-green  2s ease-in-out infinite; }
+.anim-glow-purple   { animation: glow-pulse-purple 2s ease-in-out infinite; }
+
+/* ── Cyber Grid Lines ───────────────────────────────────── */
+@keyframes cyber-line-scan {
+  0%   { top: -2px; opacity:.6; }
+  100% { top: 100%; opacity:0; }
+}
+
+/* ── Crisis Banner ──────────────────────────────────────── */
+@keyframes crisis-alert {
+  0%,100% { border-color: #ff4757; box-shadow: 0 0 10px #ff475740; }
+  50%      { border-color: #ff8800; box-shadow: 0 0 24px #ff880060; }
+}
+
+/* ── Boot counter numbers ───────────────────────────────── */
+@keyframes count-up {
+  from { opacity:0; transform:translateY(4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Holographic shimmer on cards ───────────────────────── */
+@keyframes holo-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── AI layer card pulse ────────────────────────────────── */
+@keyframes layer-active {
+  0%,100% { border-color: rgba(0,212,255,.25); }
+  50%      { border-color: rgba(0,212,255,.65); }
+}
+
+/* ── Cursor trail — REMOVED ──────────────────────────── */

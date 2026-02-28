@@ -1,0 +1,1910 @@
+/* ════════════════════════════════════════════════════════════
+   admin-panel.js — Enterprise Admin Command Center
+   OmniVest AI / ZEN ASSETS
+   
+   Features:
+   ─ Dashboard KPIs + Chart.js visualisations
+   ─ User CRUD with search / sort / filter / pagination / bulk ops
+   ─ Financial operations (withdrawals, balance adjustments, ledger)
+   ─ Risk monitoring (exposure calculation, alerts, KYC status)
+   ─ Live trade feed aggregation across all users
+   ─ Platform configuration toggles + tier editor
+   ─ Audit trail with severity, filters, and export
+   ─ Broadcast notification system with targeting
+   ─ All data via localStorage (matches main app keys)
+════════════════════════════════════════════════════════════ */
+
+const AdminPanel = (() => {
+  'use strict';
+
+  // ────────────────────────────────────────────────────────
+  //  CONSTANTS & STORAGE KEYS
+  // ────────────────────────────────────────────────────────
+  const KEYS = {
+    USERS:          'zen_users',
+    SESSION:        'zen_session',
+    AUDIT:          'zen_admin_audit',
+    NOTIFICATIONS:  'zen_admin_notifications',
+    CONFIG:         'zen_platform_config',
+    WITHDRAWALS:    'zen_pending_withdrawals',
+    LEDGER:         'zen_transaction_ledger',
+  };
+
+  const ADMIN_EMAIL = 'admin@zenassets.com';
+  const ADMIN_PASS  = 'ZenAdmin2026!';
+
+  const TIERS = {
+    bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 5000,    apy: '15–22%', maxLev: '5x',  commission: 0.15 },
+    silver:   { label: 'Silver',   color: '#c0c0c0', minDeposit: 25000,   apy: '22–32%', maxLev: '10x', commission: 0.12 },
+    gold:     { label: 'Gold',     color: '#d4a574', minDeposit: 100000,  apy: '32–45%', maxLev: '25x', commission: 0.10 },
+    platinum: { label: 'Platinum', color: '#e5e4e2', minDeposit: 500000,  apy: '45–65%', maxLev: '50x', commission: 0.07 },
+    diamond:  { label: 'Diamond',  color: '#b9f2ff', minDeposit: 1000000, apy: '65–85%', maxLev: '100x',commission: 0.05 },
+  };
+
+  const ITEMS_PER_PAGE = 15;
+
+  // ────────────────────────────────────────────────────────
+  //  STATE
+  // ────────────────────────────────────────────────────────
+  let currentTab        = 'overview';
+  let userSearchQuery   = '';
+  let userPage          = 1;
+  let selectedUsers     = new Set();
+  let auditSearchQuery  = '';
+  let auditPage         = 1;
+  let charts            = {};        // Chart.js instances
+  let refreshTimer      = null;
+
+  // ────────────────────────────────────────────────────────
+  //  HELPERS
+  // ────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const $$ = sel => document.querySelectorAll(sel);
+
+  function uid()  { return 'tx_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function now()  { return Date.now(); }
+  function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
+  function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+  function fmtMoney(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+  function fmtMoneyFull(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) : '0.0'; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function timeAgo(ts) {
+    if (!ts) return 'Never';
+    const diff = (now() - ts) / 1000;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+
+  // Simple hash matching user-auth.js
+  function _hash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    }
+    return 'h$' + Math.abs(h).toString(16);
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  DATA LAYER (localStorage)
+  // ────────────────────────────────────────────────────────
+  function loadUsers()    { try { return JSON.parse(localStorage.getItem(KEYS.USERS)) || {}; } catch { return {}; } }
+  function saveUsers(u)   { localStorage.setItem(KEYS.USERS, JSON.stringify(u)); }
+  function loadAudit()    { try { return JSON.parse(localStorage.getItem(KEYS.AUDIT)) || []; } catch { return []; } }
+  function saveAudit(a)   { localStorage.setItem(KEYS.AUDIT, JSON.stringify(a)); }
+  function loadNotifs()   { try { return JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS)) || []; } catch { return []; } }
+  function saveNotifs(n)  { localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(n)); }
+  function loadConfig()   { try { return JSON.parse(localStorage.getItem(KEYS.CONFIG)) || _defaultConfig(); } catch { return _defaultConfig(); } }
+  function saveConfig_ls(c) { localStorage.setItem(KEYS.CONFIG, JSON.stringify(c)); }
+  function loadWithdrawals() { try { return JSON.parse(localStorage.getItem(KEYS.WITHDRAWALS)) || []; } catch { return []; } }
+  function saveWithdrawals(w) { localStorage.setItem(KEYS.WITHDRAWALS, JSON.stringify(w)); }
+  function loadLedger()   { try { return JSON.parse(localStorage.getItem(KEYS.LEDGER)) || []; } catch { return []; } }
+  function saveLedger(l)  { localStorage.setItem(KEYS.LEDGER, JSON.stringify(l.slice(0, 500))); }
+
+  function _defaultConfig() {
+    return {
+      registration: true,
+      trading: true,
+      autoTrader: true,
+      withdrawals: true,
+      maintenance: false,
+      tradeInterval: 45,
+      maxPositions: 8,
+      minConfidence: 65,
+      positionSize: 3,
+      sessionTimeout: 60,
+      maxDailyLoss: 10,
+    };
+  }
+
+  // Get all trade histories across all users
+  function loadAllTrades() {
+    const trades = [];
+    const users = loadUsers();
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('autoTradeHistory')) {
+        try {
+          const userTrades = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(userTrades)) {
+            // Attach user info
+            const email = key.replace('autoTradeHistory_', '') || 'unknown';
+            userTrades.forEach(t => {
+              t._userEmail = email;
+              t._userName = users[email]?.fullName || email;
+            });
+            trades.push(...userTrades);
+          }
+        } catch { /* skip */ }
+      }
+    }
+    // Sort newest first
+    trades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return trades;
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  AUDIT LOGGING
+  // ────────────────────────────────────────────────────────
+  function log(type, message, severity = 'info', meta = {}) {
+    const audit = loadAudit();
+    audit.unshift({
+      id: uid(),
+      type,
+      message,
+      severity,
+      meta,
+      actor: 'admin',
+      timestamp: now(),
+    });
+    // Keep last 1000 entries
+    saveAudit(audit.slice(0, 1000));
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TOAST NOTIFICATIONS
+  // ────────────────────────────────────────────────────────
+  function toast(message, type = 'info', duration = 4000) {
+    const container = $('admin-toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `admin-toast ${type}`;
+    const icons = { info: 'fa-info-circle', success: 'fa-check-circle', warning: 'fa-exclamation-circle', error: 'fa-times-circle' };
+    el.innerHTML = `<i class="fa ${icons[type] || icons.info}"></i><span>${message}</span>`;
+    container.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 300);
+    }, duration);
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  AUTHENTICATION
+  // ────────────────────────────────────────────────────────
+  function _initAuth() {
+    const form = $('admin-login-form');
+    if (!form) return;
+
+    // Toggle password visibility
+    const toggleBtn = $('al-toggle-pass');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const inp = $('admin-password');
+        const isPass = inp.type === 'password';
+        inp.type = isPass ? 'text' : 'password';
+        toggleBtn.querySelector('i').className = isPass ? 'fa fa-eye-slash' : 'fa fa-eye';
+      });
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = $('admin-email').value.trim();
+      const pass  = $('admin-password').value;
+      const errEl = $('admin-login-error');
+
+      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        errEl.textContent = 'Access denied. Admin credentials required.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (pass !== ADMIN_PASS) {
+        errEl.textContent = 'Incorrect password.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Ensure admin exists in user store
+      if (typeof UserAuth !== 'undefined') {
+        UserAuth.init();
+        UserAuth.login(email, pass);
+      }
+
+      log('login', 'Admin logged in', 'info');
+      _showApp();
+    });
+
+    // Check if already logged in as admin
+    if (typeof UserAuth !== 'undefined') {
+      UserAuth.init();
+      const session = UserAuth.getSession();
+      if (session && session.role === 'admin') {
+        _showApp();
+      }
+    }
+  }
+
+  function _showApp() {
+    const loginScreen = $('admin-login-screen');
+    const app = $('admin-app');
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (app) app.style.display = 'flex';
+    _bootDashboard();
+  }
+
+  function logout() {
+    log('logout', 'Admin logged out', 'info');
+    if (typeof UserAuth !== 'undefined') UserAuth.logout();
+    location.reload();
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB NAVIGATION
+  // ────────────────────────────────────────────────────────
+  function navigateTab(tab) {
+    currentTab = tab;
+
+    // Toggle sidebar items
+    $$('.as-item').forEach(el => el.classList.remove('active'));
+    const navItem = document.querySelector(`.as-item[data-tab="${tab}"]`);
+    if (navItem) navItem.classList.add('active');
+
+    // Toggle tab panels
+    $$('.admin-tab').forEach(el => el.classList.remove('active'));
+    const panel = $(`tab-${tab}`);
+    if (panel) panel.classList.add('active');
+
+    // Update breadcrumb
+    const labels = {
+      overview: 'Overview', users: 'User Management', financials: 'Financials',
+      risk: 'Risk Monitor', trades: 'Trade Feed', config: 'Configuration',
+      audit: 'Audit Logs', broadcast: 'Broadcast Center',
+    };
+    const bc = $('breadcrumb-current');
+    if (bc) bc.textContent = labels[tab] || tab;
+
+    // Render tab content
+    _renderTab(tab);
+  }
+
+  function _renderTab(tab) {
+    switch (tab) {
+      case 'overview':   renderOverview(); break;
+      case 'users':      renderUsers(); break;
+      case 'financials': renderFinancials(); break;
+      case 'risk':       renderRisk(); break;
+      case 'trades':     renderTrades(); break;
+      case 'config':     renderConfig(); break;
+      case 'audit':      renderAuditLogs(); break;
+      case 'broadcast':  renderBroadcast(); break;
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  BOOT DASHBOARD
+  // ────────────────────────────────────────────────────────
+  function _bootDashboard() {
+    // Bind sidebar clicks
+    $$('.as-item[data-tab]').forEach(el => {
+      el.addEventListener('click', () => navigateTab(el.dataset.tab));
+    });
+
+    // Admin badge dropdown
+    const badge = $('admin-badge');
+    if (badge) {
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dd = $('admin-dropdown');
+        if (dd) dd.classList.toggle('open');
+      });
+      document.addEventListener('click', () => {
+        const dd = $('admin-dropdown');
+        if (dd) dd.classList.remove('open');
+      });
+    }
+
+    // Seed initial demo data if empty
+    _seedDemoDataIfEmpty();
+
+    // Initial render
+    _updateHeaderStats();
+    renderOverview();
+
+    // Refresh every 10 seconds
+    refreshTimer = setInterval(() => {
+      _updateHeaderStats();
+      if (currentTab === 'overview') renderOverview();
+      if (currentTab === 'trades') renderTrades();
+    }, 10000);
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  SEED DEMO DATA (if no users besides admin)
+  // ────────────────────────────────────────────────────────
+  function _seedDemoDataIfEmpty() {
+    const users = loadUsers();
+    const clientCount = Object.values(users).filter(u => u.role !== 'admin').length;
+    if (clientCount > 0) return; // Already has data
+
+    // Create diverse demo users for showcase
+    const demoUsers = [
+      { fullName: 'Marcus Chen',       email: 'marcus.chen@gmail.com',     tier: 'diamond',  deposit: 2500000,  status: 'active' },
+      { fullName: 'Sarah Williams',    email: 'sarah.w@outlook.com',       tier: 'platinum', deposit: 750000,   status: 'active' },
+      { fullName: 'James Rodriguez',   email: 'j.rodriguez@yahoo.com',     tier: 'gold',     deposit: 250000,   status: 'active' },
+      { fullName: 'Elena Petrov',      email: 'elena.petrov@protonmail.com',tier: 'gold',     deposit: 180000,   status: 'active' },
+      { fullName: 'Ahmed Hassan',      email: 'ahmed.h@hotmail.com',       tier: 'silver',   deposit: 50000,    status: 'active' },
+      { fullName: 'Lisa Park',         email: 'lisa.park@gmail.com',       tier: 'silver',   deposit: 35000,    status: 'active' },
+      { fullName: 'David Thompson',    email: 'dthompson@outlook.com',     tier: 'bronze',   deposit: 8000,     status: 'active' },
+      { fullName: 'Yuki Tanaka',       email: 'yuki.t@email.jp',           tier: 'bronze',   deposit: 6000,     status: 'suspended' },
+      { fullName: 'Michael O\'Brien',  email: 'mobrien@gmail.com',         tier: 'platinum', deposit: 620000,   status: 'active' },
+      { fullName: 'Priya Sharma',      email: 'priya.s@outlook.com',       tier: 'gold',     deposit: 150000,   status: 'active' },
+      { fullName: 'Robert Kim',        email: 'r.kim@yahoo.com',           tier: 'silver',   deposit: 45000,    status: 'active' },
+      { fullName: 'Anna Müller',       email: 'anna.m@web.de',             tier: 'bronze',   deposit: 7500,     status: 'active' },
+    ];
+
+    demoUsers.forEach((u, i) => {
+      const key = u.email.toLowerCase();
+      if (!users[key]) {
+        users[key] = {
+          id: 'u_demo_' + (i + 1),
+          email: key,
+          password: _hash('Demo2026!'),
+          fullName: u.fullName,
+          tier: u.tier,
+          role: 'client',
+          deposit: u.deposit,
+          createdAt: now() - (Math.random() * 30 * 86400000), // Within last 30 days
+          status: u.status,
+          lastLogin: now() - (Math.random() * 7 * 86400000),
+          earningsOverride: null,
+          kycStatus: Math.random() > 0.3 ? 'verified' : (Math.random() > 0.5 ? 'pending' : 'unverified'),
+        };
+      }
+    });
+    saveUsers(users);
+
+    // Seed demo withdrawals
+    const withdrawals = loadWithdrawals();
+    if (withdrawals.length === 0) {
+      saveWithdrawals([
+        { id: uid(), email: 'marcus.chen@gmail.com', name: 'Marcus Chen', amount: 15000, method: 'Bank Wire', status: 'pending', requestedAt: now() - 3600000, notes: '' },
+        { id: uid(), email: 'sarah.w@outlook.com', name: 'Sarah Williams', amount: 8000, method: 'Crypto (BTC)', status: 'pending', requestedAt: now() - 7200000, notes: '' },
+        { id: uid(), email: 'j.rodriguez@yahoo.com', name: 'James Rodriguez', amount: 3500, method: 'PayPal', status: 'pending', requestedAt: now() - 18000000, notes: '' },
+      ]);
+    }
+
+    // Seed demo ledger
+    const ledger = loadLedger();
+    if (ledger.length === 0) {
+      const demoLedger = [];
+      demoUsers.forEach(u => {
+        demoLedger.push({
+          id: uid(), type: 'deposit', email: u.email, name: u.fullName,
+          amount: u.deposit, method: 'Bank Wire', status: 'completed',
+          timestamp: now() - (Math.random() * 30 * 86400000), reference: 'DEP-' + uid().slice(3, 10).toUpperCase(),
+        });
+      });
+      saveLedger(demoLedger);
+    }
+
+    // Seed demo audit
+    const audit = loadAudit();
+    if (audit.length === 0) {
+      const demoAudit = [
+        { id: uid(), type: 'login', message: 'Admin logged in', severity: 'info', actor: 'admin', timestamp: now() - 60000 },
+        { id: uid(), type: 'user_create', message: 'Demo users seeded', severity: 'info', actor: 'system', timestamp: now() - 120000 },
+        { id: uid(), type: 'config_change', message: 'Auto-trader enabled', severity: 'warning', actor: 'admin', timestamp: now() - 180000 },
+        { id: uid(), type: 'deposit', message: 'Marcus Chen deposited $2,500,000', severity: 'info', actor: 'system', timestamp: now() - 300000 },
+        { id: uid(), type: 'trade', message: 'AI placed LONG BTC @ $97,450', severity: 'info', actor: 'system', timestamp: now() - 600000 },
+        { id: uid(), type: 'withdrawal', message: 'Sarah Williams requested $8,000 withdrawal', severity: 'warning', actor: 'system', timestamp: now() - 900000 },
+      ];
+      saveAudit(demoAudit);
+    }
+
+    log('admin_action', 'Demo data seeded for showcase', 'info');
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  HEADER QUICK STATS
+  // ────────────────────────────────────────────────────────
+  function _updateHeaderStats() {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+    const totalDeposits = clients.reduce((sum, u) => sum + (u.deposit || 0), 0);
+    const pending = loadWithdrawals().filter(w => w.status === 'pending').length;
+
+    const qsUsers = $('qs-users-val');
+    const qsRevenue = $('qs-revenue-val');
+    const qsAlerts = $('qs-alerts-val');
+    const badgeUsers = $('badge-users');
+    const badgePending = $('badge-pending');
+
+    if (qsUsers)   qsUsers.textContent = clients.length;
+    if (qsRevenue) qsRevenue.textContent = fmtMoney(totalDeposits);
+    if (qsAlerts)  qsAlerts.textContent = pending;
+    if (badgeUsers) badgeUsers.textContent = clients.length;
+    if (badgePending) {
+      badgePending.textContent = pending;
+      badgePending.style.display = pending > 0 ? 'inline-flex' : 'none';
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: OVERVIEW
+  // ────────────────────────────────────────────────────────
+  function renderOverview() {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+    const totalDeposits = clients.reduce((sum, u) => sum + (u.deposit || 0), 0);
+    const activeCount = clients.filter(u => u.status === 'active').length;
+    const allTrades = loadAllTrades();
+    const closedTrades = allTrades.filter(t => t.status === 'closed');
+    const platformPnL = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+    // Week-old threshold
+    const weekAgo = now() - 7 * 86400000;
+    const newThisWeek = clients.filter(u => u.createdAt > weekAgo).length;
+
+    // KPI Values
+    const kpiTotalUsers = $('kpi-total-users');
+    const kpiDeposits = $('kpi-total-deposits');
+    const kpiActive = $('kpi-active-traders');
+    const kpiPnl = $('kpi-platform-pnl');
+    const kpiUsersChange = $('kpi-users-change');
+    const kpiActivePct = $('kpi-active-pct');
+
+    if (kpiTotalUsers)   kpiTotalUsers.textContent = clients.length;
+    if (kpiDeposits)     kpiDeposits.textContent = fmtMoney(totalDeposits);
+    if (kpiActive)       kpiActive.textContent = activeCount;
+    if (kpiPnl)          kpiPnl.textContent = (platformPnL >= 0 ? '+' : '') + fmtMoneyFull(platformPnL);
+    if (kpiUsersChange)  kpiUsersChange.textContent = `+${newThisWeek} this week`;
+    if (kpiActivePct) {
+      kpiActivePct.textContent = `${pct(activeCount, clients.length)}% of total`;
+    }
+
+    // Tier Distribution Chart
+    _renderTierChart(clients);
+    // Deposit Trend Chart
+    _renderDepositTrendChart(clients);
+    // Recent Activity Feed
+    _renderRecentActivity();
+    // System Health
+    _renderSystemHealth();
+
+    // Last update timestamp
+    const updateEl = $('last-update-time');
+    if (updateEl) updateEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  function refreshDashboard() {
+    renderOverview();
+    toast('Dashboard refreshed', 'success', 2000);
+  }
+
+  function _renderTierChart(clients) {
+    const canvas = $('chart-tier-dist');
+    if (!canvas) return;
+
+    const tierCounts = { bronze: 0, silver: 0, gold: 0, platinum: 0, diamond: 0 };
+    clients.forEach(u => { tierCounts[u.tier] = (tierCounts[u.tier] || 0) + 1; });
+
+    if (charts.tierDist) charts.tierDist.destroy();
+    charts.tierDist = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(TIERS).map(k => TIERS[k].label),
+        datasets: [{
+          data: Object.keys(TIERS).map(k => tierCounts[k] || 0),
+          backgroundColor: Object.keys(TIERS).map(k => TIERS[k].color),
+          borderWidth: 0,
+          hoverOffset: 8,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'right', labels: { color: '#8b98ad', font: { size: 11 }, padding: 12 } },
+        },
+      },
+    });
+  }
+
+  function _renderDepositTrendChart(clients) {
+    const canvas = $('chart-deposit-trend');
+    if (!canvas) return;
+
+    // Generate 30-day deposit trend (simulated from creation dates)
+    const labels = [];
+    const data = [];
+    for (let i = 29; i >= 0; i--) {
+      const dayStart = new Date();
+      dayStart.setDate(dayStart.getDate() - i);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      labels.push(dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      const dayDeposits = clients
+        .filter(u => u.createdAt >= dayStart.getTime() && u.createdAt <= dayEnd.getTime())
+        .reduce((sum, u) => sum + (u.deposit || 0), 0);
+      data.push(dayDeposits);
+    }
+
+    if (charts.depositTrend) charts.depositTrend.destroy();
+    charts.depositTrend = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Daily Deposits',
+          data,
+          borderColor: '#d4a574',
+          backgroundColor: 'rgba(212,165,116,0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#4a5568', font: { size: 9 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#4a5568', font: { size: 10 }, callback: v => fmtMoney(v) }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+
+  function _renderRecentActivity() {
+    const feed = $('recent-activity-feed');
+    if (!feed) return;
+
+    const audit = loadAudit().slice(0, 10);
+    if (audit.length === 0) {
+      feed.innerHTML = '<div class="empty-state"><i class="fa fa-inbox"></i><p>No recent activity</p></div>';
+      return;
+    }
+
+    const icons = {
+      login: 'fa-sign-in-alt', logout: 'fa-sign-out-alt', user_create: 'fa-user-plus',
+      user_update: 'fa-user-edit', user_delete: 'fa-user-times', deposit: 'fa-arrow-down',
+      withdrawal: 'fa-arrow-up', config_change: 'fa-cog', admin_action: 'fa-shield-alt', trade: 'fa-exchange-alt',
+    };
+    const colors = { info: 'blue', warning: 'orange', critical: 'red' };
+
+    feed.innerHTML = audit.map(a => `
+      <div class="activity-item">
+        <div class="ai-icon ${colors[a.severity] || 'blue'}"><i class="fa ${icons[a.type] || 'fa-circle'}"></i></div>
+        <div class="ai-body">
+          <div class="ai-msg">${a.message}</div>
+          <div class="ai-meta">${a.actor} · ${timeAgo(a.timestamp)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function _renderSystemHealth() {
+    const grid = $('sys-health-grid');
+    if (!grid) return;
+
+    const services = [
+      { name: 'Trading Engine', status: 'operational', uptime: '99.97%' },
+      { name: 'Binance WebSocket', status: 'operational', uptime: '99.89%' },
+      { name: 'AI Signal Engine', status: 'operational', uptime: '99.95%' },
+      { name: 'Auto-Trader', status: 'operational', uptime: '99.92%' },
+      { name: 'User Auth', status: 'operational', uptime: '100%' },
+      { name: 'Data Pipeline', status: 'operational', uptime: '99.98%' },
+    ];
+
+    grid.innerHTML = services.map(s => `
+      <div class="sh-item">
+        <div class="sh-dot ${s.status === 'operational' ? 'green' : 'red'}"></div>
+        <span class="sh-name">${s.name}</span>
+        <span class="sh-uptime">${s.uptime}</span>
+      </div>
+    `).join('');
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: USER MANAGEMENT
+  // ────────────────────────────────────────────────────────
+  function renderUsers() {
+    const users = loadUsers();
+    let clients = Object.values(users).filter(u => u.role !== 'admin');
+
+    // Apply search
+    if (userSearchQuery) {
+      const q = userSearchQuery.toLowerCase();
+      clients = clients.filter(u =>
+        (u.fullName || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.id || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Apply tier filter
+    const tierFilter = $('filter-tier')?.value || 'all';
+    if (tierFilter !== 'all') {
+      clients = clients.filter(u => u.tier === tierFilter);
+    }
+
+    // Apply status filter
+    const statusFilter = $('filter-status')?.value || 'all';
+    if (statusFilter !== 'all') {
+      clients = clients.filter(u => u.status === statusFilter);
+    }
+
+    // Apply sorting
+    const sortVal = $('sort-field')?.value || 'createdAt';
+    clients.sort((a, b) => {
+      switch (sortVal) {
+        case 'createdAt':       return (b.createdAt || 0) - (a.createdAt || 0);
+        case 'createdAt-asc':   return (a.createdAt || 0) - (b.createdAt || 0);
+        case 'deposit-desc':    return (b.deposit || 0) - (a.deposit || 0);
+        case 'deposit-asc':     return (a.deposit || 0) - (b.deposit || 0);
+        case 'fullName':        return (a.fullName || '').localeCompare(b.fullName || '');
+        case 'lastLogin':       return (b.lastLogin || 0) - (a.lastLogin || 0);
+        default: return 0;
+      }
+    });
+
+    // Paginate
+    const totalItems = clients.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+    userPage = clamp(userPage, 1, totalPages);
+    const startIdx = (userPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = clients.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+    // Render table body
+    const tbody = $('user-table-body');
+    if (!tbody) return;
+
+    if (pageItems.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-row"><i class="fa fa-users-slash"></i> No users found</td></tr>`;
+    } else {
+      tbody.innerHTML = pageItems.map(u => {
+        const tierInfo = TIERS[u.tier] || TIERS.bronze;
+        const riskScore = _calcRiskScore(u);
+        const riskClass = riskScore > 70 ? 'high' : riskScore > 40 ? 'medium' : 'low';
+        const checked = selectedUsers.has(u.email) ? 'checked' : '';
+
+        return `
+          <tr data-email="${u.email}">
+            <td><input type="checkbox" ${checked} onchange="AdminPanel.toggleUserSelect('${u.email}', this.checked)" /></td>
+            <td>
+              <div class="ut-user">
+                <div class="ut-avatar" style="background:${tierInfo.color}20;color:${tierInfo.color}">
+                  ${(u.fullName || '?')[0].toUpperCase()}
+                </div>
+                <div class="ut-user-info">
+                  <div class="ut-name">${u.fullName || 'Unknown'}</div>
+                  <div class="ut-email">${u.email}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="tier-chip ${u.tier}" style="--tc:${tierInfo.color}">${tierInfo.label}</span></td>
+            <td class="mono">${fmtMoney(u.deposit)}</td>
+            <td>
+              <span class="status-chip ${u.status}">
+                <span class="sc-dot"></span>${u.status}
+              </span>
+            </td>
+            <td class="text-muted">${fmtDate(u.createdAt)}</td>
+            <td class="text-muted">${timeAgo(u.lastLogin)}</td>
+            <td><span class="risk-badge ${riskClass}">${riskScore}</span></td>
+            <td class="actions-cell">
+              <button class="act-btn" title="Edit" onclick="AdminPanel.openEditUser('${u.email}')"><i class="fa fa-edit"></i></button>
+              <button class="act-btn ${u.status === 'active' ? 'warn' : 'green'}" title="${u.status === 'active' ? 'Suspend' : 'Activate'}" onclick="AdminPanel.toggleUserStatus('${u.email}')">
+                <i class="fa fa-${u.status === 'active' ? 'ban' : 'check'}"></i>
+              </button>
+              <button class="act-btn danger" title="Delete" onclick="AdminPanel.confirmDeleteUser('${u.email}')"><i class="fa fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Table info
+    const info = $('table-info');
+    if (info) info.textContent = `Showing ${startIdx + 1}–${Math.min(startIdx + ITEMS_PER_PAGE, totalItems)} of ${totalItems} users`;
+
+    // Pagination
+    _renderPagination($('table-pagination'), userPage, totalPages, (p) => { userPage = p; renderUsers(); });
+
+    // Bulk bar visibility
+    const bulkBar = $('bulk-bar');
+    if (bulkBar) {
+      bulkBar.style.display = selectedUsers.size > 0 ? 'flex' : 'none';
+      const countEl = $('selected-count');
+      if (countEl) countEl.textContent = selectedUsers.size;
+    }
+  }
+
+  function _renderPagination(container, page, totalPages, onPageChange) {
+    if (!container) return;
+    if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+    let html = '';
+    html += `<button class="pg-btn" ${page <= 1 ? 'disabled' : ''} onclick="(${onPageChange.toString()})(${page - 1})"><i class="fa fa-chevron-left"></i></button>`;
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - page) > 1) {
+        if (p === 3 || p === totalPages - 2) html += '<span class="pg-dots">…</span>';
+        continue;
+      }
+      html += `<button class="pg-btn ${p === page ? 'active' : ''}" onclick="(${onPageChange.toString()})(${p})">${p}</button>`;
+    }
+    html += `<button class="pg-btn" ${page >= totalPages ? 'disabled' : ''} onclick="(${onPageChange.toString()})(${page + 1})"><i class="fa fa-chevron-right"></i></button>`;
+
+    // Since inline onclick with closures won't work, use a different approach
+    container.innerHTML = '';
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pg-btn';
+    prevBtn.disabled = page <= 1;
+    prevBtn.innerHTML = '<i class="fa fa-chevron-left"></i>';
+    prevBtn.onclick = () => onPageChange(page - 1);
+    container.appendChild(prevBtn);
+
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - page) > 1) {
+        if (p === 3 || p === totalPages - 2) {
+          const dots = document.createElement('span');
+          dots.className = 'pg-dots';
+          dots.textContent = '…';
+          container.appendChild(dots);
+        }
+        continue;
+      }
+      const btn = document.createElement('button');
+      btn.className = 'pg-btn' + (p === page ? ' active' : '');
+      btn.textContent = p;
+      btn.onclick = () => onPageChange(p);
+      container.appendChild(btn);
+    }
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pg-btn';
+    nextBtn.disabled = page >= totalPages;
+    nextBtn.innerHTML = '<i class="fa fa-chevron-right"></i>';
+    nextBtn.onclick = () => onPageChange(page + 1);
+    container.appendChild(nextBtn);
+  }
+
+  // Risk Score Algorithm (0-100)
+  // Based on: deposit size, position exposure, account age, trading frequency
+  function _calcRiskScore(user) {
+    let score = 0;
+
+    // Deposit-based risk (higher deposit = lower risk due to commitment)
+    const deposit = user.deposit || 0;
+    if (deposit < 10000) score += 30;
+    else if (deposit < 50000) score += 20;
+    else if (deposit < 200000) score += 10;
+    else score += 5;
+
+    // Account age risk (newer = higher risk)
+    const ageDays = (now() - (user.createdAt || now())) / 86400000;
+    if (ageDays < 7) score += 25;
+    else if (ageDays < 30) score += 15;
+    else score += 5;
+
+    // Suspension status adds risk
+    if (user.status === 'suspended') score += 20;
+
+    // KYC status
+    if (user.kycStatus === 'unverified') score += 20;
+    else if (user.kycStatus === 'pending') score += 10;
+    else score += 0;
+
+    // Random variance for realism
+    score += Math.floor(Math.random() * 10);
+
+    return clamp(score, 0, 100);
+  }
+
+  function searchUsers(query) {
+    userSearchQuery = query;
+    userPage = 1;
+    renderUsers();
+  }
+
+  function filterUsers() {
+    userPage = 1;
+    renderUsers();
+  }
+
+  function sortUsers() {
+    userPage = 1;
+    renderUsers();
+  }
+
+  function toggleUserSelect(email, checked) {
+    if (checked) selectedUsers.add(email);
+    else selectedUsers.delete(email);
+    renderUsers();
+  }
+
+  function toggleSelectAll(checked) {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+    if (checked) {
+      clients.forEach(u => selectedUsers.add(u.email));
+    } else {
+      selectedUsers.clear();
+    }
+    renderUsers();
+  }
+
+  function clearSelection() {
+    selectedUsers.clear();
+    const selectAll = $('select-all-users');
+    if (selectAll) selectAll.checked = false;
+    renderUsers();
+  }
+
+  // CRUD: Open Edit Modal
+  function openEditUser(email) {
+    const users = loadUsers();
+    const user = users[email.toLowerCase()];
+    if (!user) return toast('User not found', 'error');
+
+    $('modal-user-title').textContent = 'Edit User: ' + user.fullName;
+    $('edit-user-email').value = user.email;
+    $('edit-user-name').value = user.fullName || '';
+    $('edit-user-tier').value = user.tier || 'bronze';
+    $('edit-user-deposit').value = user.deposit || 0;
+    $('edit-user-status').value = user.status || 'active';
+    $('edit-user-earnings').value = user.earningsOverride || '';
+    $('edit-user-password').value = '';
+
+    openModal('modal-user-edit');
+  }
+
+  function saveUserEdit() {
+    const email = $('edit-user-email').value;
+    const users = loadUsers();
+    const key = email.toLowerCase();
+    if (!users[key]) return toast('User not found', 'error');
+
+    const oldTier = users[key].tier;
+    const oldStatus = users[key].status;
+
+    users[key].fullName = $('edit-user-name').value.trim() || users[key].fullName;
+    users[key].tier = $('edit-user-tier').value;
+    users[key].deposit = parseFloat($('edit-user-deposit').value) || 0;
+    users[key].status = $('edit-user-status').value;
+
+    const earningsVal = $('edit-user-earnings').value;
+    users[key].earningsOverride = earningsVal ? parseFloat(earningsVal) : null;
+
+    const newPass = $('edit-user-password').value;
+    if (newPass && newPass.length >= 6) {
+      users[key].password = _hash(newPass);
+    }
+
+    saveUsers(users);
+    closeModal('modal-user-edit');
+
+    // Log changes
+    const changes = [];
+    if (users[key].tier !== oldTier) changes.push(`tier: ${oldTier}→${users[key].tier}`);
+    if (users[key].status !== oldStatus) changes.push(`status: ${oldStatus}→${users[key].status}`);
+    log('user_update', `Updated ${users[key].fullName} (${email}). ${changes.join(', ')}`, 'info', { email });
+
+    toast(`User ${users[key].fullName} updated successfully`, 'success');
+    renderUsers();
+    _updateHeaderStats();
+  }
+
+  // CRUD: Create User
+  function openCreateUser() {
+    $('modal-user-title').textContent = 'Create New User';
+    $('edit-user-email').value = '';
+    $('edit-user-name').value = '';
+    $('edit-user-tier').value = 'bronze';
+    $('edit-user-deposit').value = '';
+    $('edit-user-status').value = 'active';
+    $('edit-user-earnings').value = '';
+    $('edit-user-password').value = '';
+    openModal('modal-user-edit');
+  }
+
+  // Toggle status
+  function toggleUserStatus(email) {
+    const users = loadUsers();
+    const key = email.toLowerCase();
+    if (!users[key]) return;
+
+    const newStatus = users[key].status === 'active' ? 'suspended' : 'active';
+    users[key].status = newStatus;
+    saveUsers(users);
+
+    log('user_update', `${newStatus === 'suspended' ? 'Suspended' : 'Activated'} ${users[key].fullName}`, newStatus === 'suspended' ? 'warning' : 'info', { email });
+    toast(`User ${users[key].fullName} ${newStatus}`, newStatus === 'suspended' ? 'warning' : 'success');
+    renderUsers();
+    _updateHeaderStats();
+  }
+
+  // Delete user with confirmation
+  function confirmDeleteUser(email) {
+    const users = loadUsers();
+    const user = users[email.toLowerCase()];
+    if (!user) return;
+
+    $('confirm-title').textContent = 'Delete User';
+    $('confirm-message').textContent = `Are you sure you want to permanently delete "${user.fullName}" (${email})? This action cannot be undone.`;
+    $('confirm-btn').onclick = () => {
+      _deleteUser(email);
+      closeModal('modal-confirm');
+    };
+    openModal('modal-confirm');
+  }
+
+  function _deleteUser(email) {
+    const users = loadUsers();
+    const key = email.toLowerCase();
+    const name = users[key]?.fullName || email;
+    if (key === ADMIN_EMAIL.toLowerCase()) return toast('Cannot delete admin account', 'error');
+
+    delete users[key];
+    saveUsers(users);
+    selectedUsers.delete(email);
+
+    // Also remove their trade history
+    localStorage.removeItem('autoTradeHistory_' + key);
+
+    log('user_delete', `Deleted user: ${name} (${email})`, 'warning', { email });
+    toast(`User ${name} deleted`, 'warning');
+    renderUsers();
+    _updateHeaderStats();
+  }
+
+  // Bulk Actions
+  function bulkAction(action) {
+    if (selectedUsers.size === 0) return;
+
+    const count = selectedUsers.size;
+    let actionLabel = action;
+
+    switch (action) {
+      case 'activate': {
+        const users = loadUsers();
+        selectedUsers.forEach(email => {
+          if (users[email.toLowerCase()]) users[email.toLowerCase()].status = 'active';
+        });
+        saveUsers(users);
+        log('admin_action', `Bulk activated ${count} users`, 'info');
+        toast(`${count} users activated`, 'success');
+        break;
+      }
+      case 'suspend': {
+        const users = loadUsers();
+        selectedUsers.forEach(email => {
+          if (users[email.toLowerCase()]) users[email.toLowerCase()].status = 'suspended';
+        });
+        saveUsers(users);
+        log('admin_action', `Bulk suspended ${count} users`, 'warning');
+        toast(`${count} users suspended`, 'warning');
+        break;
+      }
+      case 'delete': {
+        $('confirm-title').textContent = 'Bulk Delete';
+        $('confirm-message').textContent = `Permanently delete ${count} selected users?`;
+        $('confirm-btn').onclick = () => {
+          const users = loadUsers();
+          selectedUsers.forEach(email => {
+            const key = email.toLowerCase();
+            if (key !== ADMIN_EMAIL.toLowerCase()) {
+              delete users[key];
+              localStorage.removeItem('autoTradeHistory_' + key);
+            }
+          });
+          saveUsers(users);
+          selectedUsers.clear();
+          closeModal('modal-confirm');
+          log('admin_action', `Bulk deleted ${count} users`, 'critical');
+          toast(`${count} users deleted`, 'warning');
+          renderUsers();
+          _updateHeaderStats();
+        };
+        openModal('modal-confirm');
+        return;
+      }
+      case 'upgrade': {
+        // Upgrade all selected to next tier
+        const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+        const users = loadUsers();
+        let upgraded = 0;
+        selectedUsers.forEach(email => {
+          const u = users[email.toLowerCase()];
+          if (u) {
+            const idx = tierOrder.indexOf(u.tier);
+            if (idx < tierOrder.length - 1) {
+              u.tier = tierOrder[idx + 1];
+              upgraded++;
+            }
+          }
+        });
+        saveUsers(users);
+        log('admin_action', `Bulk upgraded ${upgraded} users`, 'info');
+        toast(`${upgraded} users upgraded`, 'success');
+        break;
+      }
+    }
+
+    selectedUsers.clear();
+    renderUsers();
+    _updateHeaderStats();
+  }
+
+  // Export users to CSV
+  function exportUsers() {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+
+    const headers = ['Name', 'Email', 'Tier', 'Deposit', 'Status', 'Joined', 'Last Login'];
+    const rows = clients.map(u => [
+      u.fullName, u.email, u.tier, u.deposit, u.status,
+      fmtDate(u.createdAt), fmtDate(u.lastLogin),
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zen_users_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    log('admin_action', `Exported ${clients.length} users to CSV`, 'info');
+    toast('Users exported to CSV', 'success');
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: FINANCIALS
+  // ────────────────────────────────────────────────────────
+  function renderFinancials() {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+    const totalDeposits = clients.reduce((sum, u) => sum + (u.deposit || 0), 0);
+    const withdrawals = loadWithdrawals();
+    const pendingW = withdrawals.filter(w => w.status === 'pending');
+    const approvedW = withdrawals.filter(w => w.status === 'approved');
+    const totalWithdrawn = approvedW.reduce((sum, w) => sum + (w.amount || 0), 0);
+
+    // KPIs
+    const finDep = $('fin-total-deposits');
+    const finWith = $('fin-total-withdrawals');
+    const finNet = $('fin-net-revenue');
+    const finPending = $('fin-pending-count');
+
+    if (finDep) finDep.textContent = fmtMoney(totalDeposits);
+    if (finWith) finWith.textContent = fmtMoney(totalWithdrawn);
+    if (finNet) finNet.textContent = fmtMoney(totalDeposits - totalWithdrawn);
+    if (finPending) finPending.textContent = pendingW.length;
+
+    // Pending subtitle
+    const pendingSub = $('pending-subtitle');
+    if (pendingSub) pendingSub.textContent = `${pendingW.length} pending`;
+
+    // Withdrawal Queue
+    const queue = $('withdrawal-queue');
+    if (queue) {
+      if (pendingW.length === 0) {
+        queue.innerHTML = '<div class="empty-state"><i class="fa fa-check-circle"></i><p>No pending withdrawal requests</p></div>';
+      } else {
+        queue.innerHTML = pendingW.map(w => `
+          <div class="wq-item">
+            <div class="wq-info">
+              <div class="wq-name">${w.name || w.email}</div>
+              <div class="wq-meta">${w.method} · Requested ${timeAgo(w.requestedAt)}</div>
+            </div>
+            <div class="wq-amount">${fmtMoney(w.amount)}</div>
+            <div class="wq-actions">
+              <button class="act-btn green" title="Approve" onclick="AdminPanel.processWithdrawal('${w.id}', 'approved')"><i class="fa fa-check"></i></button>
+              <button class="act-btn warn" title="Hold" onclick="AdminPanel.processWithdrawal('${w.id}', 'hold')"><i class="fa fa-pause"></i></button>
+              <button class="act-btn danger" title="Deny" onclick="AdminPanel.processWithdrawal('${w.id}', 'denied')"><i class="fa fa-times"></i></button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Transaction Ledger
+    _renderLedger();
+
+    // Revenue by Tier Chart
+    _renderRevenueTierChart(clients);
+  }
+
+  function processWithdrawal(id, newStatus) {
+    const withdrawals = loadWithdrawals();
+    const w = withdrawals.find(w => w.id === id);
+    if (!w) return;
+
+    w.status = newStatus;
+    w.processedAt = now();
+    saveWithdrawals(withdrawals);
+
+    // If approved, subtract from user deposit
+    if (newStatus === 'approved') {
+      const users = loadUsers();
+      const key = w.email.toLowerCase();
+      if (users[key]) {
+        users[key].deposit = Math.max(0, (users[key].deposit || 0) - w.amount);
+        saveUsers(users);
+      }
+
+      // Add to ledger
+      const ledger = loadLedger();
+      ledger.unshift({
+        id: uid(), type: 'withdrawal', email: w.email, name: w.name,
+        amount: -w.amount, method: w.method, status: 'completed',
+        timestamp: now(), reference: 'WD-' + id.slice(3, 10).toUpperCase(),
+      });
+      saveLedger(ledger);
+    }
+
+    const statusLabels = { approved: 'approved', denied: 'denied', hold: 'placed on hold' };
+    log('withdrawal', `Withdrawal ${fmtMoney(w.amount)} from ${w.name} ${statusLabels[newStatus]}`, newStatus === 'denied' ? 'warning' : 'info', { id, email: w.email });
+    toast(`Withdrawal ${statusLabels[newStatus]}`, newStatus === 'approved' ? 'success' : 'warning');
+
+    renderFinancials();
+    _updateHeaderStats();
+  }
+
+  function _renderLedger() {
+    const tbody = $('ledger-table-body');
+    if (!tbody) return;
+
+    let ledger = loadLedger();
+
+    // Apply filters
+    const typeFilter = $('ledger-type-filter')?.value || 'all';
+    if (typeFilter !== 'all') ledger = ledger.filter(l => l.type === typeFilter);
+
+    const dateFrom = $('ledger-date-from')?.value;
+    const dateTo = $('ledger-date-to')?.value;
+    if (dateFrom) ledger = ledger.filter(l => l.timestamp >= new Date(dateFrom).getTime());
+    if (dateTo) ledger = ledger.filter(l => l.timestamp <= new Date(dateTo + 'T23:59:59').getTime());
+
+    // Show latest 50
+    ledger = ledger.slice(0, 50);
+
+    if (ledger.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-row">No transactions found</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = ledger.map(l => {
+      const typeClass = l.type === 'deposit' ? 'green' : l.type === 'withdrawal' ? 'red' : 'blue';
+      const amountClass = (l.amount || 0) >= 0 ? 'profit' : 'loss';
+      return `
+        <tr>
+          <td class="text-muted">${fmtTime(l.timestamp)}</td>
+          <td><span class="type-chip ${typeClass}">${l.type}</span></td>
+          <td>${l.name || l.email || '—'}</td>
+          <td class="mono ${amountClass}">${l.amount >= 0 ? '+' : ''}${fmtMoneyFull(l.amount)}</td>
+          <td class="text-muted">${l.method || '—'}</td>
+          <td><span class="status-chip ${l.status}">${l.status}</span></td>
+          <td class="mono text-muted">${l.reference || '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function filterLedger() { _renderLedger(); }
+
+  function _renderRevenueTierChart(clients) {
+    const canvas = $('chart-revenue-tier');
+    if (!canvas) return;
+
+    const tierRevenue = {};
+    Object.keys(TIERS).forEach(k => { tierRevenue[k] = 0; });
+    clients.forEach(u => { tierRevenue[u.tier] = (tierRevenue[u.tier] || 0) + (u.deposit || 0); });
+
+    if (charts.revenueTier) charts.revenueTier.destroy();
+    charts.revenueTier = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(TIERS).map(k => TIERS[k].label),
+        datasets: [{
+          label: 'Total Deposits',
+          data: Object.keys(TIERS).map(k => tierRevenue[k]),
+          backgroundColor: Object.keys(TIERS).map(k => TIERS[k].color + '88'),
+          borderColor: Object.keys(TIERS).map(k => TIERS[k].color),
+          borderWidth: 1,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { ticks: { color: '#4a5568', callback: v => fmtMoney(v) }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          x: { ticks: { color: '#8b98ad' }, grid: { display: false } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+
+  // Balance Adjustment
+  function openBalanceAdjust() {
+    $('bal-user-email').value = '';
+    $('bal-amount').value = '';
+    $('bal-reason').value = '';
+    $('bal-operation').value = 'add';
+    openModal('modal-balance');
+  }
+
+  function executeBalanceAdjust() {
+    const email = $('bal-user-email').value.trim();
+    const operation = $('bal-operation').value;
+    const amount = parseFloat($('bal-amount').value) || 0;
+    const reason = $('bal-reason').value.trim();
+
+    if (!email || amount <= 0) return toast('Email and amount are required', 'error');
+
+    const users = loadUsers();
+    const key = email.toLowerCase();
+    if (!users[key]) return toast('User not found', 'error');
+
+    const oldDeposit = users[key].deposit || 0;
+    switch (operation) {
+      case 'add':      users[key].deposit = oldDeposit + amount; break;
+      case 'subtract': users[key].deposit = Math.max(0, oldDeposit - amount); break;
+      case 'set':      users[key].deposit = amount; break;
+    }
+    saveUsers(users);
+
+    // Record in ledger
+    const ledger = loadLedger();
+    ledger.unshift({
+      id: uid(), type: 'adjustment', email, name: users[key].fullName,
+      amount: operation === 'subtract' ? -amount : amount,
+      method: 'Admin Adjustment', status: 'completed',
+      timestamp: now(), reference: 'ADJ-' + uid().slice(3, 10).toUpperCase(),
+    });
+    saveLedger(ledger);
+
+    closeModal('modal-balance');
+    log('admin_action', `Balance ${operation} ${fmtMoney(amount)} for ${users[key].fullName}. Reason: ${reason || 'N/A'}`, 'warning', { email, operation, amount });
+    toast(`Balance adjusted: ${fmtMoney(users[key].deposit)}`, 'success');
+
+    renderFinancials();
+    _updateHeaderStats();
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: RISK MONITOR
+  // ────────────────────────────────────────────────────────
+  function renderRisk() {
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+
+    // Platform risk score (average of all user risk scores)
+    const riskScores = clients.map(u => _calcRiskScore(u));
+    const avgRisk = riskScores.length ? Math.round(riskScores.reduce((a, b) => a + b, 0) / riskScores.length) : 0;
+
+    // Render gauge
+    const arc = document.getElementById('risk-arc');
+    if (arc) {
+      const maxDash = 251.2;
+      const offset = maxDash - (avgRisk / 100) * maxDash;
+      arc.setAttribute('stroke-dashoffset', offset);
+    }
+    const scoreLabel = $('risk-score-label');
+    if (scoreLabel) scoreLabel.textContent = avgRisk;
+
+    // Risk status pill
+    const pill = $('risk-status-pill');
+    const pillText = $('risk-status-text');
+    if (pill && pillText) {
+      if (avgRisk > 70) { pill.className = 'risk-status-pill high'; pillText.textContent = 'High Risk'; }
+      else if (avgRisk > 40) { pill.className = 'risk-status-pill medium'; pillText.textContent = 'Moderate'; }
+      else { pill.className = 'risk-status-pill low'; pillText.textContent = 'Normal'; }
+    }
+
+    // Risk Alerts
+    _renderRiskAlerts(clients);
+
+    // Exposure Table
+    _renderExposureTable(clients);
+
+    // KYC Grid
+    _renderKYCGrid(clients);
+  }
+
+  function _renderRiskAlerts(clients) {
+    const list = $('risk-alerts-list');
+    if (!list) return;
+
+    const alerts = [];
+
+    // High-deposit unverified users
+    const unverifiedHighValue = clients.filter(u => u.kycStatus !== 'verified' && (u.deposit || 0) > 100000);
+    if (unverifiedHighValue.length > 0) {
+      alerts.push({ severity: 'critical', icon: 'fa-exclamation-circle', message: `${unverifiedHighValue.length} high-value user(s) without KYC verification`, action: 'Review KYC' });
+    }
+
+    // Suspended users with large balances
+    const suspendedWithFunds = clients.filter(u => u.status === 'suspended' && (u.deposit || 0) > 10000);
+    if (suspendedWithFunds.length > 0) {
+      alerts.push({ severity: 'warning', icon: 'fa-user-lock', message: `${suspendedWithFunds.length} suspended user(s) with significant balances`, action: 'Review' });
+    }
+
+    // New users in last 24h
+    const newToday = clients.filter(u => (now() - u.createdAt) < 86400000);
+    if (newToday.length > 3) {
+      alerts.push({ severity: 'warning', icon: 'fa-user-plus', message: `Unusual registration spike: ${newToday.length} new users in 24h`, action: 'Monitor' });
+    }
+
+    // Pending withdrawals value
+    const pendingW = loadWithdrawals().filter(w => w.status === 'pending');
+    const pendingTotal = pendingW.reduce((s, w) => s + (w.amount || 0), 0);
+    if (pendingTotal > 50000) {
+      alerts.push({ severity: 'warning', icon: 'fa-money-bill-wave', message: `${fmtMoney(pendingTotal)} in pending withdrawals`, action: 'Process' });
+    }
+
+    // System all-clear
+    if (alerts.length === 0) {
+      alerts.push({ severity: 'info', icon: 'fa-check-circle', message: 'All risk indicators within normal parameters', action: '' });
+    }
+
+    list.innerHTML = alerts.map(a => `
+      <div class="ra-item ${a.severity}">
+        <i class="fa ${a.icon}"></i>
+        <span class="ra-msg">${a.message}</span>
+        ${a.action ? `<button class="btn-admin-xs">${a.action}</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function _renderExposureTable(clients) {
+    const tbody = $('exposure-table-body');
+    if (!tbody) return;
+
+    // Sort by deposit descending
+    const sorted = [...clients].sort((a, b) => (b.deposit || 0) - (a.deposit || 0)).slice(0, 15);
+    const totalDeposits = clients.reduce((s, u) => s + (u.deposit || 0), 0);
+
+    tbody.innerHTML = sorted.map(u => {
+      const exposure = totalDeposits > 0 ? ((u.deposit || 0) / totalDeposits * 100).toFixed(1) : '0.0';
+      const riskScore = _calcRiskScore(u);
+      const riskClass = riskScore > 70 ? 'high' : riskScore > 40 ? 'medium' : 'low';
+      // Simulated daily P&L
+      const dailyPnl = ((Math.random() - 0.35) * (u.deposit || 0) * 0.02);
+      const pnlClass = dailyPnl >= 0 ? 'profit' : 'loss';
+
+      return `
+        <tr>
+          <td>
+            <div class="ut-user compact">
+              <div class="ut-name">${u.fullName}</div>
+              <div class="ut-email">${u.email}</div>
+            </div>
+          </td>
+          <td class="mono">${fmtMoney(u.deposit)}</td>
+          <td class="mono">${Math.floor(Math.random() * 5)}</td>
+          <td>
+            <div class="exposure-bar-wrap">
+              <div class="exposure-bar" style="width:${Math.min(exposure, 100)}%"></div>
+              <span>${exposure}%</span>
+            </div>
+          </td>
+          <td class="mono ${pnlClass}">${dailyPnl >= 0 ? '+' : ''}${fmtMoneyFull(dailyPnl)}</td>
+          <td><span class="risk-badge ${riskClass}">${riskScore}</span></td>
+          <td><button class="act-btn" onclick="AdminPanel.openEditUser('${u.email}')"><i class="fa fa-eye"></i></button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function _renderKYCGrid(clients) {
+    const grid = $('kyc-grid');
+    if (!grid) return;
+
+    const verified = clients.filter(u => u.kycStatus === 'verified').length;
+    const pending = clients.filter(u => u.kycStatus === 'pending').length;
+    const unverified = clients.filter(u => !u.kycStatus || u.kycStatus === 'unverified').length;
+
+    grid.innerHTML = `
+      <div class="kyc-card verified">
+        <div class="kyc-icon"><i class="fa fa-check-circle"></i></div>
+        <div class="kyc-count">${verified}</div>
+        <div class="kyc-label">Verified</div>
+        <div class="kyc-pct">${pct(verified, clients.length)}%</div>
+      </div>
+      <div class="kyc-card pending">
+        <div class="kyc-icon"><i class="fa fa-clock"></i></div>
+        <div class="kyc-count">${pending}</div>
+        <div class="kyc-label">Pending Review</div>
+        <div class="kyc-pct">${pct(pending, clients.length)}%</div>
+      </div>
+      <div class="kyc-card unverified">
+        <div class="kyc-icon"><i class="fa fa-times-circle"></i></div>
+        <div class="kyc-count">${unverified}</div>
+        <div class="kyc-label">Unverified</div>
+        <div class="kyc-pct">${pct(unverified, clients.length)}%</div>
+      </div>
+    `;
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: TRADE FEED
+  // ────────────────────────────────────────────────────────
+  function renderTrades() {
+    const allTrades = loadAllTrades();
+
+    // Stats
+    const closed = allTrades.filter(t => t.status === 'closed');
+    const open = allTrades.filter(t => t.status === 'open');
+    const wins = closed.filter(t => (t.pnl || 0) >= 0);
+    const totalVolume = allTrades.reduce((s, t) => s + (t.entryPrice || 0), 0);
+    const avgConf = allTrades.length ? allTrades.reduce((s, t) => s + (t.confidence || 0), 0) / allTrades.length : 0;
+
+    const tsTotal = $('ts-total');
+    const tsWinrate = $('ts-winrate');
+    const tsVolume = $('ts-volume');
+    const tsAvgConf = $('ts-avg-conf');
+    const tsOpen = $('ts-open');
+
+    if (tsTotal) tsTotal.textContent = allTrades.length;
+    if (tsWinrate) tsWinrate.textContent = closed.length ? (wins.length / closed.length * 100).toFixed(1) + '%' : '0%';
+    if (tsVolume) tsVolume.textContent = fmtMoney(totalVolume);
+    if (tsAvgConf) tsAvgConf.textContent = avgConf.toFixed(0) + '%';
+    if (tsOpen) tsOpen.textContent = open.length;
+
+    // Populate symbol filter
+    const symbolFilter = $('trade-filter-symbol');
+    if (symbolFilter && symbolFilter.options.length <= 1) {
+      const symbols = [...new Set(allTrades.map(t => t.symbol).filter(Boolean))];
+      symbols.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        symbolFilter.appendChild(opt);
+      });
+    }
+
+    // Apply filters
+    let filtered = [...allTrades];
+    const symFilter = $('trade-filter-symbol')?.value || 'all';
+    const sideFilter = $('trade-filter-side')?.value || 'all';
+    const statFilter = $('trade-filter-status')?.value || 'all';
+
+    if (symFilter !== 'all') filtered = filtered.filter(t => t.symbol === symFilter);
+    if (sideFilter !== 'all') filtered = filtered.filter(t => t.side === sideFilter);
+    if (statFilter !== 'all') filtered = filtered.filter(t => t.status === statFilter);
+
+    // Render feed table (max 50)
+    const tbody = $('trade-feed-body');
+    if (tbody) {
+      const display = filtered.slice(0, 50);
+      if (display.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-row">No trades found</td></tr>`;
+      } else {
+        tbody.innerHTML = display.map(t => {
+          const pnlClass = (t.pnl || 0) >= 0 ? 'profit' : 'loss';
+          const sideClass = t.side === 'long' ? 'long' : 'short';
+          return `
+            <tr>
+              <td class="text-muted">${fmtTime(t.timestamp)}</td>
+              <td>${t._userName || 'AI System'}</td>
+              <td class="mono"><strong>${t.symbol || '—'}</strong></td>
+              <td><span class="side-chip ${sideClass}">${(t.side || '').toUpperCase()}</span></td>
+              <td class="mono">$${(t.entryPrice || 0).toFixed(2)}</td>
+              <td class="mono">${t.exitPrice ? '$' + t.exitPrice.toFixed(2) : '—'}</td>
+              <td class="mono ${pnlClass}">${(t.pnl || 0) >= 0 ? '+' : ''}$${(t.pnl || 0).toFixed(2)}</td>
+              <td><span class="conf-badge" style="--conf:${(t.confidence || 0) / 100}">${t.confidence || 0}%</span></td>
+              <td><span class="status-chip ${t.status}">${(t.status || 'unknown').toUpperCase()}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // Cumulative P&L Chart
+    _renderCumulativePnLChart(closed);
+  }
+
+  function filterTrades() { renderTrades(); }
+
+  function _renderCumulativePnLChart(closedTrades) {
+    const canvas = $('chart-cumulative-pnl');
+    if (!canvas) return;
+
+    // Sort chronologically
+    const sorted = [...closedTrades].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    let cumPnL = 0;
+    const labels = sorted.map(t => fmtTime(t.timestamp));
+    const data = sorted.map(t => { cumPnL += (t.pnl || 0); return cumPnL; });
+
+    if (charts.cumulativePnl) charts.cumulativePnl.destroy();
+    charts.cumulativePnl = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: labels.length ? labels : ['No data'],
+        datasets: [{
+          label: 'Cumulative P&L',
+          data: data.length ? data : [0],
+          borderColor: cumPnL >= 0 ? '#5fb38e' : '#d65d5d',
+          backgroundColor: cumPnL >= 0 ? 'rgba(95,179,142,0.08)' : 'rgba(214,93,93,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { display: false },
+          y: { ticks: { color: '#4a5568', callback: v => fmtMoney(v) }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: CONFIGURATION
+  // ────────────────────────────────────────────────────────
+  function renderConfig() {
+    const config = loadConfig();
+
+    // Platform Toggles
+    const cfgReg = $('cfg-registration');
+    const cfgTrd = $('cfg-trading');
+    const cfgAt = $('cfg-autotrader');
+    const cfgWd = $('cfg-withdrawals');
+    const cfgMa = $('cfg-maintenance');
+
+    if (cfgReg) cfgReg.checked = config.registration;
+    if (cfgTrd) cfgTrd.checked = config.trading;
+    if (cfgAt) cfgAt.checked = config.autoTrader;
+    if (cfgWd) cfgWd.checked = config.withdrawals;
+    if (cfgMa) cfgMa.checked = config.maintenance;
+
+    // Auto-trader params
+    const cfgInterval = $('cfg-trade-interval');
+    const cfgMax = $('cfg-max-positions');
+    const cfgConf = $('cfg-min-confidence');
+    const cfgSize = $('cfg-position-size');
+    const cfgTimeout = $('cfg-session-timeout');
+    const cfgLoss = $('cfg-max-daily-loss');
+
+    if (cfgInterval) cfgInterval.value = config.tradeInterval || 45;
+    if (cfgMax) cfgMax.value = config.maxPositions || 8;
+    if (cfgConf) cfgConf.value = config.minConfidence || 65;
+    if (cfgSize) cfgSize.value = config.positionSize || 3;
+    if (cfgTimeout) cfgTimeout.value = config.sessionTimeout || 60;
+    if (cfgLoss) cfgLoss.value = config.maxDailyLoss || 10;
+
+    // Tier Config Table
+    _renderTierConfigTable();
+  }
+
+  function _renderTierConfigTable() {
+    const tbody = $('tier-config-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = Object.keys(TIERS).map(key => {
+      const t = TIERS[key];
+      return `
+        <tr>
+          <td><span class="tier-chip ${key}" style="--tc:${t.color}">${t.label}</span></td>
+          <td class="mono">${fmtMoney(t.minDeposit)}</td>
+          <td>${t.apy}</td>
+          <td>${t.maxLev}</td>
+          <td class="mono">${(t.commission * 100).toFixed(0)}%</td>
+          <td><span class="status-chip active">Active</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function saveConfig() {
+    const config = {
+      registration: $('cfg-registration')?.checked ?? true,
+      trading: $('cfg-trading')?.checked ?? true,
+      autoTrader: $('cfg-autotrader')?.checked ?? true,
+      withdrawals: $('cfg-withdrawals')?.checked ?? true,
+      maintenance: $('cfg-maintenance')?.checked ?? false,
+      tradeInterval: parseInt($('cfg-trade-interval')?.value) || 45,
+      maxPositions: parseInt($('cfg-max-positions')?.value) || 8,
+      minConfidence: parseInt($('cfg-min-confidence')?.value) || 65,
+      positionSize: parseFloat($('cfg-position-size')?.value) || 3,
+      sessionTimeout: parseInt($('cfg-session-timeout')?.value) || 60,
+      maxDailyLoss: parseInt($('cfg-max-daily-loss')?.value) || 10,
+    };
+
+    saveConfig_ls(config);
+    log('config_change', 'Platform configuration updated', 'warning', config);
+    toast('Configuration saved successfully', 'success');
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: AUDIT LOGS
+  // ────────────────────────────────────────────────────────
+  function renderAuditLogs() {
+    let audit = loadAudit();
+
+    // Apply search
+    if (auditSearchQuery) {
+      const q = auditSearchQuery.toLowerCase();
+      audit = audit.filter(a => (a.message || '').toLowerCase().includes(q) || (a.type || '').toLowerCase().includes(q));
+    }
+
+    // Apply type filter
+    const typeFilter = $('audit-type-filter')?.value || 'all';
+    if (typeFilter !== 'all') audit = audit.filter(a => a.type === typeFilter);
+
+    // Apply severity filter
+    const sevFilter = $('audit-severity-filter')?.value || 'all';
+    if (sevFilter !== 'all') audit = audit.filter(a => a.severity === sevFilter);
+
+    // Paginate
+    const totalItems = audit.length;
+    const totalPages = Math.ceil(totalItems / 25) || 1;
+    auditPage = clamp(auditPage, 1, totalPages);
+    const start = (auditPage - 1) * 25;
+    const pageItems = audit.slice(start, start + 25);
+
+    // Render
+    const list = $('audit-log-list');
+    if (list) {
+      if (pageItems.length === 0) {
+        list.innerHTML = '<div class="empty-state"><i class="fa fa-clipboard-check"></i><p>No audit events found</p></div>';
+      } else {
+        const icons = {
+          login: 'fa-sign-in-alt', logout: 'fa-sign-out-alt', user_create: 'fa-user-plus',
+          user_update: 'fa-user-edit', user_delete: 'fa-user-times', deposit: 'fa-arrow-down',
+          withdrawal: 'fa-arrow-up', config_change: 'fa-cog', admin_action: 'fa-shield-alt', trade: 'fa-exchange-alt',
+        };
+        const sevColors = { info: 'blue', warning: 'orange', critical: 'red' };
+
+        list.innerHTML = pageItems.map(a => `
+          <div class="audit-item">
+            <div class="aui-icon ${sevColors[a.severity] || 'blue'}"><i class="fa ${icons[a.type] || 'fa-circle'}"></i></div>
+            <div class="aui-body">
+              <div class="aui-msg">${a.message}</div>
+              <div class="aui-meta">
+                <span class="aui-type">${(a.type || '').replace('_', ' ')}</span>
+                <span class="aui-sev ${a.severity}">${a.severity}</span>
+                <span class="aui-actor">${a.actor}</span>
+                <span class="aui-time">${fmtTime(a.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Info & pagination
+    const info = $('audit-log-info');
+    if (info) info.textContent = `${totalItems} events`;
+
+    _renderPagination($('audit-pagination'), auditPage, totalPages, (p) => { auditPage = p; renderAuditLogs(); });
+  }
+
+  function searchAuditLogs(query) {
+    auditSearchQuery = query;
+    auditPage = 1;
+    renderAuditLogs();
+  }
+
+  function filterAuditLogs() {
+    auditPage = 1;
+    renderAuditLogs();
+  }
+
+  function exportAuditLogs() {
+    const audit = loadAudit();
+    const headers = ['Timestamp', 'Type', 'Severity', 'Message', 'Actor'];
+    const rows = audit.map(a => [fmtTime(a.timestamp), a.type, a.severity, `"${a.message}"`, a.actor]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zen_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Audit logs exported', 'success');
+  }
+
+  function clearAuditLogs() {
+    $('confirm-title').textContent = 'Clear Audit Logs';
+    $('confirm-message').textContent = 'Permanently delete all audit log entries? This cannot be undone.';
+    $('confirm-btn').onclick = () => {
+      saveAudit([]);
+      closeModal('modal-confirm');
+      log('admin_action', 'Audit logs cleared', 'critical');
+      renderAuditLogs();
+      toast('Audit logs cleared', 'warning');
+    };
+    openModal('modal-confirm');
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  TAB: BROADCAST
+  // ────────────────────────────────────────────────────────
+  function renderBroadcast() {
+    // Notification history
+    const notifs = loadNotifs();
+    const historyEl = $('notif-history');
+    const countEl = $('notif-history-count');
+
+    if (countEl) countEl.textContent = `${notifs.length} sent`;
+
+    if (historyEl) {
+      if (notifs.length === 0) {
+        historyEl.innerHTML = '<div class="empty-state"><i class="fa fa-bell-slash"></i><p>No notifications sent yet</p></div>';
+      } else {
+        historyEl.innerHTML = notifs.slice(0, 30).map(n => {
+          const prioClass = { low: 'info', normal: 'blue', high: 'orange', urgent: 'red' };
+          return `
+            <div class="notif-item">
+              <div class="ni-prio ${prioClass[n.priority] || 'blue'}"></div>
+              <div class="ni-body">
+                <div class="ni-subject">${n.subject}</div>
+                <div class="ni-msg">${n.message.substring(0, 120)}${n.message.length > 120 ? '…' : ''}</div>
+                <div class="ni-meta">
+                  <span><i class="fa fa-bullseye"></i> ${n.targetLabel}</span>
+                  <span><i class="fa fa-clock"></i> ${timeAgo(n.sentAt)}</span>
+                  <span class="ni-prio-label ${n.priority}">${n.priority}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  function onBroadcastTargetChange() {
+    const target = $('bc-target')?.value;
+    const tierField = $('bc-tier-field');
+    const userField = $('bc-user-field');
+    if (tierField) tierField.style.display = target === 'tier' ? 'block' : 'none';
+    if (userField) userField.style.display = target === 'user' ? 'block' : 'none';
+  }
+
+  function previewBroadcast() {
+    const subject = $('bc-subject')?.value.trim();
+    const message = $('bc-message')?.value.trim();
+    if (!subject || !message) return toast('Subject and message are required', 'error');
+    toast(`Preview: "${subject}" — ${message.substring(0, 80)}...`, 'info', 5000);
+  }
+
+  function sendBroadcast() {
+    const subject = $('bc-subject')?.value.trim();
+    const message = $('bc-message')?.value.trim();
+    const priority = $('bc-priority')?.value || 'normal';
+    const target = $('bc-target')?.value || 'all';
+
+    if (!subject || !message) return toast('Subject and message are required', 'error');
+
+    let targetLabel = 'All Users';
+    if (target === 'tier') targetLabel = `${TIERS[$('bc-tier-target')?.value]?.label || ''} Tier`;
+    if (target === 'user') targetLabel = $('bc-user-target')?.value || 'Unknown User';
+    if (target === 'active') targetLabel = 'Active Users';
+
+    // Count recipients
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin');
+    let recipientCount = 0;
+    switch (target) {
+      case 'all': recipientCount = clients.length; break;
+      case 'tier': recipientCount = clients.filter(u => u.tier === ($('bc-tier-target')?.value)).length; break;
+      case 'user': recipientCount = 1; break;
+      case 'active': recipientCount = clients.filter(u => u.status === 'active').length; break;
+    }
+
+    // Save notification
+    const notifs = loadNotifs();
+    notifs.unshift({
+      id: uid(),
+      subject,
+      message,
+      priority,
+      target,
+      targetLabel,
+      recipientCount,
+      sentAt: now(),
+      sentBy: 'admin',
+    });
+    saveNotifs(notifs.slice(0, 200));
+
+    // Clear form
+    if ($('bc-subject')) $('bc-subject').value = '';
+    if ($('bc-message')) $('bc-message').value = '';
+    if ($('bc-priority')) $('bc-priority').value = 'normal';
+    if ($('bc-target')) $('bc-target').value = 'all';
+    onBroadcastTargetChange();
+
+    log('admin_action', `Broadcast sent: "${subject}" to ${targetLabel} (${recipientCount} recipients)`, 'info');
+    toast(`Notification sent to ${recipientCount} recipient(s)`, 'success');
+    renderBroadcast();
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  MODAL MANAGEMENT
+  // ────────────────────────────────────────────────────────
+  function openModal(id) {
+    const el = $(id);
+    if (el) el.classList.add('open');
+  }
+
+  function closeModal(id) {
+    const el = $(id);
+    if (el) el.classList.remove('open');
+  }
+
+  // Close modals on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      $$('.admin-modal-overlay.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  // ────────────────────────────────────────────────────────
+  //  INIT
+  // ────────────────────────────────────────────────────────
+  function init() {
+    _initAuth();
+  }
+
+  // Auto-init on DOM ready
+  document.addEventListener('DOMContentLoaded', () => init());
+
+  // ────────────────────────────────────────────────────────
+  //  PUBLIC API
+  // ────────────────────────────────────────────────────────
+  return {
+    // Auth
+    logout,
+    // Navigation
+    navigateTab,
+    // Overview
+    refreshDashboard,
+    // Users
+    renderUsers, searchUsers, filterUsers, sortUsers,
+    toggleUserSelect, toggleSelectAll, clearSelection,
+    openEditUser, saveUserEdit, openCreateUser,
+    toggleUserStatus, confirmDeleteUser,
+    bulkAction, exportUsers,
+    // Financials
+    processWithdrawal, filterLedger,
+    openBalanceAdjust, executeBalanceAdjust,
+    // Risk
+    renderRisk,
+    // Trades
+    filterTrades,
+    // Config
+    saveConfig,
+    // Audit
+    searchAuditLogs, filterAuditLogs, exportAuditLogs, clearAuditLogs,
+    // Broadcast
+    onBroadcastTargetChange, previewBroadcast, sendBroadcast,
+    // Modals
+    openModal, closeModal,
+  };
+})();

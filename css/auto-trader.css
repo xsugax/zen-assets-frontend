@@ -1,0 +1,257 @@
+/* ════════════════════════════════════════════════════════════
+   auto-trader.css — Auto-Trader UI Styles
+   OmniVest AI / ZEN ASSETS
+════════════════════════════════════════════════════════════ */
+
+/* Auto Positions List */
+.auto-positions-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.no-positions,
+.no-history {
+  padding: 20px;
+  text-align: center;
+  color: var(--slate);
+  font-size: 12px;
+}
+
+.auto-position-item {
+  background: rgba(26,32,41,0.6);
+  border: 1px solid rgba(212,165,116,0.12);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: all 0.2s;
+}
+
+.auto-position-item:hover {
+  background: rgba(26,32,41,0.8);
+  border-color: var(--gold);
+  transform: translateX(2px);
+}
+
+.ap-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ap-symbol {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-mono);
+  flex: 1;
+}
+
+.ap-side {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ap-side.long {
+  background: rgba(95,179,142,0.2);
+  color: var(--success);
+}
+
+.ap-side.short {
+  background: rgba(214,93,93,0.2);
+  color: var(--danger);
+}
+
+.ap-pnl {
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.ap-pnl.profit {
+  color: var(--success);
+}
+
+.ap-pnl.loss {
+  color: var(--danger);
+}
+
+.ap-details {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--slate-light);
+  font-family: var(--font-mono);
+}
+
+.ap-details span.profit {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.ap-details span.loss {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Trade History */
+.auto-trade-history {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trade-history-item {
+  background: rgba(15,20,30,0.6);
+  border: 1px solid rgba(139,152,173,0.12);
+  border-radius: 6px;
+  padding: 10px;
+  transition: all 0.2s;
+  font-size: 11px;
+}
+
+.trade-history-item:hover {
+  background: rgba(15,20,30,0.8);
+  border-color: var(--gold);
+}
+
+.th-row1,
+.th-row2,
+.th-row3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.th-row3 {
+  margin-bottom: 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(139,152,173,0.08);
+}
+
+.th-symbol {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #fff;
+  font-size: 12px;
+  flex: 1;
+}
+
+.th-side {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.th-side.long {
+  background: rgba(95,179,142,0.2);
+  color: var(--success);
+}
+
+.th-side.short {
+  background: rgba(214,93,93,0.2);
+  color: var(--danger);
+}
+
+.th-status {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.th-status.status-open {
+  background: rgba(212,165,116,0.2);
+  color: var(--gold);
+}
+
+.th-status.status-closed {
+  background: rgba(139,152,173,0.2);
+  color: var(--slate-light);
+}
+
+.th-row2 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--slate-light);
+}
+
+.th-row2 span.profit {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.th-row2 span.loss {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.th-time {
+  font-size: 9px;
+  color: var(--slate);
+  flex: 1;
+}
+
+.th-confidence {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+  padding: 2px 6px;
+  background: rgba(212,165,116,0.1);
+  border-radius: 3px;
+}
+
+/* Scrollbar Styling */
+.auto-positions-list::-webkit-scrollbar,
+.auto-trade-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auto-positions-list::-webkit-scrollbar-track,
+.auto-trade-history::-webkit-scrollbar-track {
+  background: rgba(10,14,22,0.4);
+  border-radius: 3px;
+}
+
+.auto-positions-list::-webkit-scrollbar-thumb,
+.auto-trade-history::-webkit-scrollbar-thumb {
+  background: rgba(212,165,116,0.3);
+  border-radius: 3px;
+}
+
+.auto-positions-list::-webkit-scrollbar-thumb:hover,
+.auto-trade-history::-webkit-scrollbar-thumb:hover {
+  background: rgba(212,165,116,0.5);
+}
+
+/* Animation for new trades */
+@keyframes slideInTrade {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.trade-history-item:first-child,
+.auto-position-item:first-child {
+  animation: slideInTrade 0.3s ease-out;
+}

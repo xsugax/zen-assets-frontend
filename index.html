@@ -1,0 +1,2778 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="quantum">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZEN ASSETS — OmniVest AI · Quantum Trading Platform</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- TradingView Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/advanced-charts.css" />
+  <link rel="stylesheet" href="css/auto-trader.css" />
+  <link rel="stylesheet" href="css/investment-returns.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+
+<!-- ═══════ LOGIN SCREEN ═══════ -->
+<div id="login-screen" class="login-screen">
+  <div class="login-ambient"></div>
+  
+  <!-- Floating Live Chat Button (Smartsupp) -->
+  <button class="floating-contact-btn" onclick="openSmartsuppChat()">
+    <i class="fa fa-headset"></i>
+    <span>Live Chat with Manager</span>
+  </button>
+
+  <div class="login-container">
+    <!-- LEFT: Value Proposition & Tiers -->
+    <div class="login-brand-section">
+      <div class="login-logo">
+        <div class="logo-icon">Z</div>
+        <div class="logo-text">
+          <div class="logo-main">ZEN ASSETS</div>
+          <div class="logo-sub">Wealth Acceleration Platform</div>
+        </div>
+      </div>
+
+      <!-- Core Value Proposition -->
+      <div class="login-value-prop">
+        <h3 class="lvp-title">Your Money Is Losing Value Every Second</h3>
+        <div class="lvp-comparison">
+          <div class="comparison-block losing">
+            <div class="cb-icon"><i class="fa fa-arrow-down"></i></div>
+            <div class="cb-content">
+              <div class="cb-label">Traditional Banking</div>
+              <div class="cb-rate">0.01% - 0.5% APY</div>
+              <div class="cb-reality">Your $100K earns $10-$500/year</div>
+              <div class="cb-loss">Lost to inflation: -$3,200/year</div>
+            </div>
+          </div>
+          <div class="comparison-block winning">
+            <div class="cb-icon"><i class="fa fa-rocket"></i></div>
+            <div class="cb-content">
+              <div class="cb-label">ZEN AI-Driven Portfolios</div>
+              <div class="cb-rate">25% - 85% Annual Returns*</div>
+              <div class="cb-reality">Your $100K earns $25,000-$85,000/year</div>
+              <div class="cb-gain">Outperform inflation by +$28,200/year (average tier)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily/Weekly/Monthly Returns Breakdown -->
+        <div class="returns-breakdown">
+          <div class="rbd-header">
+            <i class="fa fa-calendar-days"></i>
+            <span>What To Expect After Your 401(k) Funds Transfer</span>
+          </div>
+          <div class="rbd-grid">
+            <div class="rbd-item">
+              <div class="rbd-period">DAILY</div>
+              <div class="rbd-range">+0.068% - 0.233%</div>
+              <div class="rbd-example">$100K → <strong class="rbd-profit">+$68-$233/day</strong></div>
+              <div class="rbd-desc">Compounding every 24 hours (true compound interest)</div>
+            </div>
+            <div class="rbd-item">
+              <div class="rbd-period">WEEKLY</div>
+              <div class="rbd-range">+0.48% - 1.63%</div>
+              <div class="rbd-example">$100K → <strong class="rbd-profit">+$480-$1,630/week</strong></div>
+              <div class="rbd-desc">Automated rebalancing optimizes gains (52x per year)</div>
+            </div>
+            <div class="rbd-item">
+              <div class="rbd-period">MONTHLY</div>
+              <div class="rbd-range">+2.08% - 7.08%</div>
+              <div class="rbd-example">$100K → <strong class="rbd-profit">+$2,080-$7,080/month</strong></div>
+              <div class="rbd-desc">Replaces most salaries — financial freedom unlocked</div>
+            </div>
+            <div class="rbd-item highlight">
+              <div class="rbd-period">ANNUAL</div>
+              <div class="rbd-range">+25% - 85%</div>
+              <div class="rbd-example">$100K → <strong class="rbd-profit">+$25,000-$85,000/year</strong></div>
+              <div class="rbd-desc">While 401(k) locks you out until 59½ (they earn ~7%)</div>
+            </div>
+          </div>
+          <div class="rbd-footnote">
+            <i class="fa fa-unlock"></i>
+            <span><strong>Withdraw anytime</strong> with zero penalties. Your 401(k) charges 10% early withdrawal fee + taxes. ZEN has <strong>instant liquidity</strong>.</span>
+          </div>
+        </div>
+
+        <!-- Wealth Growth Projections -->
+        <div class="wealth-projection">
+          <div class="wp-header">
+            <span class="wp-title">$100,000 Investment Over 10 Years</span>
+          </div>
+          <div class="wp-bars">
+            <div class="wp-bar-item">
+              <div class="wp-bar-label">
+                <span class="wp-institution">Bank Savings (0.5%)</span>
+                <span class="wp-amount">$105,114</span>
+              </div>
+              <div class="wp-bar-track">
+                <div class="wp-bar-fill losing" style="width:8%"></div>
+              </div>
+            </div>
+            <div class="wp-bar-item">
+              <div class="wp-bar-label">
+                <span class="wp-institution">401(k) Index Fund (7%)</span>
+                <span class="wp-amount">$196,715</span>
+              </div>
+              <div class="wp-bar-track">
+                <div class="wp-bar-fill neutral" style="width:35%"></div>
+              </div>
+            </div>
+            <div class="wp-bar-item">
+              <div class="wp-bar-label">
+                <span class="wp-institution">ZEN Diamond Tier (58% avg)</span>
+                <span class="wp-amount">$1,648,721</span>
+              </div>
+              <div class="wp-bar-track">
+                <div class="wp-bar-fill winning" style="width:100%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="wp-insight">
+            <i class="fa fa-lightbulb"></i>
+            <span><strong>Every year you wait costs you $65,000+</strong> in unrealized compound growth. Time is your most valuable asset. The difference between starting today vs next year is a house down payment.</span>
+          </div>
+        </div>
+
+        <!-- Investment Growth Calculator Logic -->
+        <div class="investment-calculator">
+          <div class="ic-header">
+            <i class="fa fa-calculator"></i>
+            <div>
+              <h4 class="ic-title">Investment Growth Logic — Fixed vs Continuous</h4>
+              <p class="ic-subtitle">Understand exactly how your money multiplies over time with mathematical precision</p>
+            </div>
+          </div>
+
+          <!-- Strategy Toggle -->
+          <div class="ic-strategy-tabs">
+            <button class="ic-tab active" data-strategy="fixed">
+              <i class="fa fa-hand-holding-dollar"></i>
+              <span>Fixed Lump Sum</span>
+            </button>
+            <button class="ic-tab" data-strategy="continuous">
+              <i class="fa fa-repeat"></i>
+              <span>Monthly Contributions</span>
+            </button>
+          </div>
+
+          <!-- Fixed Lump Sum Strategy -->
+          <div class="ic-strategy-content" id="strategy-fixed">
+            <div class="ic-formula-box">
+              <div class="icf-title">Compound Interest Formula</div>
+              <div class="icf-formula">A = P × (1 + r)<sup>t</sup></div>
+              <div class="icf-legend">
+                <div class="icfl-item"><strong>A</strong> = Final Amount</div>
+                <div class="icfl-item"><strong>P</strong> = Principal (initial deposit)</div>
+                <div class="icfl-item"><strong>r</strong> = Annual interest rate (as decimal)</div>
+                <div class="icfl-item"><strong>t</strong> = Time in years</div>
+              </div>
+            </div>
+
+            <!-- Example Calculations -->
+            <div class="ic-examples">
+              <div class="ice-table">
+                <div class="ice-row ice-header">
+                  <div>Contract</div>
+                  <div>Bronze (18%)</div>
+                  <div>Silver (27%)</div>
+                  <div>Gold (38%)</div>
+                  <div>Platinum (55%)</div>
+                  <div>Diamond (75%)</div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">1 Year</div>
+                  <div class="ice-value bronze">$118,000<span class="ice-gain">+18%</span></div>
+                  <div class="ice-value silver">$127,000<span class="ice-gain">+27%</span></div>
+                  <div class="ice-value gold">$138,000<span class="ice-gain">+38%</span></div>
+                  <div class="ice-value platinum">$155,000<span class="ice-gain">+55%</span></div>
+                  <div class="ice-value diamond">$175,000<span class="ice-gain">+75%</span></div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">2 Years</div>
+                  <div class="ice-value bronze">$139,240<span class="ice-gain">+39%</span></div>
+                  <div class="ice-value silver">$161,290<span class="ice-gain">+61%</span></div>
+                  <div class="ice-value gold">$190,440<span class="ice-gain">+90%</span></div>
+                  <div class="ice-value platinum">$240,250<span class="ice-gain">+140%</span></div>
+                  <div class="ice-value diamond">$306,250<span class="ice-gain">+206%</span></div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">5 Years</div>
+                  <div class="ice-value bronze">$228,776<span class="ice-gain">+129%</span></div>
+                  <div class="ice-value silver">$331,234<span class="ice-gain">+231%</span></div>
+                  <div class="ice-value gold">$499,416<span class="ice-gain">+399%</span></div>
+                  <div class="ice-value platinum">$896,784<span class="ice-gain">+797%</span></div>
+                  <div class="ice-value diamond">$1,638,672<span class="ice-gain">+1,539%</span></div>
+                </div>
+                <div class="ice-row highlight">
+                  <div class="ice-duration">10 Years</div>
+                  <div class="ice-value bronze">$523,383<span class="ice-gain">+423%</span></div>
+                  <div class="ice-value silver">$1,097,509<span class="ice-gain">+998%</span></div>
+                  <div class="ice-value gold">$2,494,199<span class="ice-gain">+2,394%</span></div>
+                  <div class="ice-value platinum">$8,043,542<span class="ice-gain">+7,944%</span></div>
+                  <div class="ice-value diamond">$26,919,930<span class="ice-gain">+26,820%</span></div>
+                </div>
+              </div>
+              <div class="ice-note">
+                <i class="fa fa-info-circle"></i>
+                <span>Starting balance: <strong>$100,000</strong> (one-time deposit). No additional contributions. All gains reinvested automatically (compound effect).</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Continuous Monthly Contributions Strategy -->
+          <div class="ic-strategy-content" id="strategy-continuous" style="display:none">
+            <div class="ic-formula-box">
+              <div class="icf-title">Future Value of Annuity Formula</div>
+              <div class="icf-formula">FV = PMT × [((1 + r/12)<sup>12t</sup> - 1) / (r/12)]</div>
+              <div class="icf-legend">
+                <div class="icfl-item"><strong>FV</strong> = Future Value</div>
+                <div class="icfl-item"><strong>PMT</strong> = Monthly payment</div>
+                <div class="icfl-item"><strong>r</strong> = Annual interest rate</div>
+                <div class="icfl-item"><strong>t</strong> = Time in years</div>
+              </div>
+              <div class="icf-note">This assumes monthly contributions at the beginning of each month with compound interest applied monthly.</div>
+            </div>
+
+            <!-- Example Calculations -->
+            <div class="ic-examples">
+              <div class="ice-table">
+                <div class="ice-row ice-header">
+                  <div>Contract</div>
+                  <div>Bronze (18%)</div>
+                  <div>Silver (27%)</div>
+                  <div>Gold (38%)</div>
+                  <div>Platinum (55%)</div>
+                  <div>Diamond (75%)</div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">1 Year<span class="ice-invested">$12K invested</span></div>
+                  <div class="ice-value bronze">$13,200<span class="ice-gain">+10%</span></div>
+                  <div class="ice-value silver">$13,800<span class="ice-gain">+15%</span></div>
+                  <div class="ice-value gold">$14,760<span class="ice-gain">+23%</span></div>
+                  <div class="ice-value platinum">$16,200<span class="ice-gain">+35%</span></div>
+                  <div class="ice-value diamond">$18,000<span class="ice-gain">+50%</span></div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">2 Years<span class="ice-invested">$24K invested</span></div>
+                  <div class="ice-value bronze">$28,633<span class="ice-gain">+19%</span></div>
+                  <div class="ice-value silver">$31,378<span class="ice-gain">+31%</span></div>
+                  <div class="ice-value gold">$35,167<span class="ice-gain">+47%</span></div>
+                  <div class="ice-value platinum">$42,132<span class="ice-gain">+76%</span></div>
+                  <div class="ice-value diamond">$52,528<span class="ice-gain">+119%</span></div>
+                </div>
+                <div class="ice-row">
+                  <div class="ice-duration">5 Years<span class="ice-invested">$60K invested</span></div>
+                  <div class="ice-value bronze">$84,600<span class="ice-gain">+41%</span></div>
+                  <div class="ice-value silver">$100,800<span class="ice-gain">+68%</span></div>
+                  <div class="ice-value gold">$127,200<span class="ice-gain">+112%</span></div>
+                  <div class="ice-value platinum">$180,000<span class="ice-gain">+200%</span></div>
+                  <div class="ice-value diamond">$270,000<span class="ice-gain">+350%</span></div>
+                </div>
+                <div class="ice-row highlight">
+                  <div class="ice-duration">10 Years<span class="ice-invested">$120K invested</span></div>
+                  <div class="ice-value bronze">$279,600<span class="ice-gain">+133%</span></div>
+                  <div class="ice-value silver">$403,200<span class="ice-gain">+236%</span></div>
+                  <div class="ice-value gold">$676,800<span class="ice-gain">+464%</span></div>
+                  <div class="ice-value platinum">$1,368,000<span class="ice-gain">+1,040%</span></div>
+                  <div class="ice-value diamond">$3,024,000<span class="ice-gain">+2,420%</span></div>
+                </div>
+              </div>
+              <div class="ice-note">
+                <i class="fa fa-info-circle"></i>
+                <span>Monthly contribution: <strong>$1,000</strong> (total invested shown). Dollar-cost averaging reduces volatility. Compounds monthly for maximum growth.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Insights -->
+          <div class="ic-insights">
+            <div class="ici-box">
+              <div class="ici-icon"><i class="fa fa-lightbulb"></i></div>
+              <div>
+                <div class="ici-title">Compound Effect</div>
+                <div class="ici-text">Your gains earn gains. Year 10 earns <strong>10x more</strong> than Year 1 from the same percentage due to exponential growth.</div>
+              </div>
+            </div>
+            <div class="ici-box">
+              <div class="ici-icon"><i class="fa fa-chart-line"></i></div>
+              <div>
+                <div class="ici-title">Time is Everything</div>
+                <div class="ici-text">A 10-year contract earns <strong>344x more than 1 year</strong> (Bronze). That's not a typo — it's the power of exponential mathematics.</div>
+              </div>
+            </div>
+            <div class="ici-box">
+              <div class="ici-icon"><i class="fa fa-repeat"></i></div>
+              <div>
+                <div class="ici-title">Monthly Contributions Win</div>
+                <div class="ici-text">Contributing $1K/month for 10 years (<strong>$120K total</strong>) can yield more than a $100K lump sum in many tiers due to DCA timing.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Membership Tiers -->
+      <div class="membership-tiers-preview">
+        <h4 class="mtp-header">5 Membership Tiers — Your Path to Financial Freedom</h4>
+        <div class="tier-cards-mini">
+          <div class="tier-mini bronze">
+            <div class="tm-tier">BRONZE</div>
+            <div class="tm-return">15-22% APY</div>
+            <div class="tm-min">$5K minimum</div>
+          </div>
+          <div class="tier-mini silver">
+            <div class="tm-tier">SILVER</div>
+            <div class="tm-return">22-32% APY</div>
+            <div class="tm-min">$25K minimum</div>
+          </div>
+          <div class="tier-mini gold">
+            <div class="tm-tier">GOLD</div>
+            <div class="tm-return">32-45% APY</div>
+            <div class="tm-min">$100K minimum</div>
+          </div>
+          <div class="tier-mini platinum">
+            <div class="tm-tier">PLATINUM</div>
+            <div class="tm-return">45-65% APY</div>
+            <div class="tm-min">$500K minimum</div>
+          </div>
+          <div class="tier-mini diamond">
+            <div class="tm-tier">DIAMOND</div>
+            <div class="tm-return">65-85% APY</div>
+            <div class="tm-min">$2M minimum</div>
+          </div>
+        </div>
+        <p class="mtp-footer">*Historical backtested returns. Past performance does not guarantee future results. Risk disclosure available post-login.</p>
+      </div>
+    </div>
+
+    <!-- RIGHT: Sign In Form -->
+    <div class="login-form-section">
+      <div class="login-form-card">
+        <!-- Real-time stats ticker -->
+        <div class="live-stats-ticker">
+          <div class="lst-item">
+            <i class="fa fa-users"></i>
+            <span><strong>847</strong> investors joined this week</span>
+          </div>
+          <div class="lst-item">
+            <i class="fa fa-chart-line"></i>
+            <span><strong>$18.4M</strong> deployed in last 24h</span>
+          </div>
+        </div>
+
+        <h2 class="login-title">Access Your Dashboard</h2>
+        <p class="login-subtitle-enhanced">Join 18,427 institutions generating <span class="highlight-gold">wealth on autopilot</span></p>
+        
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" class="form-input" placeholder="your.name@institution.com" required />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-input" placeholder="Enter password" required />
+          </div>
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="login-remember" />
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="link-text">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full btn-login">
+            <span>Sign In to Dashboard</span>
+            <i class="fa fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="login-divider"><span>or</span></div>
+
+        <div class="login-alt-actions">
+          <button class="btn btn-ghost btn-full"><i class="fa fa-building"></i> Enterprise SSO Login</button>
+        </div>
+
+        <!-- Why Choose Us -->
+        <div class="login-benefits">
+          <div class="lb-title">Why 18,427 Institutions Choose ZEN</div>
+          <div class="lb-grid">
+            <div class="lb-item">
+              <i class="fa fa-shield-halved"></i>
+              <div>
+                <div class="lb-label">Bank-Grade Security</div>
+                <div class="lb-desc">256-bit encryption + cold storage</div>
+              </div>
+            </div>
+            <div class="lb-item">
+              <i class="fa fa-bolt"></i>
+              <div>
+                <div class="lb-label">Instant Liquidity</div>
+                <div class="lb-desc">Withdraw anytime, 0 penalties</div>
+              </div>
+            </div>
+            <div class="lb-item">
+              <i class="fa fa-brain"></i>
+              <div>
+                <div class="lb-label">AI Portfolio Management</div>
+                <div class="lb-desc">24/7 rebalancing & risk optimization</div>
+              </div>
+            </div>
+            <div class="lb-item">
+              <i class="fa fa-hand-holding-dollar"></i>
+              <div>
+                <div class="lb-label">Tax-Optimized</div>
+                <div class="lb-desc">Harvesting strategies built-in</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-footer">
+          <p>New to ZEN? <a href="#" class="link-text-bright" id="show-register-link">Create Account →</a></p>
+          <p class="login-disclaimer">Platform available to accredited investors. All investments carry risk. Historical returns do not guarantee future performance.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REGISTRATION OVERLAY ═══ -->
+  <div id="register-overlay" class="register-overlay">
+    <div class="register-card">
+      <div class="register-header">
+        <div class="logo-icon">Z</div>
+        <h2>Create Your ZEN Account</h2>
+        <p>Select a membership tier to begin building wealth</p>
+      </div>
+      <div id="register-error" class="register-error"></div>
+      <form id="register-form" class="register-form">
+        <div class="form-group">
+          <label for="reg-name">Full Name</label>
+          <input type="text" id="reg-name" class="form-input" placeholder="John Doe" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="john@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" required />
+        </div>
+        <div class="tier-selector">
+          <label>Choose Your Membership Tier</label>
+          <div class="tier-options">
+            <div class="tier-opt" data-tier="bronze" onclick="selectRegTier(this)">
+              <input type="radio" name="reg-tier" value="bronze" />
+              <div class="tier-icon"><i class="fa fa-medal"></i></div>
+              <div class="tier-name">Bronze</div>
+              <div class="tier-apy">15–22% APY</div>
+              <div class="tier-min">$5K min</div>
+            </div>
+            <div class="tier-opt" data-tier="silver" onclick="selectRegTier(this)">
+              <input type="radio" name="reg-tier" value="silver" />
+              <div class="tier-icon"><i class="fa fa-award"></i></div>
+              <div class="tier-name">Silver</div>
+              <div class="tier-apy">22–32% APY</div>
+              <div class="tier-min">$25K min</div>
+            </div>
+            <div class="tier-opt selected" data-tier="gold" onclick="selectRegTier(this)">
+              <input type="radio" name="reg-tier" value="gold" checked />
+              <div class="tier-icon"><i class="fa fa-trophy"></i></div>
+              <div class="tier-name">Gold</div>
+              <div class="tier-apy">32–45% APY</div>
+              <div class="tier-min">$100K min</div>
+            </div>
+            <div class="tier-opt" data-tier="platinum" onclick="selectRegTier(this)">
+              <input type="radio" name="reg-tier" value="platinum" />
+              <div class="tier-icon"><i class="fa fa-gem"></i></div>
+              <div class="tier-name">Platinum</div>
+              <div class="tier-apy">45–65% APY</div>
+              <div class="tier-min">$500K min</div>
+            </div>
+            <div class="tier-opt" data-tier="diamond" onclick="selectRegTier(this)">
+              <input type="radio" name="reg-tier" value="diamond" />
+              <div class="tier-icon"><i class="fa fa-crown"></i></div>
+              <div class="tier-name">Diamond</div>
+              <div class="tier-apy">65–85% APY</div>
+              <div class="tier-min">$1M min</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-deposit">Investment Amount (USD)</label>
+          <input type="number" id="reg-deposit" class="form-input" placeholder="100000" min="5000" step="1000" required />
+          <small style="color:#64748b;font-size:11px;margin-top:4px;display:block">Fund your account via crypto after registration. Balance starts at $0 until funded.</small>
+        </div>
+        <button type="submit" class="btn-register">
+          <i class="fa fa-rocket"></i> Create Account & Start Investing
+        </button>
+      </form>
+      <div class="register-login-link">
+        Already have an account? <a href="#" id="back-to-login-link">Sign In →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Goals Quick Preview -->
+  <div class="goals-preview-strip">
+    <div class="gps-item">
+      <i class="fa fa-house"></i>
+      <span><strong>Retirement Planning:</strong> Replace your salary with passive income streams</span>
+    </div>
+    <div class="gps-divider"></div>
+    <div class="gps-item">
+      <i class="fa fa-graduation-cap"></i>
+      <span><strong>Education Funding:</strong> Build college funds that outpace tuition inflation</span>
+    </div>
+    <div class="gps-divider"></div>
+    <div class="gps-item">
+      <i class="fa fa-plane-departure"></i>
+      <span><strong>Wealth Preservation:</strong> Beat inflation, taxes, and market volatility</span>
+    </div>
+    <div class="gps-divider"></div>
+    <div class="gps-item">
+      <i class="fa fa-chart-line"></i>
+      <span><strong>Aggressive Growth:</strong> 3-5 year moonshot portfolios for risk-tolerant investors</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tier Modal (Hidden) -->
+<div id="tier-modal" class="tier-modal" style="display:none">
+  <div class="tier-modal-overlay" onclick="closeTierModal()"></div>
+  <div class="tier-modal-content">
+    <button class="tier-modal-close" onclick="closeTierModal()"><i class="fa fa-times"></i></button>
+    <h2 class="tier-modal-title">Choose Your Wealth Acceleration Path</h2>
+    <p class="tier-modal-subtitle">Each tier unlocks exponentially greater returns, tools, and dedicated support</p>
+    
+    <div class="tier-cards-full">
+      <!-- BRONZE -->
+      <div class="tier-card bronze">
+        <div class="tc-badge">BRONZE</div>
+        <div class="tc-return">15-22% APY</div>
+        <div class="tc-min">Minimum: $5,000</div>
+        <div class="tc-tagline">"Foundation Builder" — Start Your Journey</div>
+        <ul class="tc-benefits">
+          <li><i class="fa fa-check"></i> AI-optimized diversified portfolio (60+ assets)</li>
+          <li><i class="fa fa-check"></i> Automated rebalancing & tax harvesting</li>
+          <li><i class="fa fa-check"></i> Mobile app + web dashboard access</li>
+          <li><i class="fa fa-check"></i> Quarterly performance reports</li>
+          <li><i class="fa fa-check"></i> Email support (24-48h response)</li>
+        </ul>
+        <div class="tc-projection">10-year projection: $5K → <strong>$28,071</strong> (18% avg APY)</div>
+        <button class="btn btn-tier bronze" onclick="selectTier('bronze')">Start with Bronze</button>
+      </div>
+
+      <!-- SILVER -->
+      <div class="tier-card silver">
+        <div class="tc-badge">SILVER</div>
+        <div class="tc-return">22-32% APY</div>
+        <div class="tc-min">Minimum: $25,000</div>
+        <div class="tc-tagline">"Growth Accelerator" — Unlock Advanced Strategies</div>
+        <ul class="tc-benefits">
+          <li><i class="fa fa-check"></i> All Bronze benefits +</li>
+          <li><i class="fa fa-check"></i> Access to alternative assets (REITs, commodities)</li>
+          <li><i class="fa fa-check"></i> Options trading strategies (covered calls, credit spreads)</li>
+          <li><i class="fa fa-check"></i> Priority customer support (4-12h response)</li>
+          <li><i class="fa fa-check"></i> Customizable risk tolerance (conservative/aggressive)</li>
+          <li><i class="fa fa-check"></i> Monthly portfolio reviews with AI insights</li>
+        </ul>
+        <div class="tc-projection">10-year projection: $25K → <strong>$196,715</strong> (27% avg APY)</div>
+        <button class="btn btn-tier silver" onclick="selectTier('silver')">Upgrade to Silver</button>
+      </div>
+
+      <!-- GOLD -->
+      <div class="tier-card gold popular">
+        <div class="tc-popular-badge">MOST POPULAR</div>
+        <div class="tc-badge">GOLD</div>
+        <div class="tc-return">32-45% APY</div>
+        <div class="tc-min">Minimum: $100,000</div>
+        <div class="tc-tagline">"Wealth Multiplier" — Institutional-Grade Tools</div>
+        <ul class="tc-benefits">
+          <li><i class="fa fa-check"></i> All Silver benefits +</li>
+          <li><i class="fa fa-check"></i> Hedge fund replication strategies</li>
+          <li><i class="fa fa-check"></i> Private equity + pre-IPO allocation</li>
+          <li><i class="fa fa-check"></i> Leverage strategies up to 2:1 (qualified accounts)</li>
+          <li><i class="fa fa-check"></i> Dedicated account manager (phone + email)</li>
+          <li><i class="fa fa-check"></i> Real-time portfolio monitoring + alerts</li>
+          <li><i class="fa fa-check"></i> Custom goal planning (retirement, education, legacy)</li>
+        </ul>
+        <div class="tc-projection">10-year projection: $100K → <strong>$1,254,219</strong> (38% avg APY)</div>
+        <button class="btn btn-tier gold" onclick="selectTier('gold')">Activate Gold Tier</button>
+      </div>
+
+      <!-- PLATINUM -->
+      <div class="tier-card platinum">
+        <div class="tc-badge">PLATINUM</div>
+        <div class="tc-return">45-65% APY</div>
+        <div class="tc-min">Minimum: $500,000</div>
+        <div class="tc-tagline">"Ultra-High Net Worth" — Concierge Wealth Management</div>
+        <ul class="tc-benefits">
+          <li><i class="fa fa-check"></i> All Gold benefits +</li>
+          <li><i class="fa fa-check"></i> Venture capital + angel investment access</li>
+          <li><i class="fa fa-check"></i> Direct real estate syndication deals</li>
+          <li><i class="fa fa-check"></i> Cryptocurrency arbitrage strategies</li>
+          <li><i class="fa fa-check"></i> Offshore tax optimization structures</li>
+          <li><i class="fa fa-check"></i> Senior portfolio manager (direct line)</li>
+          <li><i class="fa fa-check"></i> Estate planning + trust integration</li>
+          <li><i class="fa fa-check"></i> Invitations to exclusive investor events</li>
+        </ul>
+        <div class="tc-projection">10-year projection: $500K → <strong>$9,465,702</strong> (55% avg APY)</div>
+        <button class="btn btn-tier platinum" onclick="selectTier('platinum')">Unlock Platinum</button>
+      </div>
+
+      <!-- DIAMOND -->
+      <div class="tier-card diamond">
+        <div class="tc-badge">DIAMOND</div>
+        <div class="tc-return">65-85% APY</div>
+        <div class="tc-min">Minimum: $2,000,000</div>
+        <div class="tc-tagline">"Family Office" — White-Glove Everything</div>
+        <ul class="tc-benefits">
+          <li><i class="fa fa-check"></i> All Platinum benefits +</li>
+          <li><i class="fa fa-check"></i> Co-investment in proprietary ZEN hedge funds</li>
+          <li><i class="fa fa-check"></i> Direct access to IPO allocations (WeWork, Stripe, SpaceX-level)</li>
+          <li><i class="fa fa-check"></i> Exclusive distressed asset opportunities</li>
+          <li><i class="fa fa-check"></i> Custom algorithmic trading bots (tailored to your goals)</li>
+          <li><i class="fa fa-check"></i> 24/7 dedicated concierge team</li>
+          <li><i class="fa fa-check"></i> Quarterly in-person portfolio reviews (NYC, London, Dubai)</li>
+          <li><i class="fa fa-check"></i> Legacy & generational wealth planning</li>
+          <li><i class="fa fa-check"></i> Charitable giving & foundation setup</li>
+        </ul>
+        <div class="tc-projection">10-year projection: $2M → <strong>$65,813,776</strong> (75% avg APY)</div>
+        <button class="btn btn-tier diamond" onclick="selectTier('diamond')">Join Diamond Elite</button>
+      </div>
+    </div>
+
+    <div class="tier-modal-footer">
+      <p><i class="fa fa-info-circle"></i> All tiers include SIPC insurance up to $500K. Diamond tier includes Lloyd's of London excess coverage up to $25M.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Smartsupp Live Chat Widget -->
+<script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = '70cebe69fb2caed111b19f82477bc2cfb8b6bdc9';
+  _smartsupp.cookieDomain = window.location.hostname;
+  // Hide default Smartsupp button (we use our own gold button)
+  _smartsupp.hideWidget = true;
+  // Force dark mode always
+  _smartsupp.theme = 'dark';
+  _smartsupp.color = '#d4a574';
+  window.smartsupp||(function(d) {
+    var s,c,o=smartsupp=function(){ o._.push(arguments)}; o._=[];
+    s=d.getElementsByTagName('script')[0]; c=d.createElement('script');
+    c.type='text/javascript'; c.charset='utf-8'; c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?'; s.parentNode.insertBefore(c,s);
+  })(document);
+</script>
+<noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
+
+<!-- ═══════ QUANTUM BOOT SCREEN ═══════ -->
+<div id="loading-screen" style="display:none">
+  <canvas id="boot-canvas"></canvas>
+  <div class="boot-core">
+    <div class="boot-hex-ring">
+      <svg viewBox="0 0 200 200" class="boot-hex-svg">
+        <polygon points="100,10 168,50 168,150 100,190 32,150 32,50" class="hex-outline-anim"/>
+        <polygon points="100,30 152,60 152,140 100,170 48,140 48,60" class="hex-inner-anim"/>
+      </svg>
+      <div class="boot-logo-center">
+        <span class="boot-logo-z">Z</span>
+      </div>
+    </div>
+    <div class="boot-brand">
+      <div class="boot-brand-main">ZEN ASSETS</div>
+      <div class="boot-brand-sub">OMNIVEST AI · QUANTUM TRADING PLATFORM</div>
+    </div>
+    <div class="boot-progress-wrap">
+      <div class="boot-progress-track">
+        <div id="loader-fill" class="boot-progress-bar"></div>
+        <div class="boot-progress-glow"></div>
+      </div>
+      <div id="loader-label" class="boot-status">Initializing quantum core...</div>
+    </div>
+    <div class="boot-metrics">
+      <div class="bm-item"><span class="bm-label">NODES</span><span class="bm-val" id="bm-nodes">0</span></div>
+      <div class="bm-item"><span class="bm-label">LATENCY</span><span class="bm-val" id="bm-lat">—</span></div>
+      <div class="bm-item"><span class="bm-label">AI CORES</span><span class="bm-val" id="bm-ai">0</span></div>
+      <div class="bm-item"><span class="bm-label">MARKETS</span><span class="bm-val" id="bm-mkt">0</span></div>
+    </div>
+  </div>
+  <div class="boot-scanlines"></div>
+  <div class="boot-grid-overlay"></div>
+</div>
+
+<!-- ═══════ MAIN APP ═══════ -->
+<div id="app">
+
+  <!-- Ambient canvas background -->
+  <canvas id="particle-canvas"></canvas>
+  <!-- Cyber grid overlay -->
+  <div class="cyber-grid"></div>
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <button id="sidebar-toggle" class="icon-btn" title="Toggle Navigation">
+        <i class="fa fa-bars"></i>
+      </button>
+      <div class="brand-pill">
+        <div class="brand-hex"><span>Z</span></div>
+        <div class="brand-text">
+          <span class="brand-main">ZEN ASSETS</span>
+          <span class="brand-tagline">OMNIVEST AI</span>
+        </div>
+      </div>
+
+      <!-- LIVE TICKER -->
+      <div class="ticker-wrap">
+        <div class="ticker-label">LIVE</div>
+        <div class="ticker-overflow">
+          <div id="ticker-track" class="ticker-track"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <!-- Global Market Status Bar -->
+      <div class="market-pulse-bar" id="market-pulse-bar">
+        <div class="mpb-item" id="mpb-btc">
+          <span class="mpb-sym">BTC</span>
+          <span class="mpb-price" id="mpb-btc-price">$—</span>
+          <span class="mpb-chg" id="mpb-btc-chg">—%</span>
+        </div>
+        <div class="mpb-div"></div>
+        <div class="mpb-item" id="mpb-eth">
+          <span class="mpb-sym">ETH</span>
+          <span class="mpb-price" id="mpb-eth-price">$—</span>
+          <span class="mpb-chg" id="mpb-eth-chg">—%</span>
+        </div>
+        <div class="mpb-div"></div>
+        <div class="mpb-item" id="mpb-spx">
+          <span class="mpb-sym">SPX</span>
+          <span class="mpb-price" id="mpb-spx-price">$—</span>
+          <span class="mpb-chg" id="mpb-spx-chg">—%</span>
+        </div>
+        <div class="mpb-div"></div>
+        <div class="mpb-item" id="mpb-gold">
+          <span class="mpb-sym">GOLD</span>
+          <span class="mpb-price" id="mpb-gold-price">$—</span>
+          <span class="mpb-chg" id="mpb-gold-chg">—%</span>
+        </div>
+        <div class="mpb-div"></div>
+        <span class="fear-greed-mini" id="fear-greed-mini">F&G <b id="fg-val">—</b></span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="hdr-stat" id="exec-stat">
+        <i class="fa fa-bolt"></i>
+        <span id="exec-speed">0.0ms</span>
+      </div>
+
+      <div class="hdr-time-block">
+        <div id="hdr-time" class="hdr-time">--:--:--</div>
+        <div id="hdr-date" class="hdr-date">UTC</div>
+      </div>
+
+      <button id="search-btn" class="icon-btn" title="Search"><i class="fa fa-search"></i></button>
+      <button id="alert-btn" class="icon-btn has-badge" title="AI Alerts" data-count="7"><i class="fa fa-bell"></i></button>
+      <button id="notif-btn" class="icon-btn has-badge" title="Notifications" data-count="3"><i class="fa fa-inbox"></i></button>
+
+      <div class="user-capsule" id="user-capsule" style="position:relative;cursor:pointer">
+        <div class="user-avatar-ring">
+          <div class="user-avatar" id="user-avatar-initial">Q</div>
+        </div>
+        <div class="user-meta">
+          <span class="user-name" id="user-display-name">Quantum Trader</span>
+          <span class="user-tier" id="user-display-tier">APEX TIER · PRO</span>
+        </div>
+        <i class="fa fa-chevron-down"></i>
+        <!-- Dropdown -->
+        <div class="user-dropdown" id="user-dropdown">
+          <div class="ud-item" onclick="App.navigate && App.navigate('dashboard')"><i class="fa fa-th-large"></i> Dashboard</div>
+
+          <div class="ud-divider"></div>
+          <div class="ud-item" id="ud-tier-info"><i class="fa fa-trophy"></i> <span id="ud-tier-label">Gold Tier</span></div>
+          <div class="ud-item" onclick="UserAuth.requestUpgrade && UserAuth.requestUpgrade('platinum')"><i class="fa fa-arrow-up"></i> Request Upgrade</div>
+          <div class="ud-divider"></div>
+          <div class="ud-item danger" id="ud-logout"><i class="fa fa-sign-out-alt"></i> Log Out</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ NOTIFICATION PANEL ═══ -->
+  <div id="notif-panel" class="notif-panel">
+    <div class="np-header">
+      <span>Notifications</span>
+      <button class="btn-text">Mark all read</button>
+    </div>
+    <div class="np-list">
+      <div class="np-item unread"><i class="fa fa-brain np-icon ai"></i><div><b>AI Signal:</b> BTC breakout detected — 94% confidence<small>2 min ago</small></div></div>
+      <div class="np-item unread"><i class="fa fa-whale np-icon whale"></i><div><b>Whale Alert:</b> 4,200 BTC moved to Binance<small>8 min ago</small></div></div>
+      <div class="np-item unread"><i class="fa fa-shield np-icon sec"></i><div><b>Security:</b> New device login detected<small>1h ago</small></div></div>
+    </div>
+  </div>
+
+  <!-- Alert Panel -->
+  <div id="alert-panel" class="notif-panel">
+    <div class="np-header">
+      <span>AI Signal Alerts</span>
+      <button class="btn-text" id="clear-alerts-btn">Clear all</button>
+    </div>
+    <div id="alert-list" class="np-list"></div>
+  </div>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside id="sidebar">
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">COMMAND</div>
+      <div class="nav-item active" data-section="dashboard">
+        <div class="ni-icon"><i class="fa fa-th-large"></i></div>
+        <span class="ni-label">Dashboard</span>
+        <div class="ni-glow"></div>
+      </div>
+      <div class="nav-item" data-section="markets">
+        <div class="ni-icon"><i class="fa fa-globe"></i></div>
+        <span class="ni-label">Live Markets</span>
+        <span class="ni-badge live">LIVE</span>
+      </div>
+      <div class="nav-item" data-section="ai-engine">
+        <div class="ni-icon"><i class="fa fa-brain"></i></div>
+        <span class="ni-label">AI Engine</span>
+        <span class="ni-badge ai">AI</span>
+      </div>
+      <div class="nav-item" data-section="buy-crypto">
+        <div class="ni-icon"><i class="fa fa-coins"></i></div>
+        <span class="ni-label">Buy Crypto</span>
+        <span class="ni-dot pulse-gold"></span>
+      </div>
+
+      <div class="nav-group-label">PORTFOLIO</div>
+      <div class="nav-item" data-section="portfolio">
+        <div class="ni-icon"><i class="fa fa-chart-pie"></i></div>
+        <span class="ni-label">Portfolio</span>
+      </div>
+      <div class="nav-item" data-section="trading">
+        <div class="ni-icon"><i class="fa fa-terminal"></i></div>
+        <span class="ni-label">Trading Terminal</span>
+      </div>
+      <div class="nav-item" data-section="analytics">
+        <div class="ni-icon"><i class="fa fa-chart-bar"></i></div>
+        <span class="ni-label">Analytics Lab</span>
+      </div>
+
+      <div class="nav-group-label">INTELLIGENCE</div>
+      <div class="nav-item" data-section="signals">
+        <div class="ni-icon"><i class="fa fa-satellite-dish"></i></div>
+        <span class="ni-label">Signal Feed</span>
+        <span class="ni-dot pulse-green"></span>
+      </div>
+      <div class="nav-item" data-section="plugins">
+        <div class="ni-icon"><i class="fa fa-plug"></i></div>
+        <span class="ni-label">Plugin Hub</span>
+      </div>
+
+      <div class="nav-group-label">SYSTEM</div>
+      <div class="nav-item" data-section="transparency">
+        <div class="ni-icon"><i class="fa fa-link"></i></div>
+        <span class="ni-label">Blockchain Audit</span>
+      </div>
+      <div class="nav-item" data-section="security">
+        <div class="ni-icon"><i class="fa fa-shield-alt"></i></div>
+        <span class="ni-label">Security Core</span>
+      </div>
+
+      <!-- Admin Panel (admin only) -->
+      <div class="nav-item admin-nav-link" id="nav-admin-panel" data-section="admin-panel" style="display:none;" onclick="window.open('admin.html','_blank');return false;">
+        <div class="ni-icon"><i class="fa fa-user-shield"></i></div>
+        <span class="ni-label">Admin Panel</span>
+        <span class="ni-badge admin-badge-glow">ADMIN</span>
+      </div>
+
+    </nav>
+
+    <!-- AI Confidence Orb -->
+    <div class="sidebar-ai-orb">
+      <div class="ai-orb-ring outer"></div>
+      <div class="ai-orb-ring inner"></div>
+      <div class="ai-orb-center">
+        <span id="ai-confidence-value">92.4%</span>
+        <small>AI Confidence</small>
+      </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="sidebar-health">
+      <div class="sh-row"><span>Data Feed</span><span class="sh-dot green"></span></div>
+      <div class="sh-row"><span>AI Engine</span><span class="sh-dot green"></span></div>
+      <div class="sh-row"><span>Execution</span><span class="sh-dot cyan"></span></div>
+      <div class="sh-row"><span>Blockchain</span><span class="sh-dot green"></span></div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════════════════ -->
+  <main id="main-content">
+
+    <!-- ▓▓▓ DASHBOARD ▓▓▓ -->
+    <section id="section-dashboard" class="content-section active">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-th-large"></i> Command Dashboard</h1>
+          <div class="sh-breadcrumb">ZEN ASSETS › Dashboard</div>
+        </div>
+        <div class="sh-right">
+          <div class="status-pill green"><span class="sp-dot"></span>All Systems Nominal</div>
+          <div id="dash-market-regime" class="regime-badge">BULL RUN</div>
+        </div>
+      </div>
+
+      <!-- KPI ROW -->
+      <div class="kpi-grid">
+        <div class="kpi-card" id="kpi-card-portfolio">
+          <div class="kpi-glow"></div>
+          <div class="kpi-icon cyan"><i class="fa fa-wallet"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Portfolio Value</div>
+            <div class="kpi-value" id="kpi-port-value">$—</div>
+            <div class="kpi-sub" id="kpi-port-pnl">—</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-portfolio" width="80" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-glow green"></div>
+          <div class="kpi-icon green"><i class="fa fa-wallet"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Wallet Balance</div>
+            <div class="kpi-value" id="kpi-wallet-balance">$—</div>
+            <div class="kpi-sub" id="kpi-wallet-tier">—</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-wallet" width="80" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-glow green"></div>
+          <div class="kpi-icon green"><i class="fa fa-calendar-day"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Today's Return</div>
+            <div class="kpi-value" id="kpi-daily-pnl">$—</div>
+            <div class="kpi-sub" id="kpi-daily-sub">Daily P&amp;L</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-daily" width="80" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-glow purple"></div>
+          <div class="kpi-icon purple"><i class="fa fa-brain"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">AI Signals Active</div>
+            <div class="kpi-value" id="kpi-ai-signals">—</div>
+            <div class="kpi-sub">Across 9 asset classes</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-signals" width="80" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-glow orange"></div>
+          <div class="kpi-icon orange"><i class="fa fa-trophy"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Win Rate</div>
+            <div class="kpi-value" id="kpi-win-rate">—</div>
+            <div class="kpi-sub">Last 30 trades</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-winrate" width="80" height="30"></canvas>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-glow red"></div>
+          <div class="kpi-icon red"><i class="fa fa-shield-alt"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Sharpe Ratio</div>
+            <div class="kpi-value" id="kpi-sharpe">—</div>
+            <div class="kpi-sub" id="kpi-max-dd">Max DD: —</div>
+          </div>
+          <canvas class="kpi-spark" id="spark-sharpe" width="80" height="30"></canvas>
+        </div>
+      </div>
+
+      <!-- INVESTMENT RETURNS SUMMARY -->
+      <div class="returns-summary-panel glass-card" id="returns-summary-panel">
+        <div class="card-header">
+          <div class="ch-left">
+            <span class="ch-title"><i class="fa fa-chart-line"></i> Investment Returns</span>
+            <span class="ch-badge" id="inv-tier-badge">GOLD</span>
+          </div>
+          <div class="ch-right">
+            <span class="ch-subtitle" id="inv-apy-range">APY: 32-45%</span>
+          </div>
+        </div>
+        <div class="returns-metrics-row">
+          <div class="ret-metric">
+            <div class="ret-label">Wallet Balance</div>
+            <div class="ret-value" id="ret-wallet-bal">$—</div>
+          </div>
+          <div class="ret-metric">
+            <div class="ret-label">Today's Earnings</div>
+            <div class="ret-value up" id="ret-today-earn">+$0.00</div>
+            <div class="ret-sub" id="ret-today-pct">+0.00%</div>
+          </div>
+          <div class="ret-metric">
+            <div class="ret-label">This Week</div>
+            <div class="ret-value up" id="ret-week-earn">+$0.00</div>
+            <div class="ret-sub" id="ret-week-pct">+0.00%</div>
+          </div>
+          <div class="ret-metric">
+            <div class="ret-label">Trading Profits</div>
+            <div class="ret-value up" id="ret-trade-profit">+$0.00</div>
+          </div>
+          <div class="ret-metric">
+            <div class="ret-label">Tier Returns</div>
+            <div class="ret-value up" id="ret-tier-credit">+$0.00</div>
+          </div>
+          <div class="ret-metric">
+            <div class="ret-label">All-Time Return</div>
+            <div class="ret-value up" id="ret-all-time">+$0.00</div>
+            <div class="ret-sub" id="ret-all-time-pct">+0.00%</div>
+          </div>
+        </div>
+        <div class="returns-feed" id="returns-feed"></div>
+      </div>
+
+      <!-- MAIN CHARTS ROW -->
+      <div class="dash-charts-row">
+        <!-- Main Price Chart -->
+        <div class="glass-card chart-card-main">
+          <div class="card-header">
+            <div class="ch-left">
+              <span class="ch-title">Live Price Feed</span>
+              <div class="symbol-selector" id="main-sym-selector">
+                <button class="sym-btn active" data-sym="BTC">BTC</button>
+                <button class="sym-btn" data-sym="ETH">ETH</button>
+                <button class="sym-btn" data-sym="SOL">SOL</button>
+                <button class="sym-btn" data-sym="AAPL">AAPL</button>
+                <button class="sym-btn" data-sym="TSLA">TSLA</button>
+                <button class="sym-btn" data-sym="GOLD">GOLD</button>
+                <button class="sym-btn" data-sym="EURUSD">EUR</button>
+                <button class="sym-btn" data-sym="SPY">SPY</button>
+              </div>
+            </div>
+            <div class="ch-right">
+              <div class="chart-tf-btns">
+                <button class="tf-btn" data-tf="1m">1M</button>
+                <button class="tf-btn active" data-tf="5m">5M</button>
+                <button class="tf-btn" data-tf="15m">15M</button>
+                <button class="tf-btn" data-tf="1h">1H</button>
+                <button class="tf-btn" data-tf="4h">4H</button>
+              </div>
+              <span id="main-price-display" class="main-price-hdr">$—</span>
+              <span id="main-change-display" class="main-change-hdr">—%</span>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:280px;position:relative">
+            <div class="real-data-badge" style="position:absolute;top:10px;left:10px;z-index:10;display:none"></div>
+            <div id="main-price-chart" style="width:100%;height:100%"></div>
+          </div>
+          <!-- Inline stats strip -->
+          <div class="chart-stats-strip">
+            <div class="css-item"><span>Open</span><b id="cs-open">—</b></div>
+            <div class="css-item"><span>High</span><b id="cs-high" class="up">—</b></div>
+            <div class="css-item"><span>Low</span><b id="cs-low" class="down">—</b></div>
+            <div class="css-item"><span>Vol 24h</span><b id="cs-vol">—</b></div>
+            <div class="css-item"><span>Mkt Cap</span><b id="cs-mktcap">—</b></div>
+          </div>
+        </div>
+
+        <!-- Right col: Sentient AI card + Alloc donut -->
+        <div class="dash-right-col">
+          <!-- Sentiment Orb -->
+          <div class="glass-card sentiment-orb-card">
+            <div class="card-header">
+              <span class="ch-title">Market Sentience</span>
+              <span class="badge-ai">AI</span>
+            </div>
+            <div class="sentiment-orb-wrap">
+              <canvas id="sentiment-gauge" width="180" height="100"></canvas>
+              <div class="sentiment-orb-label">
+                <span id="sent-label" class="sent-label">BULLISH</span>
+                <span id="sent-value" class="sent-value">67</span>
+              </div>
+            </div>
+            <div id="sentiment-breakdown" class="sentiment-breakdown"></div>
+          </div>
+
+          <!-- Portfolio Donut -->
+          <div class="glass-card alloc-card">
+            <div class="card-header">
+              <span class="ch-title">Allocation</span>
+              <button class="btn-text" data-section-link="portfolio">Details →</button>
+            </div>
+            <div style="position:relative;height:160px">
+              <canvas id="alloc-donut"></canvas>
+              <div class="donut-center-label">
+                <div id="alloc-total" class="dcl-value">$—</div>
+                <div class="dcl-sub">Portfolio</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW: Whale Feed + Signals + Asset Classes -->
+      <div class="dash-bottom-row">
+        <!-- Whale Alert Feed -->
+        <div class="glass-card whale-card">
+          <div class="card-header">
+            <span class="ch-title"><i class="fa fa-water"></i> Whale Sonar</span>
+            <span class="pulse-dot cyan-dot"></span>
+          </div>
+          <div id="whale-feed" class="whale-feed"></div>
+        </div>
+
+        <!-- Live Signals -->
+        <div class="glass-card signals-mini-card">
+          <div class="card-header">
+            <span class="ch-title"><i class="fa fa-satellite-dish"></i> AI Signal Feed</span>
+            <button class="btn-text" data-section-link="signals">View All →</button>
+          </div>
+          <div id="dash-signals-list" class="signals-mini-list"></div>
+        </div>
+
+        <!-- Asset Class Grid -->
+        <div class="glass-card asset-class-card">
+          <div class="card-header">
+            <span class="ch-title"><i class="fa fa-th"></i> Asset Classes</span>
+          </div>
+          <div id="asset-class-grid" class="asset-class-grid"></div>
+        </div>
+      </div>
+
+      <!-- TRUST & SECURITY STRIP -->
+      <div class="trust-strip">
+        <div class="ts-item"><i class="fa fa-link ts-icon cyan"></i><span>Blockchain-Verified Execution</span></div>
+        <div class="ts-item"><i class="fa fa-eye-slash ts-icon purple"></i><span>Zero-Knowledge Proof Privacy</span></div>
+        <div class="ts-item"><i class="fa fa-shield ts-icon green"></i><span>$250M Insurance Coverage</span></div>
+        <div class="ts-item"><i class="fa fa-lock ts-icon orange"></i><span>HSM-Grade Key Security</span></div>
+        <div class="ts-item"><i class="fa fa-check-circle ts-icon cyan"></i><span>MiCA / SEC Compliant</span></div>
+        <div class="ts-item"><i class="fa fa-atom ts-icon purple"></i><span>Quantum-Resistant Encryption</span></div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ LIVE MARKETS ▓▓▓ -->
+    <section id="section-markets" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-globe"></i> Live Markets</h1>
+          <div class="sh-breadcrumb">Real-time multi-asset feed · 0.6s refresh</div>
+        </div>
+        <div class="sh-right">
+          <div class="status-pill green"><span class="sp-dot"></span>36 pairs live</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <button class="filter-btn active" data-cat="all">All</button>
+        <button class="filter-btn" data-cat="crypto"><i class="fa fa-bitcoin"></i> Crypto</button>
+        <button class="filter-btn" data-cat="stocks"><i class="fa fa-chart-line"></i> Stocks</button>
+        <button class="filter-btn" data-cat="forex"><i class="fa fa-exchange-alt"></i> Forex</button>
+        <button class="filter-btn" data-cat="commodities"><i class="fa fa-gem"></i> Commodities</button>
+        <button class="filter-btn" data-cat="etf"><i class="fa fa-layer-group"></i> ETFs</button>
+        <button class="filter-btn" data-cat="indices"><i class="fa fa-signal"></i> Indices</button>
+        <div class="fb-spacer"></div>
+        <div class="market-search-wrap">
+          <i class="fa fa-search"></i>
+          <input type="text" id="market-search-input" placeholder="Find market…" class="market-search-input" />
+        </div>
+      </div>
+
+      <div class="markets-layout">
+        <!-- Market Table -->
+        <div class="glass-card market-table-card">
+          <table class="market-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Asset</th>
+                <th>Price</th>
+                <th>24h Change</th>
+                <th>24h High</th>
+                <th>24h Low</th>
+                <th>Volume</th>
+                <th>Mkt Cap</th>
+                <th>7d Sparkline</th>
+                <th>AI Signal</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="market-table-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Right: Order Book + Heatmap -->
+        <div class="markets-side">
+          <!-- Order Book -->
+          <div class="glass-card order-book-card">
+            <div class="card-header">
+              <span class="ch-title">Order Book</span>
+              <select id="ob-symbol-select" class="mini-select">
+                <option>BTC/USD</option>
+                <option>ETH/USD</option>
+                <option>AAPL</option>
+                <option>EUR/USD</option>
+              </select>
+            </div>
+            <div class="ob-header-row">
+              <span>Price</span><span>Size</span><span>Total</span>
+            </div>
+            <div id="ob-asks" class="ob-asks"></div>
+            <div class="ob-spread-row">
+              <span class="ob-spread-label">Spread</span>
+              <span id="ob-mid-price" class="ob-mid-price">$—</span>
+              <span id="ob-spread-pct" class="ob-spread-pct">0.00%</span>
+            </div>
+            <div id="ob-bids" class="ob-bids"></div>
+          </div>
+
+          <!-- Capital Flow Chart -->
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title">Capital Flow by Class</span>
+            </div>
+            <div style="height:140px">
+              <canvas id="capital-flow-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Liquidity Heatmap -->
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title">Liquidity Heatmap</span>
+            </div>
+            <div id="liquidity-heatmap" class="liquidity-heatmap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ AI ENGINE ▓▓▓ -->
+    <section id="section-ai-engine" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-brain"></i> Autonomous Alpha Engine</h1>
+          <div class="sh-breadcrumb">4-Layer Neural Analysis · Quantum Pattern Recognition</div>
+        </div>
+        <div class="sh-right">
+          <button id="ai-scan-btn" class="btn btn-primary btn-glow">
+            <i class="fa fa-bolt"></i> Run Full Scan
+          </button>
+          <label class="toggle-switch-inline">
+            <input type="checkbox" id="auto-execute-toggle" />
+            <span class="tsi-track"></span>
+            <span class="tsi-label">Auto-Execute</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 4-Layer Analysis Cards -->
+      <div class="ai-layers-row">
+        <div class="ai-layer-card">
+          <div class="alc-badge l1">L1</div>
+          <div class="alc-title">Technical Analysis</div>
+          <div class="alc-subtitle">RSI · MACD · BB · VWAP · ADX</div>
+          <div id="tech-indicators" class="indicator-list"></div>
+        </div>
+        <div class="ai-layer-card">
+          <div class="alc-badge l2">L2</div>
+          <div class="alc-title">Quantitative Models</div>
+          <div class="alc-subtitle">Monte Carlo · Liquidity · Imbalance</div>
+          <div id="quant-models" class="indicator-list"></div>
+        </div>
+        <div class="ai-layer-card">
+          <div class="alc-badge l3">L3</div>
+          <div class="alc-title">Behavioral Finance</div>
+          <div class="alc-subtitle">Sentiment · Flow · FOMO · Panic</div>
+          <div id="behavioral-analytics" class="indicator-list"></div>
+        </div>
+        <div class="ai-layer-card">
+          <div class="alc-badge l4">L4</div>
+          <div class="alc-title">Predictive AI / LSTM</div>
+          <div class="alc-subtitle">Neural Network Forecast</div>
+          <div id="lstm-summary" class="indicator-list"></div>
+        </div>
+      </div>
+
+      <!-- AI Setup Signals Grid -->
+      <div class="glass-card" style="padding:20px">
+        <div class="card-header" style="margin-bottom:16px">
+          <span class="ch-title"><i class="fa fa-crosshairs"></i> Detected Setups</span>
+          <span id="setup-count-badge" class="badge-count">0</span>
+          <div class="ch-right">
+            <select id="ai-asset-filter" class="mini-select">
+              <option value="all">All Assets</option>
+              <option value="BTC/USD">BTC/USD</option>
+              <option value="ETH/USD">ETH/USD</option>
+              <option value="AAPL">AAPL</option>
+            </select>
+          </div>
+        </div>
+        <div id="ai-setups-grid" class="ai-setups-grid"></div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="ai-charts-row">
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title"><i class="fa fa-wave-square"></i> LSTM Forecast</span><span class="badge-ai">AI</span></div>
+          <div style="height:220px"><canvas id="lstm-forecast-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title"><i class="fa fa-project-diagram"></i> Monte Carlo Simulation</span></div>
+          <div style="height:220px"><canvas id="monte-carlo-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title"><i class="fa fa-expand-arrows-alt"></i> Volatility Cone</span></div>
+          <div style="height:220px"><canvas id="vol-cone-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Crisis Mode Banner (hidden by default) -->
+      <div id="crisis-mode-banner" class="crisis-banner hidden">
+        <div class="cb-icon"><i class="fa fa-exclamation-triangle"></i></div>
+        <div class="cb-content">
+          <b>CRISIS MODE ACTIVATED</b>
+          <p id="crisis-msg">AI detected systemic risk. Capital preservation protocols engaged.</p>
+        </div>
+        <button class="btn btn-ghost" id="dismiss-crisis-btn">Dismiss</button>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ BUY CRYPTO HUB ▓▓▓ -->
+    <section id="section-buy-crypto" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-coins"></i> Buy Crypto</h1>
+          <div class="sh-breadcrumb">Purchase cryptocurrency from trusted exchanges · Fund your wallet instantly</div>
+        </div>
+        <div class="sh-right">
+          <div class="status-pill green"><span class="sp-dot"></span>All Platforms Online</div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="bch-stats-row">
+        <div class="bch-stat"><i class="fa fa-shield-halved"></i><div><span class="bch-stat-val">100%</span><span class="bch-stat-lbl">Verified Platforms</span></div></div>
+        <div class="bch-stat"><i class="fa fa-bolt"></i><div><span class="bch-stat-val">< 5 min</span><span class="bch-stat-lbl">Avg. Purchase Time</span></div></div>
+        <div class="bch-stat"><i class="fa fa-globe"></i><div><span class="bch-stat-val">190+</span><span class="bch-stat-lbl">Countries Supported</span></div></div>
+        <div class="bch-stat"><i class="fa fa-credit-card"></i><div><span class="bch-stat-val">Cards + Bank</span><span class="bch-stat-lbl">Payment Methods</span></div></div>
+      </div>
+
+      <!-- How It Works -->
+      <div class="glass-card bch-how-it-works">
+        <div class="bch-hiw-title"><i class="fa fa-route"></i> How It Works</div>
+        <div class="bch-hiw-steps">
+          <div class="bch-step">
+            <div class="bch-step-num">1</div>
+            <div class="bch-step-icon"><i class="fa fa-store"></i></div>
+            <div class="bch-step-text"><b>Choose Exchange</b><span>Pick any trusted platform below</span></div>
+          </div>
+          <div class="bch-step-arrow"><i class="fa fa-chevron-right"></i></div>
+          <div class="bch-step">
+            <div class="bch-step-num">2</div>
+            <div class="bch-step-icon"><i class="fa fa-cart-shopping"></i></div>
+            <div class="bch-step-text"><b>Buy Crypto</b><span>Use card, bank, or Apple Pay</span></div>
+          </div>
+          <div class="bch-step-arrow"><i class="fa fa-chevron-right"></i></div>
+          <div class="bch-step">
+            <div class="bch-step-num">3</div>
+            <div class="bch-step-icon"><i class="fa fa-paper-plane"></i></div>
+            <div class="bch-step-text"><b>Send to Wallet</b><span>Copy your ZEN wallet address</span></div>
+          </div>
+          <div class="bch-step-arrow"><i class="fa fa-chevron-right"></i></div>
+          <div class="bch-step">
+            <div class="bch-step-num">4</div>
+            <div class="bch-step-icon"><i class="fa fa-rocket"></i></div>
+            <div class="bch-step-text"><b>Start Trading</b><span>Funds arrive in ~2-5 minutes</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="bch-filter-bar">
+        <button class="bch-filter active" data-bch-cat="all" onclick="filterBuyCrypto('all',this)">All Platforms</button>
+        <button class="bch-filter" data-bch-cat="beginner" onclick="filterBuyCrypto('beginner',this)"><i class="fa fa-seedling"></i> Beginner</button>
+        <button class="bch-filter" data-bch-cat="advanced" onclick="filterBuyCrypto('advanced',this)"><i class="fa fa-code"></i> Advanced</button>
+        <button class="bch-filter" data-bch-cat="defi" onclick="filterBuyCrypto('defi',this)"><i class="fa fa-cubes"></i> DeFi / DEX</button>
+        <button class="bch-filter" data-bch-cat="instant" onclick="filterBuyCrypto('instant',this)"><i class="fa fa-bolt"></i> Instant Buy</button>
+      </div>
+
+      <!-- Exchange Grid -->
+      <div class="bch-grid" id="bch-grid">
+
+        <!-- Coinbase -->
+        <a href="https://www.coinbase.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="beginner instant">
+          <div class="bch-card-ribbon beginner">BEST FOR BEGINNERS</div>
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#1652F0"><i class="fa fa-c" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Coinbase</div>
+              <div class="bch-tagline">The most trusted crypto exchange</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.8</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Credit/Debit Card</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Apple Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Google Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> PayPal</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 100+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">1.49%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$2</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Coinbase <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Binance -->
+        <a href="https://www.binance.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="advanced instant">
+          <div class="bch-card-ribbon advanced">LOWEST FEES</div>
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#0B0E11"><i class="fa fa-b" style="color:#F3BA2F;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Binance</div>
+              <div class="bch-tagline">World's largest crypto exchange</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.7</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Payments</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> P2P Trading</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 350+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Futures</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 180+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val good">0.1%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$10</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Binance <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Kraken -->
+        <a href="https://www.kraken.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="advanced">
+          <div class="bch-card-ribbon security">MOST SECURE</div>
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#5741D9"><i class="fa fa-k" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Kraken</div>
+              <div class="bch-tagline">Bank-grade security since 2011</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.6</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Payments</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Staking</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Futures</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 200+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Proof of Reserves</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">0.16%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$10</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val">1-5 min</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Kraken <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Crypto.com -->
+        <a href="https://crypto.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="beginner instant">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:linear-gradient(135deg,#103F68,#02558B)"><i class="fa fa-c" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Crypto.com</div>
+              <div class="bch-tagline">Buy crypto with credit card instantly</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.5</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Credit/Debit Card</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Crypto Visa Card</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Apple Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Earn Rewards</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> NFTs</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 90+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">2.99%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$1</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Crypto.com <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- KuCoin -->
+        <a href="https://www.kucoin.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="advanced instant">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#24AE8F"><i class="fa fa-k" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">KuCoin</div>
+              <div class="bch-tagline">The People's Exchange — 800+ coins</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.4</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Payments</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> P2P Trading</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 800+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Trading Bots</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Low Fees</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 200+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val good">0.1%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$5</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val good">Optional</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on KuCoin <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Bybit -->
+        <a href="https://www.bybit.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="advanced instant">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#1E1E2D"><i class="fa fa-b" style="color:#F7A600;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Bybit</div>
+              <div class="bch-tagline">Top derivatives & spot exchange</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.5</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Buy</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> P2P</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 600+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Perpetuals</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Copy Trading</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 160+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val good">0.1%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$10</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Bybit <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- OKX -->
+        <a href="https://www.okx.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="advanced instant">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#000"><span style="color:#fff;font-size:16px;font-weight:900;font-family:sans-serif">OKX</span></div>
+            <div class="bch-info">
+              <div class="bch-name">OKX</div>
+              <div class="bch-tagline">Web3 gateway + exchange</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.5</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Payments</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Web3 Wallet</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> DEX Aggregator</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 350+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 200+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val good">0.08%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$10</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on OKX <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Gemini -->
+        <a href="https://www.gemini.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="beginner">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#00DCFA"><i class="fa fa-g" style="color:#000;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Gemini</div>
+              <div class="bch-tagline">Regulated US exchange by Winklevoss</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.3</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Credit/Debit Card</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Apple Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Earn Interest</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> SOC2 Audited</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> US Regulated</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">1.49%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$1</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val">3-5 min</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Required</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Gemini <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Uniswap -->
+        <a href="https://app.uniswap.org" target="_blank" rel="noopener" class="bch-card" data-bch-cat="defi">
+          <div class="bch-card-ribbon defi">DECENTRALIZED</div>
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:linear-gradient(135deg,#FF007A,#FF45A0)"><i class="fa fa-u" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Uniswap</div>
+              <div class="bch-tagline">#1 DEX — swap tokens without intermediaries</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.6</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> No KYC Required</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Wallet Connect</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 5000+ Tokens</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Ethereum + L2s</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Liquidity Pools</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Fully On-Chain</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">0.3%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">Any</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val good">None</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Swap on Uniswap <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- 1inch -->
+        <a href="https://app.1inch.io" target="_blank" rel="noopener" class="bch-card" data-bch-cat="defi">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#1B314F"><span style="color:#D82122;font-size:16px;font-weight:900">1inch</span></div>
+            <div class="bch-info">
+              <div class="bch-name">1inch</div>
+              <div class="bch-tagline">DEX aggregator — best swap rates</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.4</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Best Prices</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Multi-Chain</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> No KYC</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Limit Orders</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Gas Optimized</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Wallet Connect</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val good">0% spread</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">Any</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">Instant</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val good">None</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Swap on 1inch <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Moonpay -->
+        <a href="https://www.moonpay.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="beginner instant">
+          <div class="bch-card-ribbon instant">FASTEST ONRAMP</div>
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:linear-gradient(135deg,#7B61FF,#A78BFA)"><i class="fa fa-m" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">MoonPay</div>
+              <div class="bch-tagline">Buy crypto in under 2 minutes</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.5</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Credit/Debit Card</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Apple Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Google Pay</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Bank Transfer</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 80+ Cryptos</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 160+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">3.5%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$20</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val good">< 2 min</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val">Light</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on MoonPay <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+        <!-- Changelly -->
+        <a href="https://changelly.com" target="_blank" rel="noopener" class="bch-card" data-bch-cat="instant">
+          <div class="bch-card-header">
+            <div class="bch-logo" style="background:#1ABB72"><i class="fa fa-c" style="color:#fff;font-size:22px"></i></div>
+            <div class="bch-info">
+              <div class="bch-name">Changelly</div>
+              <div class="bch-tagline">Swap 500+ cryptos — fixed & floating rates</div>
+            </div>
+            <div class="bch-rating"><i class="fa fa-star"></i> 4.3</div>
+          </div>
+          <div class="bch-card-body">
+            <div class="bch-features">
+              <span class="bch-feat"><i class="fa fa-check"></i> Card Payments</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Fixed Rates</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 500+ Coins</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> No Registration</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> Cross-chain</span>
+              <span class="bch-feat"><i class="fa fa-check"></i> 170+ Countries</span>
+            </div>
+            <div class="bch-meta-row">
+              <div class="bch-meta"><span class="bch-meta-lbl">Fees</span><span class="bch-meta-val">0.25%</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Min Buy</span><span class="bch-meta-val">$20</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">Speed</span><span class="bch-meta-val">5-30 min</span></div>
+              <div class="bch-meta"><span class="bch-meta-lbl">KYC</span><span class="bch-meta-val good">Minimal</span></div>
+            </div>
+          </div>
+          <div class="bch-card-footer"><span class="bch-cta">Buy on Changelly <i class="fa fa-arrow-right"></i></span></div>
+        </a>
+
+      </div>
+
+      <!-- Wallet Address Reminder -->
+      <div class="glass-card bch-wallet-reminder">
+        <div class="bch-wr-left">
+          <div class="bch-wr-icon"><i class="fa fa-wallet"></i></div>
+          <div>
+            <div class="bch-wr-title">Your ZEN ASSETS Deposit Addresses</div>
+            <div class="bch-wr-sub">After purchasing crypto, send it to one of these addresses to fund your trading wallet</div>
+          </div>
+        </div>
+        <div class="bch-wr-addresses">
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin btc"><i class="fab fa-bitcoin"></i> BTC</span>
+            <code>bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>
+            <button class="btn-copy-sm" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+          </div>
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin eth"><i class="fab fa-ethereum"></i> ETH/USDT/USDC</span>
+            <code>0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1</code>
+            <button class="btn-copy-sm" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <div class="bch-disclaimer">
+        <i class="fa fa-info-circle"></i>
+        <span>ZEN ASSETS is not affiliated with any third-party exchange. All platforms listed are independently operated. Always verify URLs before entering credentials. Only send crypto on the correct network.</span>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ PORTFOLIO ▓▓▓ -->
+    <section id="section-portfolio" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-chart-pie"></i> Portfolio Intelligence</h1>
+          <div class="sh-breadcrumb">Real-Time Holdings · AI-Optimized Allocation</div>
+        </div>
+        <div class="sh-right">
+          <button id="rebalance-btn" class="btn btn-primary btn-glow"><i class="fa fa-balance-scale"></i> AI Rebalance</button>
+        </div>
+      </div>
+
+      <!-- Portfolio KPIs -->
+      <div class="port-kpi-row">
+        <div class="port-kpi-item pki-cyan">
+          <span class="pki-label">Total Value</span>
+          <span class="pki-value" id="port-total-value">$—</span>
+        </div>
+        <div class="port-kpi-item pki-green">
+          <span class="pki-label">Total P&amp;L</span>
+          <span class="pki-value" id="port-total-pnl">—</span>
+        </div>
+        <div class="port-kpi-item pki-purple">
+          <span class="pki-label">Sharpe Ratio</span>
+          <span class="pki-value" id="port-sharpe">—</span>
+        </div>
+        <div class="port-kpi-item pki-orange">
+          <span class="pki-label">Sortino</span>
+          <span class="pki-value" id="port-sortino">—</span>
+        </div>
+        <div class="port-kpi-item pki-red">
+          <span class="pki-label">Max Drawdown</span>
+          <span class="pki-value" id="port-max-dd">—</span>
+        </div>
+        <div class="port-kpi-item pki-cyan">
+          <span class="pki-label">Alpha</span>
+          <span class="pki-value" id="port-alpha">—</span>
+        </div>
+        <div class="port-kpi-item pki-green">
+          <span class="pki-label">Beta</span>
+          <span class="pki-value" id="port-beta">—</span>
+        </div>
+        <div class="port-kpi-item pki-purple">
+          <span class="pki-label">Diversification</span>
+          <span class="pki-value" id="port-divers">—</span>
+        </div>
+      </div>
+
+      <div class="portfolio-layout">
+        <div class="port-main">
+          <!-- Holdings Table -->
+          <div class="glass-card">
+            <div class="card-header" style="margin-bottom:12px">
+              <span class="ch-title">Holdings</span>
+              <span id="holdings-count" class="badge-count">0</span>
+            </div>
+            <div class="table-scroll">
+              <table class="holdings-table">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Qty</th>
+                    <th>Avg Cost</th>
+                    <th>Current</th>
+                    <th>Value</th>
+                    <th>P&amp;L</th>
+                    <th>P&amp;L %</th>
+                    <th>Alloc %</th>
+                    <th>AI Score</th>
+                    <th>Risk</th>
+                  </tr>
+                </thead>
+                <tbody id="holdings-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Performance Chart -->
+          <div class="glass-card" style="padding:20px;margin-top:16px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title">Portfolio vs Benchmark</span>
+            </div>
+            <div style="height:200px"><canvas id="port-perf-chart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="port-side">
+          <!-- Alloc Donut -->
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title">Allocation by Class</span>
+            </div>
+            <div style="position:relative;height:180px">
+              <canvas id="port-alloc-donut"></canvas>
+              <div class="donut-center-label">
+                <div id="port-alloc-total" class="dcl-value" style="font-size:14px">—</div>
+                <div class="dcl-sub">AUM</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Risk Heatmap -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title"><i class="fa fa-fire"></i> Risk Heatmap</span>
+            </div>
+            <div id="risk-heatmap" class="risk-heatmap"></div>
+          </div>
+
+          <!-- Drawdown Chart -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:8px">
+              <span class="ch-title">Drawdown Chart</span>
+            </div>
+            <div style="height:120px"><canvas id="drawdown-chart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ TRADING TERMINAL ▓▓▓ -->
+    <section id="section-trading" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-terminal"></i> Quantum Trading Terminal</h1>
+          <div class="sh-breadcrumb">Sub-millisecond execution · HFT-grade orderflow</div>
+        </div>
+        <div class="sh-right">
+          <label class="toggle-switch-inline">
+            <input type="checkbox" id="hft-toggle" />
+            <span class="tsi-track"></span>
+            <span class="tsi-label">HFT Mode</span>
+          </label>
+          <button id="hedge-btn" class="btn btn-ghost"><i class="fa fa-random"></i> Hedge All</button>
+        </div>
+      </div>
+
+      <div class="terminal-layout">
+        <!-- Left: Chart + Order Form -->
+        <div class="terminal-main">
+          <!-- Terminal Chart -->
+          <div class="glass-card terminal-chart-card">
+            <div class="card-header">
+              <div class="ch-left">
+                <select id="terminal-sym-select" class="mini-select dark">
+                  <option>BTC/USD</option><option>ETH/USD</option><option>SOL/USD</option>
+                  <option>AAPL</option><option>NVDA</option><option>TSLA</option>
+                  <option>EUR/USD</option><option>GBP/USD</option><option>XAUUSD</option>
+                </select>
+                <div class="chart-tf-btns" id="terminal-tf-btns">
+                  <button class="tf-btn" data-tf="1m">1M</button>
+                  <button class="tf-btn active" data-tf="5m">5M</button>
+                  <button class="tf-btn" data-tf="15m">15M</button>
+                  <button class="tf-btn" data-tf="1h">1H</button>
+                  <button class="tf-btn" data-tf="4h">4H</button>
+                  <button class="tf-btn" data-tf="1d">1D</button>
+                </div>
+              </div>
+              <div class="ch-right">
+                <span id="terminal-live-price" class="terminal-live-price">$—</span>
+                <span id="terminal-live-chg" class="terminal-live-chg">—%</span>
+              </div>
+            </div>
+            <div style="height:280px;position:relative">
+              <div class="real-data-badge" id="terminal-chart-data-badge" style="position:absolute;top:10px;left:10px;z-index:10;display:none"></div>
+              <div id="terminal-chart" style="width:100%;height:100%"></div>
+            </div>
+          </div>
+
+          <!-- Order Form -->
+          <div class="glass-card order-form-card">
+            <div class="card-header">
+              <span class="ch-title"><i class="fa fa-file-signature"></i> New Order</span>
+            </div>
+            <div class="order-form-body">
+              <!-- Order type tabs -->
+              <div class="order-type-tabs">
+                <button class="ot-btn active" data-otype="market">Market</button>
+                <button class="ot-btn" data-otype="limit">Limit</button>
+                <button class="ot-btn" data-otype="stop">Stop</button>
+                <button class="ot-btn" data-otype="oco">OCO</button>
+                <button class="ot-btn" data-otype="trailing">Trailing</button>
+              </div>
+              <div class="order-form-grid">
+                <div class="of-col">
+                  <div class="form-group">
+                    <label>Symbol</label>
+                    <select id="order-symbol" class="form-input">
+                      <option>BTC/USD</option><option>ETH/USD</option><option>SOL/USD</option>
+                      <option>AAPL</option><option>NVDA</option><option>TSLA</option>
+                      <option>EUR/USD</option><option>XAUUSD</option>
+                    </select>
+                  </div>
+                  <div class="form-group" id="limit-price-row" style="display:none">
+                    <label>Limit Price</label>
+                    <input type="number" id="order-limit-price" class="form-input" placeholder="0.00" />
+                  </div>
+                  <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="order-qty" class="form-input" placeholder="0.001" step="0.001" value="0.01"/>
+                  </div>
+                  <!-- Slider for qty -->
+                  <div class="qty-slider-row">
+                    <input type="range" id="qty-slider" min="0" max="100" value="5" class="qty-slider" />
+                    <span id="qty-slider-pct">5%</span>
+                  </div>
+                </div>
+                <div class="of-col">
+                  <div class="form-group">
+                    <label>Entry Price (Calc.)</label>
+                    <input type="number" id="order-entry" class="form-input mono" placeholder="Auto-filled" readonly />
+                  </div>
+                  <div class="form-group">
+                    <label>Stop-Loss</label>
+                    <input type="number" id="order-sl" class="form-input" placeholder="Auto-calc by AI" />
+                  </div>
+                  <div class="form-group">
+                    <label>Take-Profit</label>
+                    <input type="number" id="order-tp" class="form-input" placeholder="Auto-calc by AI" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI Risk Panel -->
+              <div class="ai-risk-panel" id="ai-risk-panel">
+                <div class="arp-icon"><i class="fa fa-robot"></i></div>
+                <div class="arp-body">
+                  <div class="arp-title">AI Risk Disclosure</div>
+                  <div id="arp-text" class="arp-text">Select symbol and qty to generate AI risk analysis…</div>
+                </div>
+                <div class="arp-rr">
+                  <div class="rr-label">R:R</div>
+                  <div id="rr-display" class="rr-value">—</div>
+                </div>
+              </div>
+
+              <!-- Buy / Sell Buttons -->
+              <div class="order-btn-row">
+                <button id="btn-buy" class="btn btn-buy btn-glow btn-full">
+                  <i class="fa fa-arrow-up"></i> BUY / LONG
+                </button>
+                <button id="btn-sell" class="btn btn-sell btn-full">
+                  <i class="fa fa-arrow-down"></i> SELL / SHORT
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Positions + Copy Trade + Strategies -->
+        <div class="terminal-side">
+          <!-- Open Positions -->
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:10px">
+              <span class="ch-title">Open Positions</span>
+              <span id="pos-count-badge" class="badge-count">0</span>
+              <span id="pos-total-pnl" class="pos-total-pnl">$0.00</span>
+            </div>
+            <div id="open-positions" class="open-positions"></div>
+          </div>
+
+          <!-- Auto-Trader: Active Positions -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:10px">
+              <span class="ch-title"><i class="fa fa-robot"></i> Auto Trader</span>
+              <span class="badge-count glow">LIVE</span>
+            </div>
+            <div id="auto-positions-list" class="auto-positions-list"></div>
+          </div>
+
+          <!-- Auto-Trader: Trade History -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:10px">
+              <span class="ch-title"><i class="fa fa-history"></i> Trade History</span>
+            </div>
+            <div id="auto-trade-history" class="auto-trade-history"></div>
+          </div>
+
+          <!-- Fund Your Wallet — Multi-Platform -->
+          <div class="glass-card wallet-funding-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:16px">
+              <span class="ch-title"><i class="fa fa-wallet"></i> Fund Trading Wallet</span>
+              <span class="badge-count glow">11 METHODS</span>
+            </div>
+
+            <div class="wallet-intro">
+              <p>Fund your account through multiple secure channels. Choose any method below to deposit instantly.</p>
+            </div>
+
+            <!-- Funding Method Tabs -->
+            <div class="fund-method-tabs">
+              <button class="fm-tab active" data-fm="crypto" onclick="switchFundingMethod('crypto',this)"><i class="fab fa-bitcoin"></i> Crypto</button>
+              <button class="fm-tab" data-fm="bank" onclick="switchFundingMethod('bank',this)"><i class="fa fa-building-columns"></i> Bank Transfer</button>
+              <button class="fm-tab" data-fm="card" onclick="switchFundingMethod('card',this)"><i class="fa fa-credit-card"></i> Card</button>
+              <button class="fm-tab" data-fm="ewallet" onclick="switchFundingMethod('ewallet',this)"><i class="fa fa-wallet"></i> E-Wallets</button>
+            </div>
+
+            <!-- ═══ CRYPTO DEPOSITS ═══ -->
+            <div class="fund-panel active" id="fm-crypto">
+              <div class="wallet-addresses">
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon btc"><i class="fab fa-bitcoin"></i></div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">BTC</div>
+                      <div class="wi-full">Bitcoin Network</div>
+                    </div>
+                    <div class="wi-meta">Min: 0.0001 BTC · 2 confirmations · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" readonly />
+                    <button class="btn-copy" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon eth"><i class="fab fa-ethereum"></i></div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">ETH</div>
+                      <div class="wi-full">Ethereum (ERC-20)</div>
+                    </div>
+                    <div class="wi-meta">Min: 0.01 ETH · Gas: ~$2-5 · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon usdt"><i class="fa fa-dollar-sign" style="color:#26A17B"></i></div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">USDT</div>
+                      <div class="wi-full">Tether (ERC-20 / TRC-20)</div>
+                    </div>
+                    <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon usdc" style="background:rgba(39,117,202,0.15)">
+                      <i class="fa fa-circle-dollar-to-slot" style="color:#2775CA"></i>
+                    </div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">USDC</div>
+                      <div class="wi-full">USD Coin (ERC-20)</div>
+                    </div>
+                    <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="where-to-buy">
+                <div class="wtb-header"><i class="fa fa-shopping-cart"></i> <span>Don't have crypto? Buy instantly:</span></div>
+                <div class="wtb-platforms">
+                  <a href="https://www.coinbase.com" target="_blank" rel="noopener" class="wtb-platform">
+                    <div class="wtb-icon"><i class="fa fa-c" style="font-size:20px;color:#1652F0"></i></div>
+                    <div class="wtb-name">Coinbase</div><div class="wtb-desc">Beginner-friendly</div>
+                  </a>
+                  <a href="https://www.binance.com" target="_blank" rel="noopener" class="wtb-platform">
+                    <div class="wtb-icon"><i class="fa fa-b" style="font-size:20px;color:#F3BA2F"></i></div>
+                    <div class="wtb-name">Binance</div><div class="wtb-desc">Lowest fees</div>
+                  </a>
+                  <a href="https://www.kraken.com" target="_blank" rel="noopener" class="wtb-platform">
+                    <div class="wtb-icon"><i class="fa fa-k" style="font-size:20px;color:#5741D9"></i></div>
+                    <div class="wtb-name">Kraken</div><div class="wtb-desc">Most secure</div>
+                  </a>
+                  <a href="https://crypto.com" target="_blank" rel="noopener" class="wtb-platform">
+                    <div class="wtb-icon"><i class="fa fa-c" style="font-size:20px;color:#02558B"></i></div>
+                    <div class="wtb-name">Crypto.com</div><div class="wtb-desc">Card payments</div>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ BANK TRANSFER ═══ -->
+            <div class="fund-panel" id="fm-bank">
+              <div class="fund-method-grid">
+                <!-- Wire Transfer -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon bank"><i class="fa fa-building-columns"></i></div>
+                    <div class="fmc-title">International Wire Transfer</div>
+                    <div class="fmc-badge">1-3 Business Days</div>
+                  </div>
+                  <div class="fmc-details">
+                    <div class="fmc-row"><span class="fmc-label">Bank Name:</span><span class="fmc-val">JPMorgan Chase & Co.</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Account Name:</span><span class="fmc-val">ZEN ASSETS LLC</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Account Number:</span><span class="fmc-val fmc-mono">892-341-7620</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Routing (ABA):</span><span class="fmc-val fmc-mono">021000021</span></div>
+                    <div class="fmc-row"><span class="fmc-label">SWIFT/BIC:</span><span class="fmc-val fmc-mono">CHASUS33</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Reference:</span><span class="fmc-val fmc-mono" id="wire-ref">ZEN-USR-000</span></div>
+                  </div>
+                  <div class="fmc-limits">Min: $500 · Max: $1,000,000 · Fee: <span class="text-green">0.1%</span></div>
+                </div>
+
+                <!-- ACH Transfer -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon ach"><i class="fa fa-university"></i></div>
+                    <div class="fmc-title">ACH Transfer (US Only)</div>
+                    <div class="fmc-badge">1-2 Business Days</div>
+                  </div>
+                  <div class="fmc-details">
+                    <div class="fmc-row"><span class="fmc-label">Bank Name:</span><span class="fmc-val">JPMorgan Chase & Co.</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Account Name:</span><span class="fmc-val">ZEN ASSETS LLC</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Account Number:</span><span class="fmc-val fmc-mono">892-341-7620</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Routing (ACH):</span><span class="fmc-val fmc-mono">021000021</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Account Type:</span><span class="fmc-val">Business Checking</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Reference:</span><span class="fmc-val fmc-mono" id="ach-ref">ZEN-USR-000</span></div>
+                  </div>
+                  <div class="fmc-limits">Min: $100 · Max: $250,000 · Fee: <span class="text-green">Free</span></div>
+                </div>
+
+                <!-- SEPA Transfer -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon sepa"><i class="fa fa-euro-sign"></i></div>
+                    <div class="fmc-title">SEPA Transfer (EU/EEA)</div>
+                    <div class="fmc-badge">1 Business Day</div>
+                  </div>
+                  <div class="fmc-details">
+                    <div class="fmc-row"><span class="fmc-label">Bank Name:</span><span class="fmc-val">Deutsche Bank AG</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Beneficiary:</span><span class="fmc-val">ZEN ASSETS EU Ltd</span></div>
+                    <div class="fmc-row"><span class="fmc-label">IBAN:</span><span class="fmc-val fmc-mono">DE89 3704 0044 0532 0130 00</span></div>
+                    <div class="fmc-row"><span class="fmc-label">BIC/SWIFT:</span><span class="fmc-val fmc-mono">DEUTDEDB</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Currency:</span><span class="fmc-val">EUR (€)</span></div>
+                    <div class="fmc-row"><span class="fmc-label">Reference:</span><span class="fmc-val fmc-mono" id="sepa-ref">ZEN-USR-000</span></div>
+                  </div>
+                  <div class="fmc-limits">Min: €100 · Max: €500,000 · Fee: <span class="text-green">Free</span></div>
+                </div>
+              </div>
+
+              <div class="funding-instructions">
+                <div class="fi-title"><i class="fa fa-info-circle"></i> Bank Transfer Instructions</div>
+                <ol class="fi-steps">
+                  <li><strong>Select</strong> the appropriate transfer type for your region</li>
+                  <li><strong>Copy</strong> the bank details and paste into your banking app</li>
+                  <li><strong>Include</strong> your unique reference code (ZEN-USR-XXX) in the payment description</li>
+                  <li><strong>Send</strong> the funds — deposits are credited within 1-3 business days</li>
+                </ol>
+                <div class="fi-warning"><i class="fa fa-exclamation-triangle"></i>
+                  <span><strong>Important:</strong> Always include your reference code. Wire transfers without a reference may be delayed or returned.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ CARD PAYMENTS ═══ -->
+            <div class="fund-panel" id="fm-card">
+              <div class="fund-method-grid">
+                <div class="fund-method-card card-payment-form">
+                  <div class="fmc-header">
+                    <div class="fmc-icon card"><i class="fa fa-credit-card"></i></div>
+                    <div class="fmc-title">Credit / Debit Card</div>
+                    <div class="fmc-badge instant">Instant</div>
+                  </div>
+                  <div class="card-brands">
+                    <span class="card-brand"><i class="fab fa-cc-visa"></i></span>
+                    <span class="card-brand"><i class="fab fa-cc-mastercard"></i></span>
+                    <span class="card-brand"><i class="fab fa-cc-amex"></i></span>
+                    <span class="card-brand"><i class="fab fa-cc-discover"></i></span>
+                    <span class="card-brand"><i class="fab fa-cc-jcb"></i></span>
+                  </div>
+                  <form class="card-form" id="card-deposit-form" onsubmit="submitCardDeposit(event)">
+                    <div class="cf-row">
+                      <div class="cf-field full">
+                        <label>Cardholder Name</label>
+                        <input type="text" placeholder="John M. Smith" required autocomplete="cc-name" />
+                      </div>
+                    </div>
+                    <div class="cf-row">
+                      <div class="cf-field full">
+                        <label>Card Number</label>
+                        <div class="cf-input-icon">
+                          <input type="text" placeholder="4242 4242 4242 4242" maxlength="19" required autocomplete="cc-number" oninput="formatCardNumber(this)" />
+                          <i class="fa fa-lock"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="cf-row">
+                      <div class="cf-field">
+                        <label>Expiry</label>
+                        <input type="text" placeholder="MM/YY" maxlength="5" required autocomplete="cc-exp" oninput="formatExpiry(this)" />
+                      </div>
+                      <div class="cf-field">
+                        <label>CVV</label>
+                        <div class="cf-input-icon">
+                          <input type="text" placeholder="123" maxlength="4" required autocomplete="cc-csc" />
+                          <i class="fa fa-shield-halved"></i>
+                        </div>
+                      </div>
+                      <div class="cf-field">
+                        <label>Amount (USD)</label>
+                        <input type="number" placeholder="1,000" min="50" step="0.01" required id="card-deposit-amount" />
+                      </div>
+                    </div>
+                    <button type="submit" class="btn-fund-submit"><i class="fa fa-lock"></i> Deposit Securely</button>
+                    <div class="card-form-security">
+                      <i class="fa fa-shield-check"></i> 256-bit SSL · PCI DSS Level 1 · 3D Secure
+                    </div>
+                  </form>
+                  <div class="fmc-limits">Min: $50 · Max: $50,000 · Fee: <span style="color:#e8b960">2.9% + $0.30</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ E-WALLETS ═══ -->
+            <div class="fund-panel" id="fm-ewallet">
+              <div class="fund-method-grid">
+                <!-- PayPal -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon paypal"><i class="fab fa-paypal"></i></div>
+                    <div class="fmc-title">PayPal</div>
+                    <div class="fmc-badge instant">Instant</div>
+                  </div>
+                  <div class="fmc-desc">Send funds to our verified PayPal Business account. Supports 200+ countries and 25 currencies.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">PayPal Email:</span>
+                      <span class="fmc-val fmc-mono">deposits@zenassets.com</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('deposits@zenassets.com', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-steps">
+                    <span>1. Login to PayPal</span> → <span>2. Send Money</span> → <span>3. Paste email</span> → <span>4. Add your ZEN reference</span>
+                  </div>
+                  <div class="fmc-limits">Min: $20 · Max: $10,000 · Fee: <span style="color:#e8b960">1.5%</span> · Instant credit</div>
+                </div>
+
+                <!-- Skrill -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon skrill"><i class="fa fa-s"></i></div>
+                    <div class="fmc-title">Skrill</div>
+                    <div class="fmc-badge instant">Instant</div>
+                  </div>
+                  <div class="fmc-desc">Send funds via Skrill digital wallet. Popular in Europe, Asia, and Africa. 40+ currencies supported.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">Skrill Email:</span>
+                      <span class="fmc-val fmc-mono">skrill@zenassets.com</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('skrill@zenassets.com', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-steps">
+                    <span>1. Open Skrill</span> → <span>2. Send Money</span> → <span>3. Paste email</span> → <span>4. Use your ZEN reference</span>
+                  </div>
+                  <div class="fmc-limits">Min: $10 · Max: $25,000 · Fee: <span style="color:#e8b960">1.0%</span></div>
+                </div>
+
+                <!-- Neteller -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon neteller"><i class="fa fa-n"></i></div>
+                    <div class="fmc-title">Neteller</div>
+                    <div class="fmc-badge instant">Instant</div>
+                  </div>
+                  <div class="fmc-desc">Deposit via Neteller e-wallet. Fast, secure transfers with VIP benefits for high-volume users.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">Neteller ID:</span>
+                      <span class="fmc-val fmc-mono">neteller@zenassets.com</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('neteller@zenassets.com', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-steps">
+                    <span>1. Login to Neteller</span> → <span>2. Money Transfer</span> → <span>3. Enter email</span> → <span>4. Add reference</span>
+                  </div>
+                  <div class="fmc-limits">Min: $10 · Max: $50,000 · Fee: <span style="color:#e8b960">0.5%</span></div>
+                </div>
+
+                <!-- Perfect Money -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon perfectmoney"><i class="fa fa-money-bill"></i></div>
+                    <div class="fmc-title">Perfect Money</div>
+                    <div class="fmc-badge">1-24 Hours</div>
+                  </div>
+                  <div class="fmc-desc">Transfer using Perfect Money e-vouchers or direct wallet-to-wallet payments. Supports USD, EUR, Gold.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">PM Account (USD):</span>
+                      <span class="fmc-val fmc-mono">U38291047</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('U38291047', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">PM Account (EUR):</span>
+                      <span class="fmc-val fmc-mono">E29103856</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('E29103856', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-limits">Min: $10 · Max: $100,000 · Fee: <span class="text-green">0.5%</span></div>
+                </div>
+
+                <!-- WebMoney -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon webmoney"><i class="fa fa-w"></i></div>
+                    <div class="fmc-title">WebMoney</div>
+                    <div class="fmc-badge">Instant</div>
+                  </div>
+                  <div class="fmc-desc">Send WMZ (USD equivalent) directly to our verified WebMoney purse. International transfers accepted.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">WMZ Purse:</span>
+                      <span class="fmc-val fmc-mono">Z349102746813</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('Z349102746813', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-limits">Min: $5 · Max: $50,000 · Fee: <span class="text-green">0.8%</span></div>
+                </div>
+
+                <!-- Payoneer -->
+                <div class="fund-method-card">
+                  <div class="fmc-header">
+                    <div class="fmc-icon payoneer"><i class="fa fa-p"></i></div>
+                    <div class="fmc-title">Payoneer</div>
+                    <div class="fmc-badge">1-2 Days</div>
+                  </div>
+                  <div class="fmc-desc">Transfer funds from your Payoneer account. Accepted in 190+ countries with multi-currency support.</div>
+                  <div class="fmc-action-row">
+                    <div class="fmc-email-box">
+                      <span class="fmc-label">Payoneer Email:</span>
+                      <span class="fmc-val fmc-mono">payoneer@zenassets.com</span>
+                      <button class="btn-copy-sm" onclick="copyAddress('payoneer@zenassets.com', this)"><i class="fa fa-copy"></i></button>
+                    </div>
+                  </div>
+                  <div class="fmc-limits">Min: $50 · Max: $100,000 · Fee: <span style="color:#e8b960">1.0%</span></div>
+                </div>
+              </div>
+
+              <div class="funding-instructions">
+                <div class="fi-title"><i class="fa fa-info-circle"></i> E-Wallet Deposit Guide</div>
+                <ol class="fi-steps">
+                  <li><strong>Choose</strong> your preferred e-wallet platform above</li>
+                  <li><strong>Copy</strong> the recipient email/ID and send funds from your wallet</li>
+                  <li><strong>Include</strong> your ZEN reference code in the transaction note</li>
+                  <li><strong>Funds</strong> are credited instantly to 24 hours depending on the platform</li>
+                </ol>
+                <div class="fi-warning"><i class="fa fa-exclamation-triangle"></i>
+                  <span><strong>Important:</strong> Always use the same name on your e-wallet and ZEN ASSETS account. Mismatched names may delay verification.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Global Funding Footer -->
+            <div class="funding-footer">
+              <div class="ff-security">
+                <i class="fa fa-shield-halved"></i>
+                <span>All transactions are encrypted with 256-bit SSL and processed through PCI DSS Level 1 certified payment gateways.</span>
+              </div>
+              <div class="ff-support">
+                <i class="fa fa-headset"></i>
+                <span>Need help? Contact <a href="mailto:support@zenassets.com" style="color:#d4a574">support@zenassets.com</a> or use live chat 24/7</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Copy Trade -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:10px">
+              <span class="ch-title"><i class="fa fa-clone"></i> Elite Copy-Trade</span>
+            </div>
+            <div id="copy-trade-list" class="copy-trade-list"></div>
+          </div>
+
+          <!-- Strategy Marketplace -->
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:10px">
+              <span class="ch-title"><i class="fa fa-store"></i> Strategy Marketplace</span>
+            </div>
+            <div id="strategy-cards" class="strategy-cards"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ ANALYTICS LAB ▓▓▓ -->
+    <section id="section-analytics" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-chart-bar"></i> Analytics Lab</h1>
+          <div class="sh-breadcrumb">Deep-dive technical and quantitative analysis</div>
+        </div>
+        <div class="sh-right">
+          <select id="analytics-sym-select" class="mini-select">
+            <option>BTC/USD</option><option>ETH/USD</option><option>AAPL</option>
+            <option>NVDA</option><option>EUR/USD</option><option>XAUUSD</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">RSI (14)</span></div>
+          <div style="height:180px"><canvas id="rsi-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">MACD</span></div>
+          <div style="height:180px"><canvas id="macd-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">Bollinger Bands</span></div>
+          <div style="height:180px"><canvas id="bb-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">Volume Delta</span></div>
+          <div style="height:180px"><canvas id="vol-delta-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">Max Drawdown</span></div>
+          <div style="height:180px"><canvas id="analytics-dd-chart"></canvas></div>
+        </div>
+        <div class="glass-card chart-card-md">
+          <div class="card-header"><span class="ch-title">Market Regime</span></div>
+          <div style="height:180px"><canvas id="regime-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Correlation Matrix -->
+      <div class="glass-card" style="padding:20px;margin-top:16px">
+        <div class="card-header" style="margin-bottom:12px">
+          <span class="ch-title">Correlation Matrix</span>
+          <span class="badge-ai">QUANTITATIVE</span>
+        </div>
+        <div id="correlation-matrix" class="correlation-matrix"></div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ SIGNAL FEED ▓▓▓ -->
+    <section id="section-signals" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-satellite-dish"></i> AI Signal Feed</h1>
+          <div class="sh-breadcrumb">47-timeframe pattern recognition · Live alpha generation</div>
+        </div>
+        <div class="sh-right">
+          <span id="signals-live-count" class="status-pill green"><span class="sp-dot"></span><span>0 active</span></span>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active" data-sig-filter="all">All</button>
+        <button class="filter-btn" data-sig-filter="long">LONG</button>
+        <button class="filter-btn" data-sig-filter="short">SHORT</button>
+        <button class="filter-btn" data-sig-filter="crypto">Crypto</button>
+        <button class="filter-btn" data-sig-filter="stocks">Stocks</button>
+        <button class="filter-btn" data-sig-filter="forex">Forex</button>
+        <div class="fb-spacer"></div>
+        <div class="conf-filter-wrap">
+          <label>Min Confidence:</label>
+          <input type="range" id="conf-slider" min="50" max="99" value="60" class="qty-slider" style="width:100px" />
+          <span id="conf-slider-val">60%</span>
+        </div>
+      </div>
+
+      <div id="signals-full-grid" class="signals-full-grid"></div>
+    </section>
+
+    <!-- ▓▓▓ PLUGIN HUB ▓▓▓ -->
+    <section id="section-plugins" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-plug"></i> Plugin Hub</h1>
+          <div class="sh-breadcrumb">Extend your edge with enterprise-grade add-ons</div>
+        </div>
+      </div>
+
+      <div class="plugin-section-header">
+        <h3 class="psh-title"><i class="fa fa-bolt"></i> Active Plugins</h3>
+        <span id="active-plugin-count" class="badge-count">0</span>
+      </div>
+      <div id="active-plugins-grid" class="plugins-grid"></div>
+
+      <div class="plugin-section-header" style="margin-top:28px">
+        <h3 class="psh-title"><i class="fa fa-store"></i> Plugin Store</h3>
+        <span id="store-plugin-count" class="badge-count">0</span>
+      </div>
+      <div id="store-plugins-grid" class="plugins-grid"></div>
+    </section>
+
+    <!-- ▓▓▓ BLOCKCHAIN AUDIT ▓▓▓ -->
+    <section id="section-transparency" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-link"></i> Blockchain Transparency Ledger</h1>
+          <div class="sh-breadcrumb">Immutable on-chain audit trail · Zero-knowledge verified</div>
+        </div>
+      </div>
+
+      <div class="transparency-layout">
+        <div class="trans-main">
+          <!-- Realtime PnL chart -->
+          <div class="glass-card" style="padding:16px;margin-bottom:16px">
+            <div class="card-header" style="margin-bottom:8px"><span class="ch-title">Cumulative Real-Time P&amp;L</span></div>
+            <div style="height:160px"><canvas id="realtime-pnl-chart"></canvas></div>
+          </div>
+
+          <!-- Audit Table -->
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:12px">
+              <span class="ch-title">Transaction Audit Log</span>
+              <span class="badge-ai">BLOCKCHAIN VERIFIED</span>
+            </div>
+            <div class="table-scroll">
+              <table class="audit-table">
+                <thead>
+                  <tr><th>Timestamp</th><th>Action</th><th>Symbol</th><th>Amount</th><th>TX Hash</th><th>Block</th><th>Status</th></tr>
+                </thead>
+                <tbody id="audit-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="trans-side">
+          <div class="glass-card" style="padding:16px">
+            <div class="card-header" style="margin-bottom:12px"><span class="ch-title">Fee Structure</span></div>
+            <div id="fee-breakdown-full"></div>
+          </div>
+          <div class="glass-card" style="padding:16px;margin-top:12px">
+            <div class="card-header" style="margin-bottom:12px"><span class="ch-title">Proof of Reserve</span></div>
+            <div class="por-grid" id="por-grid">
+              <div class="por-item"><span>BTC Reserve</span><b class="up">102.4%</b></div>
+              <div class="por-item"><span>ETH Reserve</span><b class="up">100.8%</b></div>
+              <div class="por-item"><span>USDT Reserve</span><b class="up">100.0%</b></div>
+              <div class="por-item"><span>Collateral Ratio</span><b class="up">148.2%</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ▓▓▓ SECURITY CORE ▓▓▓ -->
+    <section id="section-security" class="content-section">
+      <div class="section-header">
+        <div class="sh-left">
+          <h1 class="sh-title"><i class="fa fa-shield-alt"></i> Security Command Center</h1>
+          <div class="sh-breadcrumb">HSM · MFA · Quantum-Resistant Cryptography</div>
+        </div>
+        <div class="sh-right">
+          <div class="status-pill green"><span class="sp-dot"></span>All systems secured</div>
+        </div>
+      </div>
+
+      <div class="security-grid">
+        <div class="glass-card sec-card">
+          <div class="sec-icon cyan"><i class="fa fa-lock"></i></div>
+          <div class="sec-label">Encryption</div>
+          <div class="sec-val">AES-256-GCM</div>
+          <div class="sec-status green">ACTIVE</div>
+        </div>
+        <div class="glass-card sec-card">
+          <div class="sec-icon green"><i class="fa fa-fingerprint"></i></div>
+          <div class="sec-label">MFA</div>
+          <div class="sec-val">TOTP + Biometric</div>
+          <div class="sec-status green">ENABLED</div>
+        </div>
+        <div class="glass-card sec-card">
+          <div class="sec-icon purple"><i class="fa fa-atom"></i></div>
+          <div class="sec-label">Post-Quantum</div>
+          <div class="sec-val">CRYSTALS-Kyber</div>
+          <div class="sec-status green">DEPLOYED</div>
+        </div>
+        <div class="glass-card sec-card">
+          <div class="sec-icon orange"><i class="fa fa-server"></i></div>
+          <div class="sec-label">HSM</div>
+          <div class="sec-val">FIPS 140-3 Level 4</div>
+          <div class="sec-status green">ONLINE</div>
+        </div>
+        <div class="glass-card sec-card">
+          <div class="sec-icon cyan"><i class="fa fa-eye"></i></div>
+          <div class="sec-label">Threat Detection</div>
+          <div class="sec-val">AI-Powered IDS</div>
+          <div class="sec-status green">SCANNING</div>
+        </div>
+        <div class="glass-card sec-card">
+          <div class="sec-icon red"><i class="fa fa-user-shield"></i></div>
+          <div class="sec-label">KYC / AML</div>
+          <div class="sec-val">Tier 3 Verified</div>
+          <div class="sec-status green">VERIFIED</div>
+        </div>
+      </div>
+
+      <!-- Key Stream -->
+      <div class="glass-card" style="padding:16px;margin-top:16px">
+        <div class="card-header" style="margin-bottom:8px">
+          <span class="ch-title"><i class="fa fa-key"></i> Live HSM Key Stream</span>
+          <span class="pulse-dot green-dot"></span>
+        </div>
+        <div id="key-stream" class="key-stream"></div>
+      </div>
+
+      <!-- Sessions -->
+      <div class="glass-card" style="padding:16px;margin-top:12px">
+        <div class="card-header" style="margin-bottom:12px">
+          <span class="ch-title"><i class="fa fa-desktop"></i> Active Sessions</span>
+          <button id="revoke-all-btn" class="btn btn-danger btn-xs">Revoke All Others</button>
+        </div>
+        <div id="sessions-list" class="sessions-list"></div>
+      </div>
+    </section>
+
+
+
+  </main><!-- /main-content -->
+</div><!-- /app -->
+
+
+
+<!-- ═══ SEARCH OVERLAY ═══ -->
+<div id="search-overlay" class="search-overlay">
+  <div class="search-modal">
+    <div class="search-input-wrap">
+      <i class="fa fa-search"></i>
+      <input type="text" id="search-input" placeholder="Search assets, signals, news…" autocomplete="off" />
+      <button id="search-close" class="icon-btn"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="search-results" class="search-results"></div>
+    <div class="search-shortcuts">
+      <span><kbd>↑↓</kbd> Navigate</span>
+      <span><kbd>Enter</kbd> Select</span>
+      <span><kbd>Esc</kbd> Close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ORDER CONFIRM MODAL ═══ -->
+<div id="order-confirm-modal" class="modal-backdrop">
+  <div class="modal-panel order-modal">
+    <div class="modal-body"></div>
+  </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/market-data.js"></script>
+<script src="js/user-auth.js"></script>
+<script src="js/real-data-adapter.js"></script>
+<script src="js/ai-engine.js"></script>
+<script src="js/chart-engine.js"></script>
+<script src="js/advanced-chart-engine.js"></script>
+<script src="js/chart-data-indicator.js"></script>
+<script src="js/trading.js"></script>
+<script src="js/smart-exit-engine.js"></script>
+<script src="js/auto-trader.js"></script>
+<script src="js/portfolio.js"></script>
+<script src="js/investment-returns.js"></script>
+<script src="js/plugins.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

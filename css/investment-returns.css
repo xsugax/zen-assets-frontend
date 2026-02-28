@@ -1,0 +1,206 @@
+/* ════════════════════════════════════════════════════════════
+   investment-returns.css — Investment Returns Panel Styling
+   OmniVest AI / ZEN ASSETS
+════════════════════════════════════════════════════════════ */
+
+/* ── Returns Summary Panel ────────────────────────────────── */
+.returns-summary-panel {
+  margin-bottom: 1.25rem;
+  padding: 0;
+  background: rgba(10, 14, 22, 0.65);
+  border: 1px solid rgba(212, 165, 116, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.returns-summary-panel .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(212, 165, 116, 0.03);
+}
+
+.returns-summary-panel .ch-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.returns-summary-panel .ch-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.03em;
+}
+.returns-summary-panel .ch-title i {
+  color: #d4a574;
+  margin-right: 0.35rem;
+}
+
+.returns-summary-panel .ch-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(212, 165, 116, 0.12);
+  color: #d4a574;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(212, 165, 116, 0.2);
+}
+
+.returns-summary-panel .ch-subtitle {
+  font-size: 0.75rem;
+  color: #8b98ad;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Returns Metrics Row ──────────────────────────────────── */
+.returns-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  padding: 0;
+}
+
+.ret-metric {
+  padding: 0.85rem 1rem;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.2s;
+}
+
+.ret-metric:last-child {
+  border-right: none;
+}
+
+.ret-metric:hover {
+  background: rgba(212, 165, 116, 0.04);
+}
+
+.ret-label {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+}
+
+.ret-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.ret-value.up {
+  color: #5fb38e;
+}
+
+.ret-value.down {
+  color: #d65d5d;
+}
+
+.ret-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  margin-top: 0.15rem;
+  color: #8b98ad;
+}
+
+/* ── Returns Feed ────────────────────────────────────────── */
+.returns-feed {
+  max-height: 180px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.returns-feed::-webkit-scrollbar {
+  width: 4px;
+}
+
+.returns-feed::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.returns-feed::-webkit-scrollbar-thumb {
+  background: rgba(212, 165, 116, 0.2);
+  border-radius: 2px;
+}
+
+.ret-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  font-size: 0.75rem;
+  transition: background 0.15s;
+}
+
+.ret-feed-item:hover {
+  background: rgba(212, 165, 116, 0.04);
+}
+
+.rfi-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.rfi-label {
+  color: #8b98ad;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rfi-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.rfi-amount.up {
+  color: #5fb38e;
+}
+
+.rfi-amount.down {
+  color: #d65d5d;
+}
+
+.rfi-bal {
+  font-family: 'JetBrains Mono', monospace;
+  color: #64748b;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.rfi-time {
+  color: #4a5568;
+  font-size: 0.68rem;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .returns-metrics-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ret-metric:nth-child(3) {
+    border-right: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .returns-metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ret-metric:nth-child(2n) {
+    border-right: none;
+  }
+}
