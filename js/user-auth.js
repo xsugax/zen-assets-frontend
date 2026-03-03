@@ -123,7 +123,12 @@ const UserAuth = (() => {
 
   // ── Session (synchronous — reads cache) ──────────────────
   function getSession()     { return _loadSession(); }
-  function isLoggedIn()     { return !!(_loadSession() && _loadToken()); }
+  function isLoggedIn() {
+    const session = _loadSession();
+    const token = _loadToken();
+    // Both must exist AND token must be non-empty string
+    return !!(session && token && token.length > 0);
+  }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
 
@@ -183,6 +188,28 @@ const UserAuth = (() => {
     _saveToken(null);
     _saveSession(null);
     _saveWallet(null);
+    
+    // Clear all user-specific data from localStorage
+    const userEmail = _loadSession()?.email;
+    if (userEmail) {
+      localStorage.removeItem('zen_investment_' + userEmail.toLowerCase());
+    }
+    
+    // Clear general user-data keys
+    const keysToRemove = [
+      'zen_investment_state',
+      'zen_trades',
+      'zen_auto_trades',
+      'zen_gamification',
+      'zen_portfolio',
+      'zen_positions',
+      'zen_settings',
+      'zen_watchlist',
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Also clear sessionStorage
+    sessionStorage.clear();
   }
 
   // ── Admin: User Management (async) ──────────────────────

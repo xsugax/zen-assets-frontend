@@ -2364,22 +2364,26 @@ const App = (() => {
 
     const logoutBtn = $('ud-logout');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
-        // Save trade history for current user before logging out
+      logoutBtn.addEventListener('click', async () => {
+        // Stop trading
         if (typeof AutoTrader !== 'undefined') {
-          AutoTrader.saveHistory();
           AutoTrader.stop();
         }
-        // Save investment state (do NOT reset — preserve for next login)
+        // Disconnect modules (but don't save for logout)
         if (typeof InvestmentReturns !== 'undefined') {
           InvestmentReturns.saveAndDisconnect();
         }
-        // Save gamification state
         if (typeof Gamification !== 'undefined') {
           Gamification.saveAndDisconnect();
         }
-        if (typeof UserAuth !== 'undefined') UserAuth.logout();
-        location.reload();
+        // Clear all auth data - MUST await completion before reload
+        if (typeof UserAuth !== 'undefined') {
+          await UserAuth.logout();
+        }
+        // Small delay to ensure all storage operations complete
+        setTimeout(() => {
+          location.href = window.location.pathname; // Reload to login screen
+        }, 100);
       });
     }
   }
