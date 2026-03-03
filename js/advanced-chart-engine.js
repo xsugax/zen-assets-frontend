@@ -323,19 +323,21 @@ const AdvancedChartEngine = (() => {
     const pair   = assetId.toLowerCase() + 'usdt';
     const wsUrl  = `wss://stream.binance.com:9443/ws/${pair}@kline_${tf.binance}`;
     let retries  = 0;
+    let lastUpdateTime = Date.now();
 
     function connect() {
       let ws;
       try {
         ws = new WebSocket(wsUrl);
-      } catch {
-        _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 2000);
+      } catch (err) {
+        console.error(`❌ WebSocket creation failed for ${assetId}: ${err.message}`);
+        _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 1000);
         return;
       }
 
       ws.onopen = () => {
         retries = 0;
-        console.log(`📡 Kline WS open: ${assetId} ${tf.binance}`);
+        console.log(`✅ BINANCE KLINE LIVE: ${assetId} @${tf.binance}`);
       };
 
       ws.onmessage = (e) => {
@@ -351,27 +353,47 @@ const AdvancedChartEngine = (() => {
           const c  = parseFloat(k.c);
           const v  = parseFloat(k.v);
 
-          try { candleSeries.update({ time: t, open: o, high: h, low: l, close: c }); } catch {}
-          try { volumeSeries.update({ time: t, value: v, color: c >= o ? THEME.volume.up : THEME.volume.down }); } catch {}
-
-          // Keep MarketData state in sync for tickers / order book
-          if (typeof MarketData !== 'undefined') {
-            MarketData._injectRealPrice?.(assetId, { price: c, high24h: h, low24h: l });
+          // Update candlestick immediately
+          try { 
+            candleSeries.update({ time: t, open: o, high: h, low: l, close: c }); 
+          } catch (e) {
+            console.warn(`Candlestick update error: ${e.message}`);
           }
-        } catch {}
+          
+          // Update volume immediately
+          try { 
+            volumeSeries.update({ time: t, value: v, color: c >= o ? THEME.volume.up : THEME.volume.down }); 
+          } catch (e) {
+            console.warn(`Volume update error: ${e.message}`);
+          }
+
+          // Sync real price for tickers
+          if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
+            MarketData._injectRealPrice(assetId, { price: c, high24h: h, low24h: l });
+          }
+          
+          lastUpdateTime = Date.now();
+        } catch (err) {
+          console.error(`Kline message parse error: ${err.message}`);
+        }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = (err) => {
+        console.error(`WebSocket error for ${assetId}: ${err.message}`);
+      };
+
       ws.onclose = () => {
         delete klineWsConnections[containerId];
-        if (retries < 6) {
+        console.warn(`😴 WS closed for ${assetId}`);
+        
+        if (retries < 5) {
           retries++;
-          const delay = Math.min(2000 * retries, 20000);
-          console.log(`♻️ Kline WS retry ${retries} for ${assetId} in ${delay / 1000}s`);
+          const delay = 2000 + (retries * 1000);
+          console.log(`♻️ Reconnecting ${assetId} in ${delay}ms (attempt ${retries}/5)`);
           setTimeout(connect, delay);
         } else {
-          console.warn(`⚠️ Kline WS gave up for ${assetId} — switching to REST polling`);
-          _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 2000);
+          console.warn(`📊 WS failed 5x for ${assetId} — using 500ms REST polling`);
+          _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 500);
         }
       };
 
@@ -385,26 +407,37 @@ const AdvancedChartEngine = (() => {
   function _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, intervalMs) {
     if (updateIntervals[containerId]) return; // already running
 
-    console.log(`🔄 REST fallback: ${assetId} every ${intervalMs / 1000}s`);
+    console.log(`🔄 REST FALLBACK: ${assetId} every ${intervalMs / 1000}s`);
 
     updateIntervals[containerId] = setInterval(async () => {
       if (typeof RealDataAdapter === 'undefined') return;
       try {
-        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 2);
+        // Fetch last 3 candles to ensure we get the latest
+        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 3);
         if (!candles || !candles.length) return;
 
-        // Update both the closed candle and the unclosed one (the forming one is last)
+        // Update BOTH closed and forming candles for smooth progression
         for (const c of candles) {
           const t = Math.floor(c.t / 1000);
-          try { candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); } catch {}
-          try { volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); } catch {}
+          try { 
+            candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); 
+          } catch (e) {
+            console.warn(`Candle update failed: ${e.message}`);
+          }
+          try { 
+            volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); 
+          } catch (e) {
+            console.warn(`Volume update failed: ${e.message}`);
+          }
         }
 
         const latest = candles[candles.length - 1];
-        if (typeof MarketData !== 'undefined') {
-          MarketData._injectRealPrice?.(assetId, { price: latest.c });
+        if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
+          MarketData._injectRealPrice(assetId, { price: latest.c });
         }
-      } catch {}
+      } catch (err) {
+        console.error(`REST fallback error:`, err.message);
+      }
     }, intervalMs);
   }
 
