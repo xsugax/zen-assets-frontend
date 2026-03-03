@@ -311,12 +311,16 @@ const AdvancedChartEngine = (() => {
     const assetId = symbol.split('/')[0];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
 
+    console.log(`🚀 STARTING REALTIME: ${assetId} ${tf.binance} (Crypto: ${isCrypto})`);
+
+    // AGGRESSIVE: Update every 250ms for ultra-responsive candlesticks
     if (isCrypto) {
       _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries);
-    } else {
-      // Non-crypto (stocks, forex, commodities) — REST poll every 5s
-      _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 5000);
     }
+    
+    // FALLBACK: Always run aggressive REST polling (250ms) even if WS works
+    // This ensures continuous candle updates no matter what
+    _startAggressiveRestPolling(containerId, assetId, tf, candleSeries, volumeSeries);
   }
 
   function _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries) {
@@ -439,6 +443,70 @@ const AdvancedChartEngine = (() => {
         console.error(`REST fallback error:`, err.message);
       }
     }, intervalMs);
+  }
+
+  // AGGRESSIVE polling every 250ms — guaranteed live candlesticks
+  function _startAggressiveRestPolling(containerId, assetId, tf, candleSeries, volumeSeries) {
+    if (updateIntervals[containerId]) clearInterval(updateIntervals[containerId]);
+
+    console.log(`⚡ ULTRA-AGGRESSIVE: ${assetId} updating every 250ms`);
+
+    let consecutiveErrors = 0;
+
+    updateIntervals[containerId] = setInterval(async () => {
+      try {
+        if (typeof RealDataAdapter === 'undefined') return;
+        
+        // Fetch the last 5 candles for maximum freshness
+        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 5);
+        if (!candles || !candles.length) {
+          consecutiveErrors++;
+          if (consecutiveErrors > 10) console.warn(`⚠️ ${assetId} data fetch failing repeatedly`);
+          return;
+        }
+
+        consecutiveErrors = 0;
+
+        // Update all recent candles (ensures forming candle is always fresh)
+        for (const c of candles) {
+          const t = Math.floor(c.t / 1000);
+          
+          // Update candlestick
+          try { 
+            candleSeries.update({ 
+              time: t, 
+              open: c.o, 
+              high: c.h, 
+              low: c.l, 
+              close: c.c 
+            }); 
+          } catch {}
+
+          // Update volume
+          try { 
+            volumeSeries.update({ 
+              time: t, 
+              value: c.v, 
+              color: c.c >= c.o ? THEME.volume.up : THEME.volume.down 
+            }); 
+          } catch {}
+        }
+
+        // Sync latest price to MarketData for UI updates
+        const latest = candles[candles.length - 1];
+        if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
+          MarketData._injectRealPrice(assetId, { 
+            price: latest.c,
+            high24h: latest.h,
+            low24h: latest.l,
+            vol: latest.v
+          });
+        }
+      } catch (err) {
+        consecutiveErrors++;
+        if (consecutiveErrors <= 3) console.error(`Aggressive polling error: ${err.message}`);
+      }
+    }, 250); // 250ms = 4 updates per second = LIVE TRADING FEEL
   }
 
   function stopRealtimeUpdates(containerId) {
