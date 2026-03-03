@@ -15,6 +15,8 @@ const RealDataAdapter = (() => {
   const CONFIG = {
     enableRealData: true,
     apis: {
+      // Use CORS proxy for development (https://cors-anywhere.herokuapp.com or similar)
+      // For production, deploy a backend proxy at your-domain.com/api/binance
       binance:    'https://api.binance.com/api/v3',
       binanceWs:  'wss://stream.binance.com:9443/ws',
       coingecko:  'https://api.coingecko.com/api/v3',
@@ -129,8 +131,12 @@ const RealDataAdapter = (() => {
     const interval = isMobile ? 15000 : CONFIG.updateInterval; // 15s on mobile
     setInterval(async () => {
       try {
-        const url = `${CONFIG.apis.binance}/ticker/24hr?symbol=${pair.toUpperCase()}`;
-        const r = await fetch(url); if (!r.ok) return;
+        const endpoint = `/ticker/24hr?symbol=${pair.toUpperCase()}`;
+        
+        // Use CORS-enabled proxy
+        const r = await APIProxy.fetchBinance(endpoint);
+        if (!r.ok) return;
+        
         const d = await r.json();
         processBinanceTicker(pair, {
           c: d.lastPrice, p: d.priceChange, P: d.priceChangePercent,
@@ -161,8 +167,14 @@ const RealDataAdapter = (() => {
 
     for (const pair of CONFIG.binancePairs.slice(0, 5)) {
       try {
-        const url = `${CONFIG.apis.binance}/ticker/24hr?symbol=${pair.toUpperCase()}`;
-        const r = await fetch(url); if (r.ok) { const d = await r.json(); processBinanceTicker(pair, { c: d.lastPrice, p: d.priceChange, P: d.priceChangePercent, h: d.highPrice, l: d.lowPrice, v: d.volume, q: d.quoteVolume, n: d.count, E: Date.now(), b: d.bidPrice, a: d.askPrice, o: d.openPrice }); }
+        const endpoint = `/ticker/24hr?symbol=${pair.toUpperCase()}`;
+        
+        // Use CORS-enabled proxy
+        const r = await APIProxy.fetchBinance(endpoint);
+        if (r.ok) { 
+          const d = await r.json(); 
+          processBinanceTicker(pair, { c: d.lastPrice, p: d.priceChange, P: d.priceChangePercent, h: d.highPrice, l: d.lowPrice, v: d.volume, q: d.quoteVolume, n: d.count, E: Date.now(), b: d.bidPrice, a: d.askPrice, o: d.openPrice }); 
+        }
         await delay(200);
       } catch {}
     }
@@ -187,8 +199,12 @@ const RealDataAdapter = (() => {
 
   async function fetchYahooQuote(assetId, yfSymbol) {
     try {
-      const url = `${CONFIG.apis.yahoo}/${yfSymbol}?range=1d&interval=5m&includePrePost=false`;
-      const r = await fetch(url); if (!r.ok) return;
+      const endpoint = `/${yfSymbol}?range=1d&interval=5m&includePrePost=false`;
+      
+      // Use CORS-enabled proxy
+      const r = await APIProxy.fetchYahoo(endpoint);
+      if (!r.ok) return;
+      
       const data = await r.json();
       const result = data?.chart?.result?.[0];
       if (!result) return;
@@ -235,9 +251,13 @@ const RealDataAdapter = (() => {
       const valid = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
       if (!valid.includes(interval)) interval = '1h';
       const pair = `${symbol}USDT`;
-      const url = `${CONFIG.apis.binance}/klines?symbol=${pair}&interval=${interval}&limit=${limit}`;
+      const endpoint = `/klines?symbol=${pair}&interval=${interval}&limit=${limit}`;
       console.log(`📡 Binance candles: ${pair} ${interval}`);
-      const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      
+      // Use CORS-enabled proxy
+      const r = await APIProxy.fetchBinance(endpoint);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      
       const data = await r.json();
       if (!Array.isArray(data) || !data.length) throw new Error('Empty');
       const candles = data.map(k => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] }));
@@ -259,9 +279,13 @@ const RealDataAdapter = (() => {
         '4h': { interval: '1h', range: '3mo' }, '1d': { interval: '1d', range: '1y' },
       };
       const cfg = yfMap[interval] || yfMap['1h'];
-      const url = `${CONFIG.apis.yahoo}/${yfSymbol}?range=${cfg.range}&interval=${cfg.interval}&includePrePost=false`;
+      const endpoint = `/${yfSymbol}?range=${cfg.range}&interval=${cfg.interval}&includePrePost=false`;
       console.log(`📡 Yahoo candles: ${yfSymbol} ${cfg.interval}`);
-      const r = await fetch(url); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      
+      // Use CORS-enabled proxy
+      const r = await APIProxy.fetchYahoo(endpoint);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      
       const data = await r.json();
       const result = data?.chart?.result?.[0];
       if (!result) throw new Error('No result');
