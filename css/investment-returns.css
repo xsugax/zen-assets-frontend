@@ -204,3 +204,418 @@
     border-right: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Fund Manager Panel
+════════════════════════════════════════════════════════════ */
+.fund-manager-panel {
+  margin-bottom: 1.25rem;
+  padding: 0;
+  background: rgba(10, 14, 22, 0.65);
+  border: 1px solid rgba(0, 230, 118, 0.12);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.fund-manager-panel .card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.fm-badge {
+  background: rgba(0, 230, 118, 0.15) !important;
+  color: #00e676 !important;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.fm-total-unclaimed {
+  font-size: 0.82rem;
+  color: #00e676;
+  font-weight: 600;
+}
+
+/* Info Bar */
+.fm-info-bar {
+  padding: 0.65rem 1.25rem;
+  background: rgba(0, 230, 118, 0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.5;
+}
+.fm-info-bar i {
+  color: rgba(0, 230, 118, 0.5);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Pool Cards Grid */
+.fm-pools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  padding: 1px;
+  background: rgba(255,255,255,0.04);
+}
+.fm-pool-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+  background: rgba(10, 14, 22, 0.8);
+  transition: background 0.3s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.fm-pool-card:hover {
+  background: rgba(10, 14, 22, 0.95);
+}
+.fm-pool-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+.fm-pool-card[data-pool="daily"]::before    { background: #ffb74d; }
+.fm-pool-card[data-pool="weekly"]::before   { background: #42a5f5; }
+.fm-pool-card[data-pool="trading"]::before  { background: #00e676; }
+.fm-pool-card[data-pool="interest"]::before { background: #ab47bc; }
+
+.fm-pool-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.fm-pool-card[data-pool="daily"] .fm-pool-icon    { background: rgba(255,183,77,0.12); color: #ffb74d; }
+.fm-pool-card[data-pool="weekly"] .fm-pool-icon   { background: rgba(66,165,245,0.12); color: #42a5f5; }
+.fm-pool-card[data-pool="trading"] .fm-pool-icon  { background: rgba(0,230,118,0.12); color: #00e676; }
+.fm-pool-card[data-pool="interest"] .fm-pool-icon { background: rgba(171,71,188,0.12); color: #ab47bc; }
+
+.fm-pool-info {
+  flex: 1;
+  min-width: 0;
+}
+.fm-pool-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 2px;
+}
+.fm-pool-amount {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  font-family: 'JetBrains Mono', monospace;
+  transition: color 0.3s;
+}
+.fm-pool-amount.fm-has-funds {
+  color: #00e676;
+  text-shadow: 0 0 8px rgba(0,230,118,0.3);
+}
+.fm-pool-sub {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.3);
+  margin-top: 2px;
+}
+
+/* Claim Button */
+.fm-claim-btn {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.3);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fm-claim-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.fm-claim-btn.fm-btn-active {
+  border-color: rgba(0, 230, 118, 0.35);
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.08);
+}
+.fm-claim-btn.fm-btn-active:hover {
+  background: rgba(0, 230, 118, 0.18);
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Claim All Row */
+.fm-claim-all-row {
+  padding: 0.9rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  background: rgba(10, 14, 22, 0.5);
+}
+.fm-claim-all-btn {
+  padding: 0.55rem 1.4rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.3);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fm-claim-all-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.fm-claim-all-btn.fm-btn-active {
+  border-color: rgba(0, 230, 118, 0.4);
+  color: #00e676;
+  background: linear-gradient(135deg, rgba(0,230,118,0.08), rgba(0,176,255,0.06));
+}
+.fm-claim-all-btn.fm-btn-active:hover {
+  background: linear-gradient(135deg, rgba(0,230,118,0.15), rgba(0,176,255,0.1));
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.2);
+  transform: translateY(-1px);
+}
+.fm-lifetime-claimed {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.fm-lifetime-claimed strong {
+  color: #00e676;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+}
+
+/* Claimed Flash Animation */
+.fm-claimed-flash {
+  animation: fmClaimFlash 0.8s ease-out;
+}
+@keyframes fmClaimFlash {
+  0%   { background: rgba(0, 230, 118, 0.25); }
+  100% { background: rgba(10, 14, 22, 0.8); }
+}
+
+/* Transfer Log */
+.fm-transfer-log {
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.fm-log-header {
+  padding: 0.7rem 1.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.fm-log-header i { color: rgba(0, 230, 118, 0.5); }
+.fm-log-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+.fm-log-empty {
+  padding: 1.2rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.25);
+  font-style: italic;
+}
+.fm-log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  font-size: 0.7rem;
+  transition: background 0.2s;
+}
+.fm-log-item:hover { background: rgba(255,255,255,0.02); }
+.fm-log-item i {
+  color: rgba(0, 230, 118, 0.5);
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.fm-log-label {
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+.fm-log-amount {
+  color: #00e676;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.fm-log-arrow {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.62rem;
+}
+.fm-log-time {
+  margin-left: auto;
+  color: rgba(255,255,255,0.25);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+/* ── Fund Manager Responsive ──────────────────────────────── */
+@media (max-width: 768px) {
+  .fm-pools-grid {
+    grid-template-columns: 1fr;
+  }
+  .fm-pool-card {
+    padding: 0.8rem 1rem;
+  }
+  .fm-claim-all-row {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .fm-claim-all-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .fm-pool-amount { font-size: 1rem; }
+  .fm-log-arrow { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FUND MANAGER V2 — Processing Overlay & Claim Effects
+═══════════════════════════════════════════════════════════ */
+
+/* Pending Pulse (total unclaimed badge) */
+.fm-pending-pulse {
+  animation: fmPendingPulse 1.5s ease-in-out infinite;
+}
+@keyframes fmPendingPulse {
+  0%, 100% { color: #00e676; text-shadow: 0 0 4px rgba(0,230,118,0.2); }
+  50%      { color: #69f0ae; text-shadow: 0 0 12px rgba(0,230,118,0.5); }
+}
+
+/* Extended Claimed Flash */
+@keyframes fmClaimFlash {
+  0%   { background: rgba(0, 230, 118, 0.3); box-shadow: inset 0 0 30px rgba(0,230,118,0.15); }
+  50%  { background: rgba(0, 230, 118, 0.12); }
+  100% { background: rgba(10, 14, 22, 0.8); box-shadow: none; }
+}
+
+/* ── Fund Claim Processing Overlay ─────────────────────── */
+.fm-claim-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fmOverlayIn 0.3s ease-out;
+}
+@keyframes fmOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fm-process-card {
+  background: linear-gradient(145deg, rgba(15,20,30,0.98), rgba(10,14,22,0.95));
+  border: 1px solid rgba(0,230,118,0.2);
+  border-radius: 18px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  min-width: 340px;
+  max-width: 420px;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 40px rgba(0,230,118,0.08);
+}
+.fm-process-icon {
+  font-size: 2.5rem;
+  color: #00e676;
+  margin-bottom: 1rem;
+}
+.fm-process-icon i { transition: all 0.3s; }
+.fm-process-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #00e676;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 0 20px rgba(0,230,118,0.3);
+}
+.fm-process-status {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 1.2rem;
+  transition: all 0.3s;
+}
+.fm-process-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+}
+.fm-process-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00e676, #00bcd4);
+  border-radius: 4px;
+  transition: width 0.5s ease-out;
+  box-shadow: 0 0 10px rgba(0,230,118,0.4);
+}
+.fm-process-steps {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.25);
+}
+.fm-process-steps span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.fm-process-steps span i {
+  font-size: 0.55rem;
+}
+.fm-process-success .fm-process-icon { color: #00e676; }
+.fm-process-success .fm-process-icon i {
+  animation: fmCheckBounce 0.5s ease-out;
+}
+.fm-process-success .fm-process-amount {
+  animation: fmAmountGlow 0.8s ease-out;
+}
+.fm-process-success .fm-process-status {
+  color: #00e676;
+  font-weight: 600;
+  font-size: 1rem;
+}
+@keyframes fmCheckBounce {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes fmAmountGlow {
+  0%   { text-shadow: 0 0 30px rgba(0,230,118,0.8); transform: scale(1.1); }
+  100% { text-shadow: 0 0 20px rgba(0,230,118,0.3); transform: scale(1); }
+}
+
+

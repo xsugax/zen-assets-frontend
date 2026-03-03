@@ -21,13 +21,86 @@ const Trading = (() => {
   // ── Order History ────────────────────────────────────────
   const orderLog = [];
 
-  // ── Copy Traders ─────────────────────────────────────────
+  // ── Copy Traders (Live Trading) ───────────────────────────
   const copyTraders = [
-    { id: 'ct1', name: 'CryptoWolf',  avatar: 'W', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: true,  subscribers: 3841, copiedBal: 5000 },
-    { id: 'ct2', name: 'QuantEdge',   avatar: 'Q', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: true,  subscribers: 2150, copiedBal: 2500 },
-    { id: 'ct3', name: 'IronAlpha',   avatar: 'I', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0 },
-    { id: 'ct4', name: 'SilverDelta', avatar: 'S', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: true,  subscribers: 980,  copiedBal: 1000 },
+    { id: 'ct1', name: 'CryptoWolf',  avatar: '🐺', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: false, subscribers: 3841, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Momentum' },
+    { id: 'ct2', name: 'QuantEdge',   avatar: '⚡', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: false, subscribers: 2150, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Mean Reversion' },
+    { id: 'ct3', name: 'IronAlpha',   avatar: '🦾', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Breakout' },
+    { id: 'ct4', name: 'SilverDelta', avatar: '🔮', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: false, subscribers: 980,  copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Scalping' },
   ];
+
+  // Copy trader execution engine — runs periodically
+  let _copyTradeTimer = null;
+
+  function startCopyTradeEngine() {
+    if (_copyTradeTimer) return;
+    _copyTradeTimer = setInterval(() => {
+      const active = copyTraders.filter(t => t.active);
+      if (active.length === 0) return;
+
+      active.forEach(trader => {
+        // Each active trader has a chance to execute a trade every interval
+        const timeSinceLast = Date.now() - trader.lastTradeTime;
+        if (timeSinceLast < 40000) return; // Min 40s between trades per trader
+
+        if (Math.random() < 0.3) { // 30% chance each tick
+          executeCopyTrade(trader);
+        }
+      });
+    }, 15000); // Check every 15 seconds
+  }
+
+  function executeCopyTrade(trader) {
+    const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'XRP/USD'];
+    const sym = symbols[Math.floor(Math.random() * symbols.length)];
+    const asset = MarketData.getAllAssets().find(a => a.sym === sym || a.id === sym.split('/')[0]);
+    if (!asset) return;
+
+    const side = Math.random() > 0.4 ? 'long' : 'short';
+    const wr = parseFloat(trader.winRate) / 100;
+    const isWin = Math.random() < wr;
+
+    // Use 1-3% of copied balance
+    const tradePct = 0.01 + Math.random() * 0.02;
+
+    let portfolioValue = 100000;
+    if (typeof InvestmentReturns !== 'undefined') {
+      const snap = InvestmentReturns.getSnapshot();
+      if (snap.walletBalance > 0) portfolioValue = snap.walletBalance;
+    }
+    const tradeValue = portfolioValue * tradePct;
+
+    // Calculate PnL
+    let pnl;
+    if (isWin) {
+      pnl = tradeValue * (0.008 + Math.random() * 0.015); // 0.8%-2.3% win
+    } else {
+      pnl = -(tradeValue * (0.002 + Math.random() * 0.004)); // 0.2%-0.6% loss
+    }
+
+    // Credit/debit to wallet
+    if (typeof InvestmentReturns !== 'undefined') {
+      if (pnl > 0) {
+        InvestmentReturns.creditTradingProfit(pnl, { symbol: sym, side, source: `Copy: ${trader.name}` });
+      } else {
+        InvestmentReturns.debitTradingLoss(Math.abs(pnl), { symbol: sym, side, source: `Copy: ${trader.name}` });
+      }
+    }
+
+    trader.totalCopied += Math.abs(pnl);
+    trader.tradesExecuted++;
+    trader.lastTradeTime = Date.now();
+    trader.copiedBal += pnl;
+
+    // Live subscriber count fluctuation
+    trader.subscribers += Math.floor(Math.random() * 5 - 1);
+
+    _log(`COPY [${trader.name}] ${side.toUpperCase()} ${sym} PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
+  }
+
+  function stopCopyTradeEngine() {
+    if (_copyTradeTimer) { clearInterval(_copyTradeTimer); _copyTradeTimer = null; }
+  }
 
   // ── Strategies ───────────────────────────────────────────
   const strategies = [
@@ -120,8 +193,20 @@ const Trading = (() => {
     const t = copyTraders.find(c => c.id === id);
     if (!t) return;
     t.active = !t.active;
-    if (t.active) t.copiedBal = 1000 + randI(0, 4000);
-    else          t.copiedBal = 0;
+    if (t.active) {
+      t.copiedBal = 0;
+      t.tradesExecuted = 0;
+      t.totalCopied = 0;
+      t.lastTradeTime = 0;
+      startCopyTradeEngine(); // Ensure engine is running
+      // Gamification: track copy trader activation
+      if (typeof Gamification !== 'undefined') Gamification.trackCopyTrader();
+    } else {
+      t.copiedBal = 0;
+      t.tradesExecuted = 0;
+      // Stop engine if no traders are active
+      if (!copyTraders.some(c => c.active)) stopCopyTradeEngine();
+    }
   }
 
   // ── Fee Calculator ───────────────────────────────────────

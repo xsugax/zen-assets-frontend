@@ -1,81 +1,65 @@
 /* ════════════════════════════════════════════════════════════
    user-auth.js — User Authentication & Admin Control System
-   OmniVest AI / ZEN ASSETS
+   ZEN ASSETS — API-Connected Version
 
-   Features:
-   ─ Registration with tier selection
-   ─ Login with credential validation
-   ─ User profile management (tier-locked)
-   ─ Admin panel: user CRUD, tier override, earnings view
-   ─ All state persisted via localStorage
+   Talks to the Node.js backend for real authentication.
+   Falls back to cached localStorage session data for
+   synchronous checks (isLoggedIn, isAdmin, etc.).
+
+   Backend: POST /api/auth/register, /login, /logout, GET /me
+            GET/POST /api/admin/*, /api/wallet/*
 ════════════════════════════════════════════════════════════ */
 
 const UserAuth = (() => {
   'use strict';
 
-  // ── Constants ────────────────────────────────────────────
-  const STORAGE_USERS   = 'zen_users';
+  // ── Configuration ────────────────────────────────────────
+  const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:4000/api'
+    : 'https://api.zenassets.tech/api';
+
   const STORAGE_SESSION = 'zen_session';
-  const ADMIN_EMAIL     = 'admin@zenassets.com';
-  const ADMIN_PASS      = 'ZenAdmin2026!';
+  const STORAGE_TOKEN   = 'zen_token';
+  const STORAGE_WALLET  = 'zen_wallet';
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   minDeposit: 5000,    apyRange: '15–22%',  color: '#cd7f32', icon: 'fa-medal'          },
-    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '22–32%',  color: '#c0c0c0', icon: 'fa-award'          },
-    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '32–45%',  color: '#d4a574', icon: 'fa-trophy'         },
-    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '45–65%',  color: '#e5e4e2', icon: 'fa-gem'            },
-    diamond:  { label: 'Diamond',  minDeposit: 1000000, apyRange: '65–85%',  color: '#b9f2ff', icon: 'fa-crown'          },
+    bronze:   { label: 'Bronze',   minDeposit: 5000,    apyRange: '15–22%',  color: '#cd7f32', icon: 'fa-medal'  },
+    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '22–32%',  color: '#c0c0c0', icon: 'fa-award'  },
+    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '32–45%',  color: '#d4a574', icon: 'fa-trophy' },
+    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '45–65%',  color: '#e5e4e2', icon: 'fa-gem'    },
+    diamond:  { label: 'Diamond',  minDeposit: 1000000, apyRange: '65–85%',  color: '#b9f2ff', icon: 'fa-crown'  },
   };
 
-  // ── Helpers ──────────────────────────────────────────────
-  function _uid() { return 'u_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  // ── Local Cache Helpers ──────────────────────────────────
+  function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
+  function _saveSession(s) { s ? localStorage.setItem(STORAGE_SESSION, JSON.stringify(s)) : localStorage.removeItem(STORAGE_SESSION); }
+  function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || null; }
+  function _saveToken(t)   { t ? localStorage.setItem(STORAGE_TOKEN, t) : localStorage.removeItem(STORAGE_TOKEN); }
+  function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
+  function _saveWallet(w)  { w ? localStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : localStorage.removeItem(STORAGE_WALLET); }
 
-  function _hash(str) {
-    // Simple hash (NOT production crypto — demo only)
-    let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-    }
-    return 'h$' + Math.abs(h).toString(16);
-  }
+  // ── API Helper ───────────────────────────────────────────
+  async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = _loadToken();
+    if (auth && token) headers['Authorization'] = `Bearer ${token}`;
 
-  function _loadUsers() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_USERS)) || {}; } catch { return {}; }
-  }
-  function _saveUsers(users) { localStorage.setItem(STORAGE_USERS, JSON.stringify(users)); }
+    const opts = { method, headers };
+    if (body) opts.body = JSON.stringify(body);
 
-  function _loadSession() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; }
-  }
-  function _saveSession(sess) {
-    if (sess) localStorage.setItem(STORAGE_SESSION, JSON.stringify(sess));
-    else localStorage.removeItem(STORAGE_SESSION);
-  }
-
-  // ── Ensure Admin Exists ──────────────────────────────────
-  function _ensureAdmin() {
-    const users = _loadUsers();
-    const adminKey = ADMIN_EMAIL.toLowerCase();
-    if (!users[adminKey]) {
-      users[adminKey] = {
-        id: 'u_admin',
-        email: ADMIN_EMAIL,
-        password: _hash(ADMIN_PASS),
-        fullName: 'ZEN Administrator',
-        tier: 'diamond',
-        role: 'admin',
-        deposit: 0,
-        createdAt: Date.now(),
-        status: 'active',
-        lastLogin: null,
-        earningsOverride: null,
-      };
-      _saveUsers(users);
+    try {
+      const resp = await fetch(`${API_BASE}${endpoint}`, opts);
+      const data = await resp.json();
+      if (!resp.ok) return { ok: false, status: resp.status, error: data.error || 'Request failed' };
+      return { ok: true, ...data };
+    } catch (err) {
+      console.error('API error:', err);
+      return { ok: false, error: 'Server unreachable. Please check your connection.' };
     }
   }
 
-  // ── Register ─────────────────────────────────────────────
-  function register({ fullName, email, password, tier, deposit }) {
+  // ── Register (async) ────────────────────────────────────
+  async function register({ fullName, email, password, tier, deposit }) {
     if (!fullName || !email || !password || !tier) {
       return { ok: false, error: 'All fields are required.' };
     }
@@ -86,175 +70,288 @@ const UserAuth = (() => {
       return { ok: false, error: 'Invalid membership tier.' };
     }
     const minDep = TIERS[tier].minDeposit;
-    const dep    = parseFloat(deposit) || 0;
+    const dep = parseFloat(deposit) || 0;
     if (dep < minDep) {
       return { ok: false, error: `${TIERS[tier].label} tier requires a minimum deposit of $${minDep.toLocaleString()}.` };
     }
 
-    const users = _loadUsers();
-    const key   = email.toLowerCase().trim();
-    if (users[key]) {
-      return { ok: false, error: 'An account with this email already exists.' };
+    const result = await _api('/auth/register', {
+      method: 'POST',
+      body: { fullName, email, password, tier, depositAmount: dep },
+      auth: false,
+    });
+
+    if (result.ok) {
+      return { ok: true, user: result.user };
     }
-
-    const user = {
-      id: _uid(),
-      email: key,
-      password: _hash(password),
-      fullName: fullName.trim(),
-      tier,
-      role: 'client',
-      deposit: dep,
-      createdAt: Date.now(),
-      status: 'active',
-      lastLogin: Date.now(),
-      earningsOverride: null,
-    };
-
-    users[key] = user;
-    _saveUsers(users);
-
-    // Auto-login after registration
-    const session = { userId: user.id, email: key, role: 'client', tier, fullName: user.fullName, loginAt: Date.now() };
-    _saveSession(session);
-
-    return { ok: true, user, session };
+    return result;
   }
 
-  // ── Login ────────────────────────────────────────────────
-  function login(email, password) {
+  // ── Login (async) ───────────────────────────────────────
+  async function login(email, password) {
     if (!email || !password) return { ok: false, error: 'Email and password are required.' };
 
-    const users = _loadUsers();
-    const key   = email.toLowerCase().trim();
-    const user  = users[key];
+    const result = await _api('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    });
 
-    if (!user) return { ok: false, error: 'No account found with this email.' };
-    if (user.password !== _hash(password)) return { ok: false, error: 'Incorrect password.' };
-    if (user.status === 'suspended') return { ok: false, error: 'Your account has been suspended. Contact support.' };
+    if (result.ok) {
+      // Store JWT
+      _saveToken(result.token);
 
-    user.lastLogin = Date.now();
-    _saveUsers(users);
+      // Cache session data locally (for synchronous checks)
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _saveSession(session);
 
-    const session = { userId: user.id, email: key, role: user.role, tier: user.tier, fullName: user.fullName, loginAt: Date.now() };
-    _saveSession(session);
+      // Cache wallet
+      if (result.wallet) _saveWallet(result.wallet);
 
-    return { ok: true, user, session };
+      return { ok: true, user: result.user, session, wallet: result.wallet };
+    }
+
+    return result;
   }
 
-  // ── Session ──────────────────────────────────────────────
-  function getSession()   { return _loadSession(); }
-  function isLoggedIn()   { return !!_loadSession(); }
-  function isAdmin()      { const s = _loadSession(); return s && s.role === 'admin'; }
+  // ── Session (synchronous — reads cache) ──────────────────
+  function getSession()     { return _loadSession(); }
+  function isLoggedIn()     { return !!(_loadSession() && _loadToken()); }
+  function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
+
   function getCurrentUser() {
     const s = _loadSession();
     if (!s) return null;
-    const users = _loadUsers();
-    return users[s.email] || null;
-  }
-
-  function logout() {
-    _saveSession(null);
-  }
-
-  // ── Admin: User Management ───────────────────────────────
-  function adminGetAllUsers() {
-    if (!isAdmin()) return [];
-    const users = _loadUsers();
-    return Object.values(users).map(u => ({
-      id: u.id,
-      email: u.email,
-      fullName: u.fullName,
-      tier: u.tier,
-      role: u.role,
-      deposit: u.deposit,
-      status: u.status,
-      createdAt: u.createdAt,
-      lastLogin: u.lastLogin,
-      earningsOverride: u.earningsOverride,
-    }));
-  }
-
-  function adminUpdateUser(email, updates) {
-    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
-    const users = _loadUsers();
-    const key   = email.toLowerCase().trim();
-    if (!users[key]) return { ok: false, error: 'User not found.' };
-
-    // Apply safe updates
-    if (updates.tier && TIERS[updates.tier]) users[key].tier = updates.tier;
-    if (updates.status) users[key].status = updates.status;
-    if (updates.deposit !== undefined) users[key].deposit = parseFloat(updates.deposit) || 0;
-    if (updates.fullName) users[key].fullName = updates.fullName;
-    if (updates.earningsOverride !== undefined) users[key].earningsOverride = updates.earningsOverride;
-
-    _saveUsers(users);
-    return { ok: true };
-  }
-
-  function adminDeleteUser(email) {
-    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
-    const users = _loadUsers();
-    const key   = email.toLowerCase().trim();
-    if (key === ADMIN_EMAIL.toLowerCase()) return { ok: false, error: 'Cannot delete admin account.' };
-    delete users[key];
-    _saveUsers(users);
-    return { ok: true };
-  }
-
-  function adminGetStats() {
-    if (!isAdmin()) return null;
-    const users = Object.values(_loadUsers());
-    const clients = users.filter(u => u.role === 'client');
-    const tierCounts = {};
-    let totalDeposits = 0;
-    for (const u of clients) {
-      tierCounts[u.tier] = (tierCounts[u.tier] || 0) + 1;
-      totalDeposits += u.deposit || 0;
-    }
     return {
-      totalUsers: clients.length,
-      activeUsers: clients.filter(u => u.status === 'active').length,
-      suspendedUsers: clients.filter(u => u.status === 'suspended').length,
-      tierCounts,
-      totalDeposits,
-      avgDeposit: clients.length ? totalDeposits / clients.length : 0,
+      id: s.userId,
+      email: s.email,
+      fullName: s.fullName,
+      tier: s.tier,
+      role: s.role,
+      deposit: (_loadWallet() || {}).totalDeposited || 0,
     };
   }
 
-  // ── Tier Upgrade Request ─────────────────────────────────
-  function requestUpgrade(newTier) {
-    const s = _loadSession();
-    if (!s) return { ok: false, error: 'Not logged in.' };
-    if (!TIERS[newTier]) return { ok: false, error: 'Invalid tier.' };
+  // ── Refresh session from API (async) ─────────────────────
+  async function refreshSession() {
+    if (!_loadToken()) return null;
+    const result = await _api('/auth/me');
+    if (result.ok) {
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
+      return { user: result.user, wallet: result.wallet };
+    } else {
+      if (result.status === 401) {
+        _saveToken(null);
+        _saveSession(null);
+        _saveWallet(null);
+      }
+      return null;
+    }
+  }
 
+  // ── Get Wallet (async) ──────────────────────────────────
+  async function getWallet() {
+    const result = await _api('/wallet');
+    if (result.ok) { _saveWallet(result); return result; }
+    return _loadWallet();
+  }
+
+  function getCachedWallet() { return _loadWallet(); }
+
+  // ── Logout (async-safe but also works sync) ─────────────
+  async function logout() {
+    if (_loadToken()) {
+      try { await _api('/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
+    }
+    _saveToken(null);
+    _saveSession(null);
+    _saveWallet(null);
+  }
+
+  // ── Admin: User Management (async) ──────────────────────
+  async function adminGetAllUsers(params = {}) {
+    if (!isAdmin()) return [];
+    const qs = new URLSearchParams(params).toString();
+    const result = await _api(`/admin/users${qs ? '?' + qs : ''}`);
+    return result.ok ? result.users : [];
+  }
+
+  async function adminGetUser(userId) {
+    if (!isAdmin()) return null;
+    return _api(`/admin/users/${userId}`);
+  }
+
+  async function adminUpdateUser(userId, updates) {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api(`/admin/users/${userId}`, { method: 'PATCH', body: updates });
+  }
+
+  async function adminDeleteUser(userId) {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api(`/admin/users/${userId}`, { method: 'DELETE' });
+  }
+
+  async function adminCreditUser(userId, amount, notes = '') {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api(`/admin/users/${userId}/credit`, { method: 'POST', body: { amount, notes } });
+  }
+
+  async function adminDebitUser(userId, amount, notes = '') {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api(`/admin/users/${userId}/debit`, { method: 'POST', body: { amount, notes } });
+  }
+
+  async function adminGetWithdrawals() {
+    if (!isAdmin()) return [];
+    const result = await _api('/admin/withdrawals');
+    return result.ok ? result.withdrawals : [];
+  }
+
+  async function adminApproveWithdrawal(txId) {
+    return _api(`/admin/withdrawals/${txId}/approve`, { method: 'POST' });
+  }
+
+  async function adminRejectWithdrawal(txId, reason = '') {
+    return _api(`/admin/withdrawals/${txId}/reject`, { method: 'POST', body: { reason } });
+  }
+
+  async function adminGetStats() {
+    if (!isAdmin()) return null;
+    const result = await _api('/admin/stats');
+    return result.ok ? result : null;
+  }
+
+  async function adminGetAuditLog(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return _api(`/admin/audit${qs ? '?' + qs : ''}`);
+  }
+
+  // ── Wallet Operations (async) ───────────────────────────
+  async function requestDeposit(amount, method, reference = '') {
+    return _api('/wallet/deposit', { method: 'POST', body: { amount, method, reference } });
+  }
+
+  async function requestWithdrawal(amount, method, address = '', notes = '') {
+    return _api('/wallet/withdraw', { method: 'POST', body: { amount, method, address, notes } });
+  }
+
+  async function claimEarnings(amount, pool = 'all') {
+    return _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
+  }
+
+  async function getTransactions(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return _api(`/wallet/transactions${qs ? '?' + qs : ''}`);
+  }
+
+  // ── Tier Upgrade Request ─────────────────────────────────
+  async function requestUpgrade(newTier) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    if (!TIERS[newTier]) return { ok: false, error: 'Invalid tier.' };
+    const s = _loadSession();
     const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
     const curIdx = tierOrder.indexOf(s.tier);
     const newIdx = tierOrder.indexOf(newTier);
     if (newIdx <= curIdx) return { ok: false, error: 'You can only upgrade to a higher tier.' };
-
-    // In production, this would create a pending request for admin approval
-    // For now, store as a flag on the user
-    const users = _loadUsers();
-    if (users[s.email]) {
-      users[s.email].upgradeRequest = { tier: newTier, requestedAt: Date.now() };
-      _saveUsers(users);
-    }
     return { ok: true, message: `Upgrade request to ${TIERS[newTier].label} submitted. An admin will review your request.` };
+  }
+
+  // ── Trade History ────────────────────────────────────────
+  async function saveTrade(tradeData) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    return _api('/trades', { method: 'POST', body: tradeData });
+  }
+
+  async function getTrades(params = {}) {
+    if (!isLoggedIn()) return { trades: [], total: 0 };
+    const qs = new URLSearchParams(params).toString();
+    return _api(`/trades${qs ? '?' + qs : ''}`);
+  }
+
+  async function getTradeStats() {
+    if (!isLoggedIn()) return null;
+    const result = await _api('/trades/stats');
+    return result.ok !== false ? result : null;
+  }
+
+  // ── KYC ─────────────────────────────────────────────────
+  async function submitKYC(docType, docFront, docBack = null, selfie = null, meta = {}) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    return _api('/kyc/submit', {
+      method: 'POST',
+      body: { doc_type: docType, doc_front: docFront, doc_back: docBack, selfie, ...meta },
+    });
+  }
+
+  async function getKYCStatus() {
+    if (!isLoggedIn()) return null;
+    return _api('/kyc/status');
+  }
+
+  // ── Stripe Deposits ──────────────────────────────────────
+  async function getStripePublishableKey() {
+    const result = await _api('/stripe/publishable-key');
+    return result.key || null;
+  }
+
+  async function createStripeSession(amount) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    if (!amount || isNaN(amount) || Number(amount) < 10) {
+      return { ok: false, error: 'Minimum deposit is $10.' };
+    }
+    return _api('/stripe/create-session', { method: 'POST', body: { amount: Number(amount) } });
+  }
+
+  // ── Redirect to Stripe Checkout ──────────────────────────
+  async function redirectToStripe(amount) {
+    const result = await createStripeSession(amount);
+    if (!result.ok && !result.url) {
+      return { ok: false, error: result.error || 'Failed to create payment session.' };
+    }
+    if (result.url) {
+      window.location.href = result.url;
+      return { ok: true };
+    }
+    return result;
   }
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
-    _ensureAdmin();
+    if (_loadToken()) refreshSession().catch(() => {});
   }
 
   return {
     init, register, login, logout,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
+    refreshSession,
+    getWallet, getCachedWallet,
+    requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
+    adminGetAllUsers, adminGetUser, adminUpdateUser, adminDeleteUser,
+    adminCreditUser, adminDebitUser,
+    adminGetWithdrawals, adminApproveWithdrawal, adminRejectWithdrawal,
+    adminGetStats, adminGetAuditLog,
     requestUpgrade,
-    adminGetAllUsers, adminUpdateUser, adminDeleteUser, adminGetStats,
+    saveTrade, getTrades, getTradeStats,
+    submitKYC, getKYCStatus,
+    getStripePublishableKey, createStripeSession, redirectToStripe,
     TIERS,
   };
 })();

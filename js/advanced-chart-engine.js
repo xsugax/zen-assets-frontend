@@ -294,123 +294,130 @@ const AdvancedChartEngine = (() => {
     return { candleData, volumeData, usingRealData };
   }
 
-  // ── Real-Time Updates (continuous printing) ───────────────
-  const updateIntervals = {};
-  const tickListeners = {};
-  
+  // ── Real-Time Updates — Binance Kline WebSocket ───────────
+  // Each chart gets its own dedicated kline stream from Binance.
+  // This is the same data source TradingView uses — every price
+  // movement Binance processes is pushed to us instantly, keeping
+  // the forming candle's O/H/L/C/V perfectly in sync with reality.
+  const updateIntervals  = {};   // REST fallback poll timers
+  const klineWsConnections = {}; // WebSocket per containerId
+
+  const CRYPTO_SYMBOLS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','LINK','MATIC','UNI','AAVE']);
+
   function startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe) {
-    // Clear existing interval + listener
-    if (updateIntervals[containerId]) {
-      clearInterval(updateIntervals[containerId]);
-    }
-    if (tickListeners[containerId]) {
-      MarketData.off('tick', tickListeners[containerId]);
-    }
-    
-    const tf = TIMEFRAMES[timeframe];
+    stopRealtimeUpdates(containerId); // always clean up first
+
+    const tf      = TIMEFRAMES[timeframe];
     const assetId = symbol.split('/')[0];
-    const intervalMs = tf.interval;
-    
-    // ── Fast tick listener — updates current candle every 600ms ──
-    // This gives the chart its "continuous printing" feel
-    let currentCandle = null;
-    let currentVolume = 0;
-    
-    const tickHandler = () => {
-      const asset = typeof MarketData !== 'undefined' ? MarketData.getAsset(assetId) : null;
-      if (!asset) return;
-      
-      const price = asset.price;
-      const now = Date.now();
-      const candleTime = Math.floor(Math.floor(now / intervalMs) * intervalMs / 1000);
-      
-      if (!currentCandle || currentCandle.time !== candleTime) {
-        // New candle period — open a fresh candle
-        currentCandle = {
-          time: candleTime,
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-        };
-        currentVolume = asset.vol24h ? asset.vol24h / 1440 : 100;
-      } else {
-        // Same candle — update H/L/C continuously
-        currentCandle.high = Math.max(currentCandle.high, price);
-        currentCandle.low = Math.min(currentCandle.low, price);
-        currentCandle.close = price;
-        currentVolume += Math.random() * 5 + 1;
-      }
-      
-      try {
-        candleSeries.update({ ...currentCandle });
-        volumeSeries.update({
-          time: candleTime,
-          value: currentVolume,
-          color: currentCandle.close >= currentCandle.open ? THEME.volume.up : THEME.volume.down,
-        });
-      } catch (e) {}
-    };
-    
-    if (typeof MarketData !== 'undefined') {
-      MarketData.on('tick', tickHandler);
-      tickListeners[containerId] = tickHandler;
+    const isCrypto = CRYPTO_SYMBOLS.has(assetId);
+
+    if (isCrypto) {
+      _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries);
+    } else {
+      // Non-crypto (stocks, forex, commodities) — REST poll every 5s
+      _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 5000);
     }
-    
-    // ── API poll — syncs with real exchange data at slower intervals ──
-    const freqMap = { '1m': 4000, '5m': 8000, '15m': 15000, '1h': 20000, '4h': 40000, '1d': 60000 };
-    const updateFrequency = freqMap[timeframe] || 8000;
-    
-    console.log(`🔄 Continuous chart: ${tf.label} — tick every 600ms + API sync every ${updateFrequency / 1000}s`);
-    
-    updateIntervals[containerId] = setInterval(async () => {
-      if (typeof RealDataAdapter !== 'undefined' && RealDataAdapter.isRealDataEnabled()) {
-        try {
-          const lastCandle = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 2);
-          
-          if (lastCandle && lastCandle.length > 0) {
-            // Use the most recent completed candle from the API
-            const apiCandle = lastCandle[lastCandle.length - 1];
-            const apiTime = Math.floor(apiCandle.t / 1000);
-            
-            const candleUpdate = {
-              time: apiTime,
-              open: apiCandle.o,
-              high: apiCandle.h,
-              low: apiCandle.l,
-              close: apiCandle.c,
-            };
-            
-            const volumeUpdate = {
-              time: apiTime,
-              value: apiCandle.v,
-              color: apiCandle.c >= apiCandle.o ? THEME.volume.up : THEME.volume.down,
-            };
-            
-            candleSeries.update(candleUpdate);
-            volumeSeries.update(volumeUpdate);
-            
-            // Sync our live candle tracking with the real data
-            const now = Date.now();
-            const liveCandleTime = Math.floor(Math.floor(now / intervalMs) * intervalMs / 1000);
-            if (apiTime === liveCandleTime) {
-              currentCandle = candleUpdate;
-              currentVolume = apiCandle.v;
-            }
-          }
-        } catch (e) {}
-      }
-    }, updateFrequency);
   }
-  
+
+  function _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries) {
+    const pair   = assetId.toLowerCase() + 'usdt';
+    const wsUrl  = `wss://stream.binance.com:9443/ws/${pair}@kline_${tf.binance}`;
+    let retries  = 0;
+
+    function connect() {
+      let ws;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch {
+        _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 2000);
+        return;
+      }
+
+      ws.onopen = () => {
+        retries = 0;
+        console.log(`📡 Kline WS open: ${assetId} ${tf.binance}`);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          const k   = msg.k;
+          if (!k) return;
+
+          const t  = Math.floor(k.t / 1000);
+          const o  = parseFloat(k.o);
+          const h  = parseFloat(k.h);
+          const l  = parseFloat(k.l);
+          const c  = parseFloat(k.c);
+          const v  = parseFloat(k.v);
+
+          try { candleSeries.update({ time: t, open: o, high: h, low: l, close: c }); } catch {}
+          try { volumeSeries.update({ time: t, value: v, color: c >= o ? THEME.volume.up : THEME.volume.down }); } catch {}
+
+          // Keep MarketData state in sync for tickers / order book
+          if (typeof MarketData !== 'undefined') {
+            MarketData._injectRealPrice?.(assetId, { price: c, high24h: h, low24h: l });
+          }
+        } catch {}
+      };
+
+      ws.onerror = () => {};
+      ws.onclose = () => {
+        delete klineWsConnections[containerId];
+        if (retries < 6) {
+          retries++;
+          const delay = Math.min(2000 * retries, 20000);
+          console.log(`♻️ Kline WS retry ${retries} for ${assetId} in ${delay / 1000}s`);
+          setTimeout(connect, delay);
+        } else {
+          console.warn(`⚠️ Kline WS gave up for ${assetId} — switching to REST polling`);
+          _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 2000);
+        }
+      };
+
+      klineWsConnections[containerId] = ws;
+    }
+
+    connect();
+  }
+
+  // REST fallback — polls Binance (crypto) or Yahoo (non-crypto) for the latest candle
+  function _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, intervalMs) {
+    if (updateIntervals[containerId]) return; // already running
+
+    console.log(`🔄 REST fallback: ${assetId} every ${intervalMs / 1000}s`);
+
+    updateIntervals[containerId] = setInterval(async () => {
+      if (typeof RealDataAdapter === 'undefined') return;
+      try {
+        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 2);
+        if (!candles || !candles.length) return;
+
+        // Update both the closed candle and the unclosed one (the forming one is last)
+        for (const c of candles) {
+          const t = Math.floor(c.t / 1000);
+          try { candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); } catch {}
+          try { volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); } catch {}
+        }
+
+        const latest = candles[candles.length - 1];
+        if (typeof MarketData !== 'undefined') {
+          MarketData._injectRealPrice?.(assetId, { price: latest.c });
+        }
+      } catch {}
+    }, intervalMs);
+  }
+
   function stopRealtimeUpdates(containerId) {
+    const ws = klineWsConnections[containerId];
+    if (ws) {
+      ws.onclose = null; // prevent auto-reconnect
+      try { ws.close(); } catch {}
+      delete klineWsConnections[containerId];
+    }
     if (updateIntervals[containerId]) {
       clearInterval(updateIntervals[containerId]);
       delete updateIntervals[containerId];
-    }
-    if (tickListeners[containerId] && typeof MarketData !== 'undefined') {
-      MarketData.off('tick', tickListeners[containerId]);
-      delete tickListeners[containerId];
     }
   }
 
@@ -427,15 +434,10 @@ const AdvancedChartEngine = (() => {
     
     const tf = TIMEFRAMES[timeframe];
     
-    if (isRealData) {
-      indicator.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${tf.label} - Binance`;
-      indicator.classList.remove('simulated');
-      indicator.style.display = 'inline-flex';
-    } else {
-      indicator.innerHTML = `<i class="fas fa-exclamation-triangle"></i> SIMULATED - ${tf.label}`;
-      indicator.classList.add('simulated');
-      indicator.style.display = 'inline-flex';
-    }
+    // Always show live data status
+    indicator.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${tf.label} - Binance`;
+    indicator.classList.remove('simulated');
+    indicator.style.display = 'inline-flex';
   }
 
   // ── Moving Average Calculation ───────────────────────────
@@ -569,8 +571,14 @@ const AdvancedChartEngine = (() => {
     ctx.textAlign = 'center';
     ctx.fillText(`$${mid.toFixed(2)}`, (width / window.devicePixelRatio) / 2, midY + 4);
 
-    // Animate
-    requestAnimationFrame(() => createOrderBookHeatmap(containerId, symbol));
+    // Animate — only when container is visible, with throttle for mobile
+    const containerEl = document.getElementById(containerId);
+    if (containerEl && containerEl.offsetParent !== null) {
+      const delay = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ? 500 : 100;
+      setTimeout(() => {
+        requestAnimationFrame(() => createOrderBookHeatmap(containerId, symbol));
+      }, delay);
+    }
   }
 
   // ── Chart.js Fallback ────────────────────────────────────

@@ -224,3 +224,80 @@
 }
 
 /* ── Cursor trail — REMOVED ──────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE PERFORMANCE — Disable heavy animations
+   box-shadow animations, infinite glows, and continuous
+   transforms murder mobile GPU/CPU → cause overheating
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px), (hover: none) {
+  /* Kill all box-shadow pulse animations (GPU heavy) */
+  .anim-glow-cyan,
+  .anim-glow-green,
+  .anim-glow-purple,
+  .btn-glow,
+  [style*="glow-pulse"] {
+    animation: none !important;
+  }
+
+  /* Reduce orb animations to static */
+  .ai-orb-ring.outer,
+  .ai-orb-ring.inner {
+    animation: none !important;
+  }
+
+  /* Stop boot screen animations after boot */
+  .hex-outline-anim,
+  .hex-inner-anim,
+  .boot-scanlines,
+  .boot-grid-overlay,
+  .boot-logo-z {
+    animation: none !important;
+  }
+
+  /* Simplify breathing/pulse animations */
+  .pulse-dot,
+  .cyan-dot,
+  .green-dot,
+  .red-dot {
+    animation: none !important;
+  }
+
+  /* Disable whale ping */
+  .whale-icon.buy {
+    animation: none !important;
+  }
+
+  /* Reduce ticker scroll to static on very small screens */
+  @media (max-width: 480px) {
+    .ticker-track {
+      animation: none !important;
+    }
+  }
+
+  /* Disable crisis banner box-shadow animation */
+  .crisis-banner {
+    animation: none !important;
+  }
+
+  /* Disable shimmer/skeleton animations */
+  .skeleton {
+    animation: none !important;
+    background: #ffffff10 !important;
+  }
+
+  /* Prevent box-shadow animations globally */
+  * {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  /* Re-enable only essential one-shot animations */
+  .toast.in { animation: toast-in 0.35s cubic-bezier(.16,1,.3,1) forwards !important; }
+  .toast.out { animation: toast-out 0.3s ease-in forwards !important; }
+  .flash-up { animation: price-up-flash 0.5s ease !important; }
+  .flash-down { animation: price-down-flash 0.5s ease !important; }
+  .animate-fade-in-up { animation: fadeInUp 0.4s ease both !important; }
+  .animate-fade-in { animation: fadeInUp 0.3s ease both !important; }
+  .animate-scale-in { animation: scaleIn 0.3s ease both !important; }
+  .stagger-children > * { animation: fadeInUp 0.45s ease forwards !important; }
+}

@@ -82,14 +82,18 @@ const App = (() => {
     initCharts();
     initAllSections();
     startLiveFeed();
+    startLiveNotifications();
   }
 
   // ── Boot Canvas Particles ─────────────────────────────────
+  const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
   function initBootCanvas() {
+    // Skip particles entirely on mobile — saves GPU during boot
+    if (_isMobile) return;
     const c = $('boot-canvas'); if (!c) return;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
-    const ptcls = Array.from({ length: 80 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, r: Math.random() * 1.5 + .5, a: Math.random() }));
+    const ptcls = Array.from({ length: 30 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, r: Math.random() * 1.5 + .5, a: Math.random() }));
     let running = true;
     const draw = () => {
       if (!running) return;
@@ -104,8 +108,8 @@ const App = (() => {
       requestAnimationFrame(draw);
     };
     draw();
-    const stopBoot = () => { running = false; };
-    setTimeout(stopBoot, 5000);
+    const stopBoot = () => { running = false; ctx.clearRect(0, 0, c.width, c.height); };
+    setTimeout(stopBoot, 3000);
   }
 
   // ── Cursor Trail — DISABLED (clean professional UI) ───
@@ -145,14 +149,10 @@ const App = (() => {
       // Immediately render trade history (don't wait for interval)
       AutoTrader.updateTradeHistoryDisplay();
       console.log('🤖 Autonomous trading system ACTIVE');
+      // Gamification: track auto-trader activation
+      if (typeof Gamification !== 'undefined') Gamification.trackAutoTrader();
       
-      // Update auto-trader UI every 2 seconds
-      setInterval(() => {
-        if (typeof AutoTrader !== 'undefined') {
-          AutoTrader.updatePositionsList();
-          AutoTrader.updateTradeHistoryDisplay();
-        }
-      }, 2000);
+      // Auto-trader already has its own 2s interval — no duplicate needed
     }
     
     // Initialize investment returns engine (wallet + tier compounding)
@@ -163,7 +163,42 @@ const App = (() => {
       // Update returns UI every 5 seconds
       setInterval(() => {
         updateReturnsUI();
+        updateFundManagerUI();
       }, 5000);
+    }
+
+    // Initialize gamification engine (streaks, XP, achievements)
+    if (typeof Gamification !== 'undefined') {
+      Gamification.init();
+      console.log('🎮 Gamification engine ACTIVE');
+
+      // Listen for level-ups
+      Gamification.on('levelUp', (data) => {
+        Gamification.launchConfetti({ count: 120, duration: 3000 });
+        Gamification.showCelebration(`LEVEL ${data.level}!`, data.title, data.icon, data.color);
+        if (typeof App !== 'undefined' && App.addNotification) {
+          App.addNotification('fa-star', 'ai', 'Level Up!', ` You reached Level ${data.level}: ${data.title} ${data.icon}`);
+        }
+      });
+
+      // Listen for achievements
+      Gamification.on('achievement', (a) => {
+        Gamification.launchConfetti({ count: 50, duration: 1800, colors: ['#ffd700', '#ff4081', '#00e676'] });
+        Gamification.showCelebration('Achievement Unlocked!', `${a.title} — ${a.desc}`, a.icon, '#ffd700');
+        if (typeof App !== 'undefined' && App.addNotification) {
+          App.addNotification('fa-trophy', 'ai', 'Achievement:', ` ${a.icon} ${a.title} — +${a.xp} XP`);
+        }
+      });
+
+      // Listen for daily bonus
+      Gamification.on('dailyBonus', (data) => {
+        Gamification.launchConfetti({ count: 60, duration: 2000 });
+        Gamification.showCelebration('Daily Bonus!', `You earned ${data.reward.label}!`, '🎁', data.reward.color);
+      });
+
+      // Update gamification UI every 3 seconds
+      setInterval(updateGamificationUI, 3000);
+      updateGamificationUI();
     }
     
     AIEngine.init();
@@ -237,6 +272,39 @@ const App = (() => {
     if (name === 'security')     renderSecurity();
     if (name === 'buy-crypto')   initBuyCryptoAnimations();
     // Admin panel is now standalone (admin.html)
+
+    // Update mobile bottom nav active state
+    _updateMobileNavActive(name);
+  }
+
+  // ── Mobile Bottom Navigation ─────────────────────────────
+  function initMobileNav() {
+    // Bottom nav items
+    $$('.mbn-item[data-section]').forEach(item => {
+      item.addEventListener('click', () => navigate(item.dataset.section));
+    });
+
+    // "More" button opens slide-up menu
+    const moreBtn = $('mbn-more-btn');
+    const moreMenu = $('mobile-more-menu');
+    if (moreBtn && moreMenu) {
+      moreBtn.addEventListener('click', () => moreMenu.classList.add('open'));
+    }
+
+    // More menu items navigate & close menu
+    $$('.mmm-item[data-section]').forEach(item => {
+      item.addEventListener('click', () => {
+        navigate(item.dataset.section);
+        const moreMenu = $('mobile-more-menu');
+        if (moreMenu) moreMenu.classList.remove('open');
+      });
+    });
+  }
+
+  function _updateMobileNavActive(section) {
+    $$('.mbn-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.section === section);
+    });
   }
 
   // ── Buy Crypto Hub ───────────────────────────────────────
@@ -297,6 +365,7 @@ const App = (() => {
     // Dash KPIs
     updateDashKPIs(portMetrics);
     updateReturnsUI();
+    updateFundManagerUI();
     renderWhaleAlerts();
     renderSignalsMini(AIEngine.getSignals().slice(0, 6));
     renderAssetClassGrid();
@@ -306,6 +375,7 @@ const App = (() => {
   // ── All Sections Init ────────────────────────────────────
   function initAllSections() {
     initNav();
+    initMobileNav();
     initSearchOverlay();
     initNotifPanel();
     initOrderForm();
@@ -319,31 +389,54 @@ const App = (() => {
 
   // ── Dashboard KPIs ────────────────────────────────────────
   function updateDashKPIs(m) {
-    // Use InvestmentReturns wallet balance if available, else portfolio value
-    let displayValue = m.totalValue;
-    let dailyPnL = m.totalPnL * 0.03;
+    // Portfolio value & PnL now wallet-anchored from computeMetrics()
+    let dailyPnL = m.todayPnL || m.totalPnL * 0.03;
     let dailySub = "Today's return";
     
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
-      displayValue = snap.walletBalance;
       dailyPnL = snap.todayPnL;
       dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${snap.tierAPY} APY`;
       
-      // Wallet balance KPI
+      // Wallet balance KPI (claimed funds only)
       setText('kpi-wallet-balance', `$${fmt(snap.walletBalance, 2)}`);
       setText('kpi-wallet-tier', `${snap.tierIcon} ${snap.tierLabel} Tier · ${snap.tierAPY}`);
     }
     
-    setText('kpi-port-value', `$${fmt(displayValue, 0)}`);
+    setText('kpi-port-value', `$${fmt(m.totalValue, 0)}`);
     setText('kpi-port-pnl',   `${signPnl(m.totalPnL)}$${fmt(Math.abs(m.totalPnL), 0)} (${signPnl(m.totalPct)}${m.totalPct}%)`);
-    setText('kpi-win-rate',   '73.2%');
+    setClass('kpi-port-pnl', clsPnl(m.totalPnL));
+
+    // Portfolio Health Score
+    const health = Portfolio.getHealthScore(m);
+    setText('kpi-health-score', `${health.grade}`);
+    setText('kpi-health-value', `${health.score}/100`);
+    const healthEl = $('kpi-health-score');
+    if (healthEl) healthEl.style.color = health.color;
+
+    // Live win rate from AutoTrader
+    let winRateStr = '73.2%';
+    let tradeCountStr = '';
+    let sessionPnLStr = '';
+    if (typeof AutoTrader !== 'undefined') {
+      const atStats = AutoTrader.getStatistics();
+      if (atStats.totalTrades > 0) {
+        winRateStr = `${atStats.winRate.toFixed(1)}%`;
+        tradeCountStr = `${atStats.totalTrades} trades`;
+        sessionPnLStr = `${atStats.totalPnL >= 0 ? '+' : ''}$${fmt(Math.abs(atStats.totalPnL), 2)}`;
+      }
+    }
+    setText('kpi-win-rate',   winRateStr);
     setText('kpi-ai-signals', `${AIEngine.getSignals().length}`);
     setText('kpi-sharpe',     m.sharpe.toFixed(2));
     setText('kpi-max-dd',     `Max DD: -${m.maxDD}%`);
     setText('kpi-daily-pnl',  `${signPnl(dailyPnL)}$${fmt(Math.abs(dailyPnL), 2)}`);
     setText('kpi-daily-sub',  dailySub);
-    setClass('kpi-port-pnl', clsPnl(m.totalPnL));
+    
+    // Session trading performance (under win rate KPI)
+    setText('kpi-trade-count', tradeCountStr);
+    setText('kpi-session-pnl', sessionPnLStr);
+    if (sessionPnLStr) setClass('kpi-session-pnl', sessionPnLStr.startsWith('+') ? 'up' : 'down');
     setClass('kpi-daily-pnl', clsPnl(dailyPnL));
     const regime = AIEngine.getRegime();
     const regEl = $('dash-market-regime');
@@ -359,12 +452,21 @@ const App = (() => {
   }
 
   // ── Investment Returns UI Update ─────────────────────────
+  let _lastWalletBal = 0;
   function updateReturnsUI() {
     if (typeof InvestmentReturns === 'undefined') return;
     const s = InvestmentReturns.getSnapshot();
 
-    // Returns summary panel
-    setText('ret-wallet-bal', `$${fmt(s.walletBalance, 2)}`);
+    // Animated wallet balance counter (shows claimed balance)
+    const walletEl = $('ret-wallet-bal');
+    if (walletEl && typeof Gamification !== 'undefined' && Math.abs(s.walletBalance - _lastWalletBal) > 0.01 && _lastWalletBal > 0) {
+      Gamification.animateCounter(walletEl, _lastWalletBal, s.walletBalance, 1200, '$', 2);
+      if (s.walletBalance > _lastWalletBal) walletEl.classList.add('gm-value-pulse');
+      setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 700);
+    } else {
+      setText('ret-wallet-bal', `$${fmt(s.walletBalance, 2)}`);
+    }
+    _lastWalletBal = s.walletBalance;
 
     const setRetVal = (id, val, pct) => {
       const el = $(id);
@@ -409,6 +511,187 @@ const App = (() => {
     }
   }
 
+  // ── Fund Manager UI Update ─────────────────────────────
+  function updateFundManagerUI() {
+    if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.getFundManagerSnapshot) return;
+    const fm = InvestmentReturns.getFundManagerSnapshot();
+
+    setText('fm-daily-amount',    `$${fmt(fm.unclaimedDaily, 2)}`);
+    setText('fm-weekly-amount',   `$${fmt(fm.unclaimedWeekly, 2)}`);
+    setText('fm-trading-amount',  `$${fmt(fm.unclaimedTrading, 2)}`);
+    setText('fm-interest-amount', `$${fmt(fm.unclaimedInterest, 2)}`);
+    setText('fm-total-unclaimed', `Pending: $${fmt(fm.totalUnclaimed, 2)}`);
+    setText('fm-lifetime-total',  `$${fmt(fm.totalClaimed, 2)}`);
+
+    // Color-code amounts: green glow if > 0
+    ['fm-daily-amount', 'fm-weekly-amount', 'fm-trading-amount', 'fm-interest-amount'].forEach(id => {
+      const el = $(id);
+      if (el) el.className = 'fm-pool-amount' + (parseFloat(el.textContent.replace(/[^0-9.]/g, '')) > 0 ? ' fm-has-funds' : '');
+    });
+
+    // Pulse total if pending
+    const totalEl = $('fm-total-unclaimed');
+    if (totalEl) totalEl.classList.toggle('fm-pending-pulse', fm.totalUnclaimed > 0.5);
+
+    // Enable/disable claim buttons
+    const pools = { daily: fm.unclaimedDaily, weekly: fm.unclaimedWeekly, trading: fm.unclaimedTrading, interest: fm.unclaimedInterest };
+    Object.entries(pools).forEach(([key, val]) => {
+      const btn = $(`fm-claim-${key}`);
+      if (btn) { btn.disabled = val <= 0; btn.classList.toggle('fm-btn-active', val > 0); }
+    });
+    const allBtn = $('fm-claim-all');
+    if (allBtn) { allBtn.disabled = fm.totalUnclaimed <= 0; allBtn.classList.toggle('fm-btn-active', fm.totalUnclaimed > 0); }
+
+    // Transfer log
+    const logList = $('fm-log-list');
+    if (logList && fm.transferLog.length > 0) {
+      logList.innerHTML = fm.transferLog.map(entry => {
+        const time = new Date(entry.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const icons = { daily: 'fa-gift', weekly: 'fa-trophy', trading: 'fa-chart-line', interest: 'fa-coins' };
+        const balInfo = entry.balanceBefore != null ? ` ($${fmt(entry.balanceBefore, 2)} → $${fmt(entry.balanceAfter, 2)})` : '';
+        return `<div class="fm-log-item">
+          <i class="fa ${icons[entry.type] || 'fa-arrow-right'}"></i>
+          <span class="fm-log-label">${entry.label}</span>
+          <span class="fm-log-amount">+$${fmt(entry.amount, 2)}</span>
+          <span class="fm-log-arrow">→ Wallet${balInfo}</span>
+          <span class="fm-log-time">${time}</span>
+        </div>`;
+      }).join('');
+    } else if (logList) {
+      logList.innerHTML = '<div class="fm-log-empty">No transfers yet. Claim your earnings above.</div>';
+    }
+  }
+
+  // ── Fund Claim Processing Animation ─────────────────────
+  function _showClaimProcessing(amount, label, callback) {
+    const overlay = $('fm-claim-overlay');
+    if (!overlay) { callback(); return; }
+
+    const steps = [
+      { text: 'Verifying pool balance...', icon: 'fa-shield-halved', delay: 600 },
+      { text: 'Calculating compound interest...', icon: 'fa-calculator', delay: 800 },
+      { text: 'Transferring to main wallet...', icon: 'fa-arrow-right-arrow-left', delay: 700 },
+      { text: 'Confirming transaction...', icon: 'fa-circle-check', delay: 500 },
+    ];
+
+    overlay.style.display = 'flex';
+    overlay.classList.add('fm-overlay-active');
+    const statusEl = overlay.querySelector('.fm-process-status');
+    const iconEl = overlay.querySelector('.fm-process-icon i');
+    const amtEl = overlay.querySelector('.fm-process-amount');
+    const barEl = overlay.querySelector('.fm-process-bar-fill');
+
+    if (amtEl) amtEl.textContent = `+$${fmt(amount, 2)}`;
+    if (barEl) barEl.style.width = '0%';
+
+    let stepIdx = 0;
+    function runStep() {
+      if (stepIdx >= steps.length) {
+        // Final success state
+        if (statusEl) statusEl.textContent = 'Transfer Complete!';
+        if (iconEl) { iconEl.className = 'fa fa-check-circle'; }
+        if (barEl) barEl.style.width = '100%';
+        overlay.classList.add('fm-process-success');
+
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          overlay.classList.remove('fm-overlay-active', 'fm-process-success');
+          callback();
+        }, 1200);
+        return;
+      }
+
+      const step = steps[stepIdx];
+      if (statusEl) statusEl.textContent = step.text;
+      if (iconEl) iconEl.className = `fa ${step.icon}`;
+      if (barEl) barEl.style.width = `${((stepIdx + 1) / steps.length * 85)}%`;
+
+      stepIdx++;
+      setTimeout(runStep, step.delay);
+    }
+
+    runStep();
+  }
+
+  // ── Fund Manager: Claim Pool ─────────────────────────────
+  function claimFundPool(pool) {
+    if (typeof InvestmentReturns === 'undefined') return;
+    // Pre-check if there's anything to claim
+    const fm = InvestmentReturns.getFundManagerSnapshot();
+    const poolAmounts = { daily: fm.unclaimedDaily, weekly: fm.unclaimedWeekly, trading: fm.unclaimedTrading, interest: fm.unclaimedInterest };
+    const amount = poolAmounts[pool] || 0;
+    if (amount <= 0) { showToast('No pending funds in this pool', 'info'); return; }
+
+    const labels = { daily: 'Daily Bonus', weekly: 'Weekly Bonus', trading: 'Trading Profits', interest: 'Compound Interest' };
+
+    // Show processing animation then execute claim
+    _showClaimProcessing(amount, labels[pool] || pool, () => {
+      const result = InvestmentReturns.claimEarnings(pool);
+      if (result.success) {
+        // Animate wallet balance counting up
+        const walletEl = $('ret-wallet-bal');
+        if (walletEl && typeof Gamification !== 'undefined') {
+          Gamification.animateCounter(walletEl, result.balanceBefore, result.balanceAfter, 1500, '$', 2);
+          walletEl.classList.add('gm-value-pulse');
+          setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 1500);
+        }
+
+        showToast(`✅ ${result.label}: +$${fmt(result.amount, 2)} transferred to wallet!`, 'success');
+        if (typeof App !== 'undefined' && App.addNotification) {
+          App.addNotification('💰 Fund Transfer', `${result.label}: $${fmt(result.amount, 2)} → Main Wallet (Balance: $${fmt(result.balanceAfter, 2)})`, 'success');
+        }
+        // Flash the pool card
+        const card = document.querySelector(`.fm-pool-card[data-pool="${pool}"]`);
+        if (card) { card.classList.add('fm-claimed-flash'); setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200); }
+        // Streak notification
+        if (result.streak > 1) {
+          setTimeout(() => showToast(`🔥 ${result.streak}-day claim streak! Keep it up!`, 'info'), 1800);
+        }
+        if (typeof Gamification !== 'undefined') Gamification.trackClaim();
+        updateFundManagerUI();
+        updateReturnsUI();
+        updateDashKPIs(Portfolio.computeMetrics());
+        updateGamificationUI();
+      }
+    });
+  }
+
+  function claimAllFunds() {
+    if (typeof InvestmentReturns === 'undefined') return;
+    const fm = InvestmentReturns.getFundManagerSnapshot();
+    if (fm.totalUnclaimed <= 0) { showToast('No pending funds to claim', 'info'); return; }
+
+    _showClaimProcessing(fm.totalUnclaimed, 'All Earnings', () => {
+      const result = InvestmentReturns.claimAll();
+      if (result.success) {
+        // Animate wallet balance
+        const snap = InvestmentReturns.getSnapshot();
+        const walletEl = $('ret-wallet-bal');
+        if (walletEl && typeof Gamification !== 'undefined') {
+          const before = snap.walletBalance - result.totalClaimed;
+          Gamification.animateCounter(walletEl, before, snap.walletBalance, 2000, '$', 2);
+          walletEl.classList.add('gm-value-pulse');
+          setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 2000);
+        }
+
+        showToast(`✅ All earnings claimed: +$${fmt(result.totalClaimed, 2)} → Wallet!`, 'success');
+        if (typeof App !== 'undefined' && App.addNotification) {
+          App.addNotification('💰 Bulk Transfer', `$${fmt(result.totalClaimed, 2)} from ${result.claimed.length} pools → Main Wallet`, 'success');
+        }
+        // Flash all pool cards
+        document.querySelectorAll('.fm-pool-card').forEach(card => {
+          card.classList.add('fm-claimed-flash');
+          setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200);
+        });
+        if (typeof Gamification !== 'undefined') Gamification.trackClaimAll();
+        updateFundManagerUI();
+        updateReturnsUI();
+        updateDashKPIs(Portfolio.computeMetrics());
+        updateGamificationUI();
+      }
+    });
+  }
+
   function updateChartStats(rawId) {
     const id = rawId.split('/')[0];
     const a = MarketData.getAsset(id); if (!a) return;
@@ -420,6 +703,101 @@ const App = (() => {
     setText('main-price-display', `$${fmtPx(a.price)}`);
     const chgEl = $('main-change-display');
     if (chgEl) { chgEl.textContent = `${signPnl(a.pct24h)}${a.pct24h.toFixed(2)}%`; chgEl.className = `main-change-hdr ${clsPnl(a.pct24h)}`; }
+  }
+
+  // ── Gamification UI Update ────────────────────────────────
+  function updateGamificationUI() {
+    if (typeof Gamification === 'undefined') return;
+    const g = Gamification.getSnapshot();
+
+    // Level badge
+    const levelIcon = $('gm-level-icon');
+    if (levelIcon) levelIcon.textContent = g.icon;
+    setText('gm-level-num', g.level);
+    setText('gm-level-title', g.title);
+    const levelBadge = $('gm-level-badge');
+    if (levelBadge) levelBadge.style.borderColor = g.color;
+
+    // XP bar
+    const xpFill = $('gm-xp-fill');
+    if (xpFill) {
+      xpFill.style.width = g.progressPct.toFixed(1) + '%';
+      xpFill.style.background = `linear-gradient(90deg, ${g.color}, ${g.color}88)`;
+    }
+    if (g.nextLevel) {
+      setText('gm-xp-text', `${fmtNum(g.xpInLevel)} / ${fmtNum(g.xpForNext)} XP`);
+      setText('gm-xp-sub', `Next: ${g.nextLevel.title} ${g.nextLevel.icon}`);
+    } else {
+      setText('gm-xp-text', `${fmtNum(g.xp)} XP — MAX LEVEL`);
+      setText('gm-xp-sub', '👑 Legendary status achieved');
+    }
+
+    // Streak
+    setText('gm-streak-num', g.streak);
+    setText('gm-streak-mult', g.streakMultiplier.toFixed(1) + 'x XP Multiplier');
+    setText('gm-streak-best', g.longestStreak);
+    const flame = $('gm-streak-flame');
+    if (flame) {
+      flame.className = 'gm-streak-flame' + (g.streak >= 7 ? ' gm-fire-mega' : g.streak >= 3 ? ' gm-fire-hot' : '');
+    }
+
+    // Daily bonus
+    const dailyBtn = $('gm-daily-btn');
+    const dailyStatus = $('gm-daily-status');
+    if (dailyBtn && dailyStatus) {
+      if (g.canClaimDaily) {
+        dailyBtn.classList.add('gm-daily-available');
+        dailyBtn.classList.remove('gm-daily-claimed');
+        dailyStatus.textContent = 'CLAIM!';
+      } else {
+        dailyBtn.classList.remove('gm-daily-available');
+        dailyBtn.classList.add('gm-daily-claimed');
+        dailyStatus.textContent = 'CLAIMED ✓';
+      }
+    }
+
+    // Stats
+    setText('gm-total-xp', fmtNum(g.totalXpEarned));
+    setText('gm-trades-count', g.tradeCount);
+    setText('gm-badge-count', `${g.achievementCount}/${g.totalAchievements}`);
+    setText('gm-badges-prog', `${g.achievementCount}/${g.totalAchievements} Unlocked`);
+
+    // Achievement badges grid
+    const grid = $('gm-badges-grid');
+    if (grid) {
+      const allAch = Object.values(Gamification.ACHIEVEMENTS);
+      grid.innerHTML = allAch.map(a => {
+        const unlocked = g.achievements.some(ua => ua.id === a.id);
+        return `<div class="gm-badge-item ${unlocked ? 'gm-badge-unlocked' : 'gm-badge-locked'}" title="${a.title}: ${a.desc}">
+          <span class="gm-badge-icon">${unlocked ? a.icon : '🔒'}</span>
+          <span class="gm-badge-name">${a.title}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Check balance achievements
+    if (typeof InvestmentReturns !== 'undefined') {
+      const snap = InvestmentReturns.getSnapshot();
+      Gamification.checkBalanceAchievements(snap.walletBalance);
+    }
+  }
+
+  function fmtNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  // ── Daily Bonus Claim Handler ─────────────────────────────
+  function claimDailyBonus() {
+    if (typeof Gamification === 'undefined') return;
+    const result = Gamification.claimDailyBonus();
+    if (result.success) {
+      showToast(`🎁 Daily Bonus: ${result.reward.label}!`, 'success');
+      updateGamificationUI();
+    } else {
+      showToast('Already claimed today — come back tomorrow!', 'info');
+    }
   }
 
   function fmtVolume(n) {
@@ -639,16 +1017,9 @@ const App = (() => {
   function renderPortfolio() {
     const m = Portfolio.computeMetrics();
     
-    // Use InvestmentReturns wallet balance for total value display
-    let displayValue = m.totalValue;
-    if (typeof InvestmentReturns !== 'undefined') {
-      const snap = InvestmentReturns.getSnapshot();
-      displayValue = snap.walletBalance;
-    }
-    
-    // KPI row
-    setText('port-total-value', `$${fmt(displayValue, 0)}`);
-    setText('port-total-pnl',   `${signPnl(m.totalPnL)}$${fmt(Math.abs(m.totalPnL), 0)}`);
+    // KPI row — totalValue now comes wallet-anchored from computeMetrics
+    setText('port-total-value', `$${fmt(m.totalValue, 0)}`);
+    setText('port-total-pnl',   `${signPnl(m.totalPnL)}$${fmt(Math.abs(m.totalPnL), 0)} (${signPnl(m.totalPct)}${m.totalPct}%)`);
     setClassOnEl($('port-total-pnl'), clsPnl(m.totalPnL));
     setText('port-sharpe',  m.sharpe.toFixed(2));
     setText('port-sortino', m.sortino.toFixed(2));
@@ -694,6 +1065,46 @@ const App = (() => {
     }
 
     setText('holdings-count', m.enriched.length);
+
+    // ── Portfolio Health Score ────────────────────────────
+    const health = Portfolio.getHealthScore(m);
+    const healthEl = $('port-health-score');
+    if (healthEl) {
+      healthEl.innerHTML = `
+        <div class="health-ring" style="--score:${health.score};--color:${health.color}">
+          <div class="health-ring-inner">
+            <span class="health-grade" style="color:${health.color}">${health.grade}</span>
+            <span class="health-num">${health.score}/100</span>
+          </div>
+        </div>
+        <div class="health-label" style="color:${health.color}">${health.label}</div>`;
+    }
+
+    // ── Performance Attribution ──────────────────────────
+    const attr = Portfolio.getPerformanceAttribution(m);
+    const attrEl = $('port-attribution');
+    if (attrEl) {
+      attrEl.innerHTML = attr.map(a => {
+        const pnlCls = a.pnl >= 0 ? 'up' : 'down';
+        const sign   = a.pnl >= 0 ? '+' : '';
+        return `<div class="attr-row">
+          <span class="attr-cat">${a.icon} ${a.label}</span>
+          <span class="attr-val mono ${pnlCls}">${sign}$${fmt(Math.abs(a.pnl), 0)}</span>
+          <span class="attr-pct mono ${pnlCls}">${sign}${a.returnPct}%</span>
+          <div class="attr-bar"><div class="attr-bar-fill ${pnlCls}" style="width:${Math.min(Math.abs(a.contribution), 100)}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── AI Portfolio Insights ────────────────────────────
+    const insights = Portfolio.getInsights(m);
+    const insEl = $('port-insights');
+    if (insEl) {
+      insEl.innerHTML = insights.map(i => {
+        const cls = i.type === 'success' ? 'insight-success' : i.type === 'warning' ? 'insight-warning' : 'insight-info';
+        return `<div class="insight-item ${cls}"><span class="insight-icon">${i.icon}</span><span class="insight-text">${i.text}</span></div>`;
+      }).join('');
+    }
   }
 
   // ── Trading Section ───────────────────────────────────────
@@ -739,11 +1150,18 @@ const App = (() => {
   function renderCopyTraders() {
     const list = $('copy-trade-list'); if (!list) return;
     list.innerHTML = Trading.getCopyTraders().map(t => {
-      const btnTxt = t.active ? 'Unfollow' : 'Copy';
+      const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
       const btnCls = t.active ? 'btn-danger' : 'btn-primary';
-      return `<div class="ct-card">
+      const pnlClass = t.copiedBal >= 0 ? 'up' : 'down';
+      const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
+      return `<div class="ct-card ${t.active ? 'ct-active' : ''}">
         <div class="ct-avatar">${t.avatar}</div>
-        <div class="ct-info"><b>${t.name}</b><span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate}</span></div>
+        <div class="ct-info">
+          <b>${t.name}</b> ${liveTag}
+          <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
+          ${tradesInfo}
+        </div>
         <div class="ct-stats">
           <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
           <small>30d PnL</small>
@@ -771,6 +1189,9 @@ const App = (() => {
     setText('terminal-live-price', `$${fmtPx(a.price)}`);
     const chgEl = $('terminal-live-chg');
     if (chgEl) { chgEl.textContent = `${signPnl(a.pct24h)}${a.pct24h.toFixed(2)}%`; chgEl.className = `terminal-live-chg ${clsPnl(a.pct24h)}`; }
+    // Auto-update entry price field
+    const entryEl = $('order-entry');
+    if (entryEl && !entryEl.dataset.manual) entryEl.value = fmtPx(a.price);
   }
 
   function initTerminalControls() {
@@ -789,9 +1210,18 @@ const App = (() => {
     if (qslider && qval) {
       qslider.addEventListener('input', () => {
         qval.textContent = qslider.value + '%';
-        const balance = 100000;
-        const pxEl = $('order-entry');
-        if (pxEl) pxEl.value = ((balance * qslider.value / 100) / (MarketData.getAsset(_termSym)?.price || 1)).toFixed(6);
+        // Use wallet balance for position sizing
+        let balance = 100000;
+        if (typeof InvestmentReturns !== 'undefined') {
+          const snap = InvestmentReturns.getSnapshot();
+          if (snap.walletBalance > 0) balance = snap.walletBalance;
+        }
+        const price = MarketData.getAsset(_termSym)?.price || 1;
+        const qty = ((balance * qslider.value / 100) / price);
+        const qtyEl = $('order-qty');
+        if (qtyEl) qtyEl.value = qty.toFixed(6);
+        const entryEl = $('order-entry');
+        if (entryEl) entryEl.value = price.toFixed(2);
       });
     }
 
@@ -836,11 +1266,38 @@ const App = (() => {
 
   function executeTrade(side) {
     const symEl  = $('order-symbol');  const sym  = symEl  ? symEl.value  : 'BTC/USD';
-    const qtyEl  = $('order-qty');     const qty  = qtyEl  ? qtyEl.value  : '0.01';
-    const priceEl = $('order-entry');   const price = priceEl ? priceEl.value : '';
+    const qtyEl  = $('order-qty');     const qty  = qtyEl  ? parseFloat(qtyEl.value) || 0.01 : 0.01;
+    const slEl   = $('order-sl');      const sl   = slEl   ? parseFloat(slEl.value)  : undefined;
+    const tpEl   = $('order-tp');      const tp   = tpEl   ? parseFloat(tpEl.value)  : undefined;
     const a      = MarketData.getAllAssets().find(x => x.sym === sym || x.id === sym);
-    const order  = Trading.placeOrder({ sym: sym || 'BTC/USD', side, type: _activeOrderType, qty: parseFloat(qty) || 0.01, price: a ? a.price : parseFloat(price) });
-    showToast(`${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} — FILLED`, 'success');
+    const price  = a ? a.price : 100;
+    const value  = (qty * price).toFixed(2);
+
+    const order = Trading.placeOrder({
+      sym: sym || 'BTC/USD', side,
+      type: _activeOrderType,
+      qty, price,
+      sl: sl || price * (side === 'long' ? 0.97 : 1.03),
+      tp: tp || price * (side === 'long' ? 1.04 : 0.96),
+    });
+
+    // Auto-fill entry price display
+    const entryEl = $('order-entry');
+    if (entryEl) entryEl.value = price.toFixed(2);
+
+    // Update AI risk panel
+    const arpText = $('arp-text');
+    if (arpText) {
+      const rr = ((tp || price * 1.04) - price) / (price - (sl || price * 0.97));
+      arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} — Position value: $${value} — AI-suggested SL/TP applied — Risk managed.`;
+      const rrEl = $('rr-display');
+      if (rrEl) rrEl.textContent = Math.abs(rr).toFixed(1) + ':1';
+    }
+
+    showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} ($${value}) — FILLED`, 'success');
+    addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
+    // Gamification: track trade
+    if (typeof Gamification !== 'undefined') Gamification.trackTrade();
     renderPositions();
   }
 
@@ -984,7 +1441,7 @@ const App = (() => {
 
     const tbody = $('audit-tbody'); if (!tbody) return;
     const log = Trading.getAuditLog(30);
-    const ACTIONS = ['TRADE', 'DEPOSIT', 'WITHDRAW', 'SIGNAL', 'HEDGE', 'REBALANCE'];
+    const ACTIONS = ['TRADE', 'DEPOSIT', 'TRANSFER', 'SIGNAL', 'HEDGE', 'REBALANCE'];
     const SYMS = ['BTC/USD','ETH/USD','AAPL','GOLD','EUR/USD','SOL/USD'];
     tbody.innerHTML = log.map(l => {
       const action = l.msg.includes('Buy') || l.msg.includes('long') ? 'BUY' : l.msg.includes('Sell') || l.msg.includes('short') ? 'SELL' : pick(ACTIONS);
@@ -1021,38 +1478,52 @@ const App = (() => {
         <div class="por-item"><span>Taker Fee</span><b class="mono">0.18%</b></div>
         <div class="por-item"><span>Spread</span><b class="mono">0.02%</b></div>
         <div class="por-item"><span>Overnight</span><b class="mono">0.01%/day</b></div>
-        <div class="por-item"><span>Withdrawal</span><b class="mono">$1.50 flat</b></div>
+        <div class="por-item"><span>Fund Transfer</span><b class="mono">Free</b></div>
       `;
     }
   }
 
   // ── Security Section ──────────────────────────────────────
+  let _keyStreamTimer = null;
   function renderSecurity() {
     const keyStream = $('key-stream');
     if (keyStream) {
       const chars = '0123456789ABCDEFabcdef';
       const gen = () => Array.from({ length: 64 }, () => chars[Math.floor(Math.random() * chars.length)]).join(' ');
       keyStream.textContent = gen();
-      setInterval(() => { keyStream.textContent = gen(); }, 2500);
+      // Only run when security section is active, and clear previous timer
+      if (_keyStreamTimer) clearInterval(_keyStreamTimer);
+      if (_section === 'security') {
+        _keyStreamTimer = setInterval(() => {
+          if (_section !== 'security') { clearInterval(_keyStreamTimer); _keyStreamTimer = null; return; }
+          keyStream.textContent = gen();
+        }, 5000);
+      }
     }
   }
 
   // ── Live Feed ─────────────────────────────────────────────
+  let _lastAllocData = null;
   function startLiveFeed() {
     MarketData.on('tick', () => {
+      // Skip if page/tab is hidden (saves CPU when user switches apps)
+      if (document.hidden) return;
+
       updateMarketPulseBar();
       updateFearGreed();
       if (_section === 'dashboard') {
-        // Do NOT recreate candlestick chart on every tick!
-        // AdvancedChartEngine / ChartEngine handle their own real-time updates.
-        // Only update KPIs and lightweight charts.
         updateChartStats(_sym);
         const m = Portfolio.computeMetrics();
         updateDashKPIs(m);
         updateAllocTotal(m.totalValue);
-        ChartEngine.createAllocationChart('alloc-donut', m.alloc);
+        // Only recreate allocation chart if data actually changed
+        const allocKey = JSON.stringify(m.alloc);
+        if (allocKey !== _lastAllocData) {
+          _lastAllocData = allocKey;
+          ChartEngine.createAllocationChart('alloc-donut', m.alloc);
+        }
       }
-      if (_section === 'trading') { updateTerminalPrice(); renderPositions(); }
+      if (_section === 'trading') { updateTerminalPrice(); renderPositions(); renderCopyTraders(); }
       if (_section === 'markets') { renderMarketsTable(); }
       if (_section === 'ai-engine') {
         updateCrisisBanner();
@@ -1219,6 +1690,103 @@ const App = (() => {
     }, duration);
   }
 
+  // ── Live Notification Engine ──────────────────────────────
+  const _notifications = [];
+  const _maxNotifs = 25;
+  let _notifTimer = null;
+
+  function addNotification(icon, iconClass, title, detail) {
+    const ago = 'Just now';
+    _notifications.unshift({ icon, iconClass, title, detail, ts: Date.now(), ago });
+    if (_notifications.length > _maxNotifs) _notifications.pop();
+    _renderNotifications();
+    // Update badge
+    const badge = $('notif-badge');
+    if (badge) { badge.textContent = Math.min(9, _notifications.filter(n => Date.now() - n.ts < 120000).length); badge.style.display = 'flex'; }
+  }
+
+  function _renderNotifications() {
+    const list = $('notif-list'); if (!list) return;
+    if (_notifications.length === 0) {
+      list.innerHTML = '<div class="np-item"><i class="fa fa-check-circle np-icon ai"></i><div><b>All caught up</b><small>No new notifications</small></div></div>';
+      return;
+    }
+    list.innerHTML = _notifications.map(n => {
+      const ago = _timeAgo(n.ts);
+      const unread = (Date.now() - n.ts < 120000) ? ' unread' : '';
+      return `<div class="np-item${unread}"><i class="fa ${n.icon} np-icon ${n.iconClass}"></i><div><b>${n.title}</b>${n.detail}<small>${ago}</small></div></div>`;
+    }).join('');
+  }
+
+  function _timeAgo(ts) {
+    const sec = Math.floor((Date.now() - ts) / 1000);
+    if (sec < 10) return 'Just now';
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    return `${hr}h ago`;
+  }
+
+  function startLiveNotifications() {
+    // Initial notifications
+    addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
+    addNotification('fa-robot', 'ai', 'AI Engine:', ' All neural models loaded and calibrated');
+
+    // Generate periodic live notifications
+    const _notifTypes = [
+      () => {
+        const assets = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'AVAX'];
+        const a = assets[Math.floor(Math.random() * assets.length)];
+        const asset = MarketData.getAsset(a);
+        if (!asset) return;
+        const dir = asset.pct24h >= 0 ? 'bullish' : 'bearish';
+        const conf = (70 + Math.random() * 25).toFixed(0);
+        addNotification('fa-brain', 'ai', 'AI Signal:', ` ${a} ${dir} setup detected — ${conf}% confidence`);
+      },
+      () => {
+        const amounts = ['1,200', '3,400', '5,800', '2,100', '8,500', '12,000'];
+        const coins = ['BTC', 'ETH', 'BTC', 'SOL', 'BTC', 'ETH'];
+        const i = Math.floor(Math.random() * amounts.length);
+        const dest = ['Coinbase', 'Binance', 'unknown wallet', 'Kraken', 'cold storage'][Math.floor(Math.random() * 5)];
+        addNotification('fa-water', 'whale', 'Whale Alert:', ` ${amounts[i]} ${coins[i]} moved to ${dest}`);
+      },
+      () => {
+        if (typeof AutoTrader === 'undefined') return;
+        const stats = AutoTrader.getStatistics();
+        if (stats.totalTrades > 0) {
+          addNotification('fa-chart-line', 'ai', 'Auto Trader:', ` ${stats.totalTrades} trades — WR ${stats.winRate.toFixed(1)}% — Net ${stats.totalPnL >= 0 ? '+' : ''}$${Math.abs(stats.totalPnL).toFixed(2)}`);
+        }
+      },
+      () => {
+        const regimes = ['Trending Bullish 📈', 'High Volatility ⚡', 'Accumulation Phase 🔄', 'Momentum Building 🚀', 'Range-Bound 📊'];
+        const r = regimes[Math.floor(Math.random() * regimes.length)];
+        addNotification('fa-globe', 'sec', 'Market Regime:', ` ${r}`);
+      },
+      () => {
+        if (typeof InvestmentReturns === 'undefined') return;
+        const snap = InvestmentReturns.getSnapshot();
+        if (snap.walletBalance > 0) {
+          addNotification('fa-coins', 'ai', 'Compound Interest:', ` +$${snap.todayPnL.toFixed(2)} earned today at ${snap.tierAPY} APY`);
+        }
+      },
+    ];
+
+    _notifTimer = setInterval(() => {
+      const fn = _notifTypes[Math.floor(Math.random() * _notifTypes.length)];
+      fn();
+    }, 25000 + Math.random() * 15000); // Every 25-40 seconds
+  }
+
+  function clearNotifications() {
+    _notifications.length = 0;
+    _renderNotifications();
+    const badge = $('notif-badge');
+    if (badge) badge.style.display = 'none';
+  }
+  // expose globally for onclick
+  window.clearNotifications = clearNotifications;
+
   // ── Helpers ──────────────────────────────────────────────
   function setText(id, val) { const el = $(id); if (el) el.textContent = val; }
   function setClass(id, cls) { const el = $(id); if (el) { el.classList.remove('up','down'); if (cls) el.classList.add(cls); } }
@@ -1242,7 +1810,17 @@ const App = (() => {
   function togglePlugin(id)   { Plugins.toggleActive(id); renderPlugins(); }
   function installPlugin(id)  { Plugins.installPlugin(id); renderPlugins(); showToast('Plugin installed!', 'success'); }
   function uninstallPlugin(id){ Plugins.uninstallPlugin(id); renderPlugins(); showToast('Plugin removed', 'info'); }
-  function closePosition(posId){ Trading.closePosition(posId); renderPositions(); showToast('Position closed', 'success'); }
+  function closePosition(posId){
+    const pos = Trading.closePosition(posId);
+    renderPositions();
+    if (pos) {
+      const pnlStr = `${pos.pnl >= 0 ? '+' : ''}$${Math.abs(pos.pnl).toFixed(2)}`;
+      showToast(`Position closed: ${pos.sym} ${pos.side.toUpperCase()} → P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
+      addNotification(pos.pnl >= 0 ? 'fa-arrow-up' : 'fa-arrow-down', pos.pnl >= 0 ? 'ai' : 'whale', 'Position Closed:', ` ${pos.sym} ${pnlStr}`);
+      // Gamification: track profit
+      if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
+    }
+  }
   function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); }
   function navigatePublic(s)  { navigate(s); }
 
@@ -1255,6 +1833,7 @@ const App = (() => {
     if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
       const loginScreen = $('login-screen');
       if (loginScreen) loginScreen.style.display = 'none';
+      document.body.style.overflow = 'hidden'; // Lock scroll for app view
       initRegisterScreen();
       initModalHandlers();
       proceedAfterLogin();
@@ -1270,7 +1849,14 @@ const App = (() => {
     const loginForm = $('login-form');
     if (!loginForm) { proceedAfterLogin(); return; }
     
-    loginForm.addEventListener('submit', (e) => {
+    // ── Addictive Login Enhancements ──
+    _initLoginParticles();
+    _initInflationCounter();
+    _initTestimonialCarousel();
+    _initLiveCounterAnimation();
+    _initFOMOBanner();
+
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('login-email').value.trim();
       const password = $('login-password').value;
@@ -1285,12 +1871,18 @@ const App = (() => {
         return;
       }
 
-      const result = UserAuth.login(email, password);
+      // Show loading state
+      const btn = document.querySelector('.btn-login');
+      const origText = btn ? btn.textContent : '';
+      if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
+
+      const result = await UserAuth.login(email, password);
       if (result.ok) {
         _dismissLoginScreen();
       } else {
         _showLoginError(result.error);
       }
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
 
     // "Create Account" link
@@ -1302,6 +1894,139 @@ const App = (() => {
         if (overlay) overlay.classList.add('visible');
       });
     }
+  }
+
+  // ═══ ADDICTIVE LOGIN ENGINES ═══════════════════════════════
+
+  // Floating particle canvas
+  function _initLoginParticles() {
+    const canvas = document.getElementById('login-particles');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w, h, particles = [];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: Math.random() * 2 + 0.5,
+        dx: (Math.random() - 0.5) * 0.4,
+        dy: (Math.random() - 0.5) * 0.3,
+        a: Math.random() * 0.5 + 0.1,
+        color: Math.random() > 0.6 ? 'rgba(212,165,116,' : 'rgba(0,255,136,'
+      });
+    }
+
+    function draw() {
+      if (!document.getElementById('login-particles')) return; // stop after login
+      ctx.clearRect(0, 0, w, h);
+      particles.forEach(p => {
+        p.x += p.dx; p.y += p.dy;
+        if (p.x < 0 || p.x > w) p.dx *= -1;
+        if (p.y < 0 || p.y > h) p.dy *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + p.a + ')';
+        ctx.fill();
+      });
+      // Draw faint connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = 'rgba(212,165,116,' + (0.06 * (1 - dist / 120)) + ')';
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  // Inflation counter — shows how much money user is losing per second
+  function _initInflationCounter() {
+    const el = document.getElementById('inflation-counter');
+    if (!el) return;
+    const startTime = Date.now();
+    const lossPerSecond = 0.23; // ~$7.25M/year ÷ 365 ÷ 86400 for avg American
+    function tick() {
+      if (!document.getElementById('inflation-counter')) return;
+      const elapsed = (Date.now() - startTime) / 1000;
+      const lost = (elapsed * lossPerSecond).toFixed(2);
+      el.textContent = '$' + parseFloat(lost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  // Testimonial carousel with auto-rotation
+  function _initTestimonialCarousel() {
+    const cards = document.querySelectorAll('.lt-card');
+    const dots = document.querySelectorAll('.lt-dot');
+    if (!cards.length) return;
+    let current = 0;
+
+    function showTestimonial(idx) {
+      cards.forEach(c => c.classList.remove('active'));
+      dots.forEach(d => d.classList.remove('active'));
+      cards[idx].classList.add('active');
+      if (dots[idx]) dots[idx].classList.add('active');
+      current = idx;
+    }
+
+    // Make switchTestimonial globally available for onclick
+    window.switchTestimonial = function(idx) { showTestimonial(idx); };
+
+    // Auto-rotate every 5s
+    setInterval(() => {
+      if (!document.querySelector('.lt-card')) return;
+      showTestimonial((current + 1) % cards.length);
+    }, 5000);
+  }
+
+  // Live counter number animation (AUM, profit, investors)
+  function _initLiveCounterAnimation() {
+    const aumEl = document.getElementById('llc-aum');
+    const profitEl = document.getElementById('llc-profit');
+    const investorsEl = document.getElementById('llc-users');
+    if (!aumEl) return;
+
+    let aum = 847293412;
+    let profit = 2847291;
+    let investors = 18427;
+
+    setInterval(() => {
+      if (!document.getElementById('llc-aum')) return;
+      // Small random increments
+      aum += Math.floor(Math.random() * 25000 + 3000);
+      profit += Math.floor(Math.random() * 8000 + 1000);
+      investors += Math.floor(Math.random() * 3);
+
+      aumEl.textContent = '$' + aum.toLocaleString();
+      profitEl.textContent = '+$' + profit.toLocaleString();
+      investorsEl.textContent = investors.toLocaleString();
+    }, 3000);
+  }
+
+  // FOMO banner — duplicate content for seamless scroll
+  function _initFOMOBanner() {
+    const scroll = document.querySelector('.fomo-scroll');
+    if (!scroll) return;
+    // Clone children for infinite scroll effect
+    const children = scroll.innerHTML;
+    scroll.innerHTML = children + children;
   }
 
   function _showLoginError(msg) {
@@ -1323,6 +2048,7 @@ const App = (() => {
     if (loginScreen) {
       loginScreen.style.opacity = '0';
       loginScreen.style.transition = 'opacity 600ms ease';
+      document.body.style.overflow = 'hidden'; // Lock scroll for app view
       setTimeout(() => { loginScreen.style.display = 'none'; proceedAfterLogin(); }, 600);
     }
   }
@@ -1344,7 +2070,7 @@ const App = (() => {
       if (depInput) { depInput.min = minMap[tier] || 5000; depInput.placeholder = (minMap[tier] || 5000).toLocaleString(); }
     };
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const errBox = $('register-error');
       errBox.classList.remove('visible');
@@ -1362,14 +2088,20 @@ const App = (() => {
         return;
       }
 
-      const result = UserAuth.register({ fullName, email, password, tier, deposit });
+      // Show loading state
+      const btn = form.querySelector('button[type="submit"]');
+      const origText = btn ? btn.textContent : '';
+      if (btn) { btn.textContent = 'Creating account...'; btn.disabled = true; }
+
+      const result = await UserAuth.register({ fullName, email, password, tier, deposit });
       if (result.ok) {
         _dismissRegisterScreen();
-        _dismissLoginScreen();
+        _showRegistrationSuccess(fullName);
       } else {
         errBox.textContent = result.error;
         errBox.classList.add('visible');
       }
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
 
     // "Back to Login" link
@@ -1385,6 +2117,24 @@ const App = (() => {
   function _dismissRegisterScreen() {
     const overlay = $('register-overlay');
     if (overlay) overlay.classList.remove('visible');
+  }
+
+  function _showRegistrationSuccess(name) {
+    const firstName = (name || 'Investor').split(' ')[0];
+    // Create success overlay on login screen
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:200000;padding:18px 24px;background:linear-gradient(135deg,#00ff88,#00cc6a);color:#0a0e16;font-size:15px;font-weight:700;text-align:center;animation:slideDown .4s ease;box-shadow:0 4px 20px rgba(0,255,136,0.4);';
+    toast.innerHTML = `<i class="fa fa-circle-check" style="margin-right:8px"></i>Welcome ${firstName}! Your account is ready. Sign in below to access your wealth dashboard.`;
+    document.body.appendChild(toast);
+    // Auto-remove after 8s
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 8000);
+    // Pre-fill email in login form
+    const emailField = $('login-email');
+    if (emailField) {
+      const regEmail = $('reg-email');
+      if (regEmail) emailField.value = regEmail.value;
+      emailField.focus();
+    }
   }
 
   function initModalHandlers() {
@@ -1484,6 +2234,23 @@ const App = (() => {
       e.target.reset();
     };
 
+    // ── Ensure External Crypto Links Always Open ──────────
+    // Some mobile browsers / webapp modes block target="_blank" on styled <a> cards.
+    // This adds a robust click handler that forces window.open() as a fallback.
+    document.querySelectorAll('.bch-card[href], .wtb-platform[href]').forEach(link => {
+      link.addEventListener('click', function(e) {
+        const url = this.getAttribute('href');
+        if (url && url.startsWith('http')) {
+          e.preventDefault();
+          const win = window.open(url, '_blank', 'noopener,noreferrer');
+          if (!win) {
+            // Popup blocked — fallback to location change
+            window.location.href = url;
+          }
+        }
+      });
+    });
+
     // Investment Calculator Tab Switching
     const calculatorTabs = $$('.ic-tab');
     if (calculatorTabs.length > 0) {
@@ -1553,9 +2320,10 @@ const App = (() => {
       adminNavLink.style.display = (typeof UserAuth !== 'undefined' && UserAuth.isAdmin()) ? 'flex' : 'none';
     }
 
-    // Sync tier with InvestmentReturns engine
-    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.setTier) {
+    // Load per-user investment state (set tier + load saved compounding data)
+    if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.setTier(session.tier);
+      InvestmentReturns.loadForUser(); // catches up compounding from time away
     }
 
     // If admin has funded this user, sync the deposit as wallet balance
@@ -1568,6 +2336,17 @@ const App = (() => {
           InvestmentReturns.deposit(fullUser.deposit);
         }
       }
+    }
+
+    // Load per-user trade history
+    if (typeof AutoTrader !== 'undefined') {
+      AutoTrader.loadUserHistory();
+    }
+
+    // Load per-user gamification state
+    if (typeof Gamification !== 'undefined') {
+      Gamification.loadForUser();
+      updateGamificationUI();
     }
   }
 
@@ -1591,8 +2370,14 @@ const App = (() => {
           AutoTrader.saveHistory();
           AutoTrader.stop();
         }
-        // Reset investment state so next user starts clean
-        if (typeof InvestmentReturns !== 'undefined') InvestmentReturns.resetState();
+        // Save investment state (do NOT reset — preserve for next login)
+        if (typeof InvestmentReturns !== 'undefined') {
+          InvestmentReturns.saveAndDisconnect();
+        }
+        // Save gamification state
+        if (typeof Gamification !== 'undefined') {
+          Gamification.saveAndDisconnect();
+        }
         if (typeof UserAuth !== 'undefined') UserAuth.logout();
         location.reload();
       });
@@ -1605,7 +2390,8 @@ const App = (() => {
     init, navigate,
     // Public
     quickTrade, togglePlugin, installPlugin, uninstallPlugin,
-    closePosition, toggleCopyTrader, navigatePublic, showToast,
+    closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
+    claimFundPool, claimAllFunds, claimDailyBonus,
   };
 })();
 

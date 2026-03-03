@@ -63,16 +63,16 @@ const SmartExitEngine = (() => {
 
     console.log('🎯 SmartExitEngine: Intelligent exit monitoring active');
     
-    // Monitor all positions every 2 seconds
-    monitorTimer = setInterval(() => {
-      monitorAllPositions();
-    }, 2000);
-
-    // Listen to market data updates
+    // Monitor positions on tick events only (no duplicate interval)
     if (typeof MarketData !== 'undefined') {
       MarketData.on('tick', () => {
         monitorAllPositions();
       });
+    } else {
+      // Fallback: only if MarketData is unavailable
+      monitorTimer = setInterval(() => {
+        monitorAllPositions();
+      }, 4000);
     }
   }
 

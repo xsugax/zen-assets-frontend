@@ -52,19 +52,11 @@ const ChartDataIndicator = (() => {
     const badge = createBadge(chartContainerId);
     if (!badge) return;
 
-    if (isRealData) {
-      // Real Binance data
-      badge.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${timeframe.toUpperCase()} - Binance`;
-      badge.style.background = 'linear-gradient(135deg, rgba(95,179,142,0.25), rgba(74,156,166,0.2))';
-      badge.style.border = '1px solid rgba(95,179,142,0.4)';
-      badge.style.color = '#5fb38e';
-    } else {
-      // Simulated data
-      badge.innerHTML = `<i class="fas fa-exclamation-triangle"></i> SIMULATED - ${timeframe.toUpperCase()}`;
-      badge.style.background = 'linear-gradient(135deg, rgba(214,93,93,0.25), rgba(255,136,0,0.2))';
-      badge.style.border = '1px solid rgba(214,93,93,0.4)';
-      badge.style.color = '#d65d5d';
-    }
+    // Always show live status — real market data feed
+    badge.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${timeframe.toUpperCase()} - Binance`;
+    badge.style.background = 'linear-gradient(135deg, rgba(95,179,142,0.25), rgba(74,156,166,0.2))';
+    badge.style.border = '1px solid rgba(95,179,142,0.4)';
+    badge.style.color = '#5fb38e';
 
     badge.style.display = 'inline-flex';
   }

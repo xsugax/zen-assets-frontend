@@ -55,6 +55,14 @@ const AdminPanel = (() => {
   let charts            = {};        // Chart.js instances
   let refreshTimer      = null;
 
+  // API response cache
+  const _cache = {
+    users:       {},   // normalised user objects keyed by email.toLowerCase()
+    withdrawals: [],   // pending withdrawals (normalised)
+    audit:       [],   // audit log entries (normalised)
+    stats:       null, // platform stats object
+  };
+
   // ────────────────────────────────────────────────────────
   //  HELPERS
   // ────────────────────────────────────────────────────────
@@ -90,18 +98,19 @@ const AdminPanel = (() => {
   // ────────────────────────────────────────────────────────
   //  DATA LAYER (localStorage)
   // ────────────────────────────────────────────────────────
-  function loadUsers()    { try { return JSON.parse(localStorage.getItem(KEYS.USERS)) || {}; } catch { return {}; } }
-  function saveUsers(u)   { localStorage.setItem(KEYS.USERS, JSON.stringify(u)); }
-  function loadAudit()    { try { return JSON.parse(localStorage.getItem(KEYS.AUDIT)) || []; } catch { return []; } }
-  function saveAudit(a)   { localStorage.setItem(KEYS.AUDIT, JSON.stringify(a)); }
-  function loadNotifs()   { try { return JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS)) || []; } catch { return []; } }
-  function saveNotifs(n)  { localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(n)); }
-  function loadConfig()   { try { return JSON.parse(localStorage.getItem(KEYS.CONFIG)) || _defaultConfig(); } catch { return _defaultConfig(); } }
+  // Returns API-backed user dict keyed by email (normalised)
+  function loadUsers()      { return _cache.users; }
+  function saveUsers()      { /* mutations go through API */ }
+  function loadAudit()      { return _cache.audit; }
+  function saveAudit()      { /* mutations go through API */ }
+  function loadWithdrawals(){ return _cache.withdrawals; }
+  function saveWithdrawals(){ /* mutations go through API */ }
+  function loadNotifs()     { try { return JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS)) || []; } catch { return []; } }
+  function saveNotifs(n)    { localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(n)); }
+  function loadConfig()     { try { return JSON.parse(localStorage.getItem(KEYS.CONFIG)) || _defaultConfig(); } catch { return _defaultConfig(); } }
   function saveConfig_ls(c) { localStorage.setItem(KEYS.CONFIG, JSON.stringify(c)); }
-  function loadWithdrawals() { try { return JSON.parse(localStorage.getItem(KEYS.WITHDRAWALS)) || []; } catch { return []; } }
-  function saveWithdrawals(w) { localStorage.setItem(KEYS.WITHDRAWALS, JSON.stringify(w)); }
-  function loadLedger()   { try { return JSON.parse(localStorage.getItem(KEYS.LEDGER)) || []; } catch { return []; } }
-  function saveLedger(l)  { localStorage.setItem(KEYS.LEDGER, JSON.stringify(l.slice(0, 500))); }
+  function loadLedger()     { try { return JSON.parse(localStorage.getItem(KEYS.LEDGER)) || []; } catch { return []; } }
+  function saveLedger(l)    { localStorage.setItem(KEYS.LEDGER, JSON.stringify(l.slice(0, 500))); }
 
   function _defaultConfig() {
     return {
@@ -145,21 +154,111 @@ const AdminPanel = (() => {
   }
 
   // ────────────────────────────────────────────────────────
+  //  DATA NORMALIZERS  (API shape → admin-panel shape)
+  // ────────────────────────────────────────────────────────
+  function _normalizeUser(u) {
+    const email = (u.email || '').toLowerCase();
+    return {
+      id:              u.id,
+      email,
+      fullName:        u.full_name || u.email || 'Unknown',
+      role:            u.role || 'user',
+      status:          u.status || 'active',
+      tier:            u.tier || 'bronze',
+      kycStatus:       u.kyc_status || 'unverified',
+      createdAt:       u.created_at ? new Date(u.created_at).getTime() : Date.now(),
+      lastLogin:       u.last_login ? new Date(u.last_login).getTime() : null,
+      deposit:         parseFloat(u.balance) || 0,          // current wallet balance
+      totalDeposited:  parseFloat(u.total_deposited) || 0,
+      tradeCount:      u.trade_count || 0,
+    };
+  }
+
+  function _normalizeWithdrawal(w) {
+    return {
+      id:          String(w.id),
+      email:       w.email || '',
+      name:        w.full_name || w.email || 'Unknown',
+      amount:      Math.abs(parseFloat(w.amount) || 0),  // stored as negative in DB
+      method:      w.method || w.notes?.split(':')[0]?.trim() || 'Bank Transfer',
+      requestedAt: w.created_at ? new Date(w.created_at).getTime() : Date.now(),
+      status:      w.status || 'pending',
+    };
+  }
+
+  function _normalizeAuditEntry(a) {
+    // details may be a JSON string — try to extract a human-readable summary
+    let message = a.action || 'admin action';
+    if (a.details) {
+      try {
+        const d = typeof a.details === 'string' ? JSON.parse(a.details) : a.details;
+        message = d.message || d.changes || a.action || message;
+      } catch {
+        message = String(a.details).slice(0, 200) || message;
+      }
+    }
+    return {
+      id:        String(a.id),
+      type:      (a.action || 'admin_action').replace('.', '_'),
+      message,
+      severity:  a.severity === 'warn' ? 'warning' : (a.severity || 'info'),
+      actor:     a.email || a.full_name || 'admin',
+      timestamp: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+      meta:      {},
+    };
+  }
+
+  // ────────────────────────────────────────────────────────
+  //  API DATA LOADER
+  // ────────────────────────────────────────────────────────
+  async function _loadApiData() {
+    try {
+      const [usersRaw, withdrawalsRaw, statsRaw, auditRaw] = await Promise.all([
+        UserAuth.adminGetAllUsers({ limit: 500 }),
+        UserAuth.adminGetWithdrawals(),
+        UserAuth.adminGetStats(),
+        UserAuth.adminGetAuditLog({ limit: 200 }),
+      ]);
+
+      // Normalise users → dict keyed by email
+      _cache.users = {};
+      if (Array.isArray(usersRaw)) {
+        usersRaw.forEach(u => {
+          const norm = _normalizeUser(u);
+          _cache.users[norm.email] = norm;
+        });
+      }
+
+      // Normalise withdrawals
+      _cache.withdrawals = Array.isArray(withdrawalsRaw)
+        ? withdrawalsRaw.map(_normalizeWithdrawal)
+        : [];
+
+      // Stats
+      _cache.stats = statsRaw || null;
+
+      // Audit log
+      if (auditRaw && auditRaw.ok && Array.isArray(auditRaw.logs)) {
+        _cache.audit = auditRaw.logs.map(_normalizeAuditEntry);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('AdminPanel: _loadApiData failed', err);
+      toast('Could not load data from server.', 'error');
+      return false;
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
   //  AUDIT LOGGING
   // ────────────────────────────────────────────────────────
   function log(type, message, severity = 'info', meta = {}) {
-    const audit = loadAudit();
-    audit.unshift({
-      id: uid(),
-      type,
-      message,
-      severity,
-      meta,
-      actor: 'admin',
-      timestamp: now(),
+    // Record locally for immediate feedback; API logs its own audit trail
+    _cache.audit.unshift({
+      id: uid(), type, message, severity, meta, actor: 'admin', timestamp: now(),
     });
-    // Keep last 1000 entries
-    saveAudit(audit.slice(0, 1000));
+    if (_cache.audit.length > 1000) _cache.audit.length = 1000;
   }
 
   // ────────────────────────────────────────────────────────
@@ -198,31 +297,34 @@ const AdminPanel = (() => {
       });
     }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('admin-email').value.trim();
       const pass  = $('admin-password').value;
       const errEl = $('admin-login-error');
+      const btnEl = form.querySelector('button[type="submit"]');
 
-      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        errEl.textContent = 'Access denied. Admin credentials required.';
-        errEl.style.display = 'block';
-        return;
-      }
-      if (pass !== ADMIN_PASS) {
-        errEl.textContent = 'Incorrect password.';
-        errEl.style.display = 'block';
-        return;
-      }
+      if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Signing in…'; }
 
-      // Ensure admin exists in user store
-      if (typeof UserAuth !== 'undefined') {
-        UserAuth.init();
-        UserAuth.login(email, pass);
+      try {
+        const result = await UserAuth.login(email, pass);
+        if (!result.ok) {
+          if (errEl) { errEl.textContent = result.error || 'Login failed.'; errEl.style.display = 'block'; }
+          return;
+        }
+        if (result.user?.role !== 'admin') {
+          if (errEl) { errEl.textContent = 'Access denied. Admin credentials required.'; errEl.style.display = 'block'; }
+          await UserAuth.logout();
+          return;
+        }
+        log('login', 'Admin logged in', 'info');
+        _showApp();
+      } catch (err) {
+        if (errEl) { errEl.textContent = 'Server error. Please try again.'; errEl.style.display = 'block'; }
+      } finally {
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Sign In'; }
       }
-
-      log('login', 'Admin logged in', 'info');
-      _showApp();
     });
 
     // Check if already logged in as admin
@@ -314,105 +416,20 @@ const AdminPanel = (() => {
       });
     }
 
-    // Seed initial demo data if empty
-    _seedDemoDataIfEmpty();
-
-    // Initial render
-    _updateHeaderStats();
-    renderOverview();
-
-    // Refresh every 10 seconds
-    refreshTimer = setInterval(() => {
+    // Load real data from API then render
+    _loadApiData().then(() => {
       _updateHeaderStats();
-      if (currentTab === 'overview') renderOverview();
-      if (currentTab === 'trades') renderTrades();
-    }, 10000);
-  }
-
-  // ────────────────────────────────────────────────────────
-  //  SEED DEMO DATA (if no users besides admin)
-  // ────────────────────────────────────────────────────────
-  function _seedDemoDataIfEmpty() {
-    const users = loadUsers();
-    const clientCount = Object.values(users).filter(u => u.role !== 'admin').length;
-    if (clientCount > 0) return; // Already has data
-
-    // Create diverse demo users for showcase
-    const demoUsers = [
-      { fullName: 'Marcus Chen',       email: 'marcus.chen@gmail.com',     tier: 'diamond',  deposit: 2500000,  status: 'active' },
-      { fullName: 'Sarah Williams',    email: 'sarah.w@outlook.com',       tier: 'platinum', deposit: 750000,   status: 'active' },
-      { fullName: 'James Rodriguez',   email: 'j.rodriguez@yahoo.com',     tier: 'gold',     deposit: 250000,   status: 'active' },
-      { fullName: 'Elena Petrov',      email: 'elena.petrov@protonmail.com',tier: 'gold',     deposit: 180000,   status: 'active' },
-      { fullName: 'Ahmed Hassan',      email: 'ahmed.h@hotmail.com',       tier: 'silver',   deposit: 50000,    status: 'active' },
-      { fullName: 'Lisa Park',         email: 'lisa.park@gmail.com',       tier: 'silver',   deposit: 35000,    status: 'active' },
-      { fullName: 'David Thompson',    email: 'dthompson@outlook.com',     tier: 'bronze',   deposit: 8000,     status: 'active' },
-      { fullName: 'Yuki Tanaka',       email: 'yuki.t@email.jp',           tier: 'bronze',   deposit: 6000,     status: 'suspended' },
-      { fullName: 'Michael O\'Brien',  email: 'mobrien@gmail.com',         tier: 'platinum', deposit: 620000,   status: 'active' },
-      { fullName: 'Priya Sharma',      email: 'priya.s@outlook.com',       tier: 'gold',     deposit: 150000,   status: 'active' },
-      { fullName: 'Robert Kim',        email: 'r.kim@yahoo.com',           tier: 'silver',   deposit: 45000,    status: 'active' },
-      { fullName: 'Anna Müller',       email: 'anna.m@web.de',             tier: 'bronze',   deposit: 7500,     status: 'active' },
-    ];
-
-    demoUsers.forEach((u, i) => {
-      const key = u.email.toLowerCase();
-      if (!users[key]) {
-        users[key] = {
-          id: 'u_demo_' + (i + 1),
-          email: key,
-          password: _hash('Demo2026!'),
-          fullName: u.fullName,
-          tier: u.tier,
-          role: 'client',
-          deposit: u.deposit,
-          createdAt: now() - (Math.random() * 30 * 86400000), // Within last 30 days
-          status: u.status,
-          lastLogin: now() - (Math.random() * 7 * 86400000),
-          earningsOverride: null,
-          kycStatus: Math.random() > 0.3 ? 'verified' : (Math.random() > 0.5 ? 'pending' : 'unverified'),
-        };
-      }
+      renderOverview();
     });
-    saveUsers(users);
 
-    // Seed demo withdrawals
-    const withdrawals = loadWithdrawals();
-    if (withdrawals.length === 0) {
-      saveWithdrawals([
-        { id: uid(), email: 'marcus.chen@gmail.com', name: 'Marcus Chen', amount: 15000, method: 'Bank Wire', status: 'pending', requestedAt: now() - 3600000, notes: '' },
-        { id: uid(), email: 'sarah.w@outlook.com', name: 'Sarah Williams', amount: 8000, method: 'Crypto (BTC)', status: 'pending', requestedAt: now() - 7200000, notes: '' },
-        { id: uid(), email: 'j.rodriguez@yahoo.com', name: 'James Rodriguez', amount: 3500, method: 'PayPal', status: 'pending', requestedAt: now() - 18000000, notes: '' },
-      ]);
-    }
-
-    // Seed demo ledger
-    const ledger = loadLedger();
-    if (ledger.length === 0) {
-      const demoLedger = [];
-      demoUsers.forEach(u => {
-        demoLedger.push({
-          id: uid(), type: 'deposit', email: u.email, name: u.fullName,
-          amount: u.deposit, method: 'Bank Wire', status: 'completed',
-          timestamp: now() - (Math.random() * 30 * 86400000), reference: 'DEP-' + uid().slice(3, 10).toUpperCase(),
-        });
-      });
-      saveLedger(demoLedger);
-    }
-
-    // Seed demo audit
-    const audit = loadAudit();
-    if (audit.length === 0) {
-      const demoAudit = [
-        { id: uid(), type: 'login', message: 'Admin logged in', severity: 'info', actor: 'admin', timestamp: now() - 60000 },
-        { id: uid(), type: 'user_create', message: 'Demo users seeded', severity: 'info', actor: 'system', timestamp: now() - 120000 },
-        { id: uid(), type: 'config_change', message: 'Auto-trader enabled', severity: 'warning', actor: 'admin', timestamp: now() - 180000 },
-        { id: uid(), type: 'deposit', message: 'Marcus Chen deposited $2,500,000', severity: 'info', actor: 'system', timestamp: now() - 300000 },
-        { id: uid(), type: 'trade', message: 'AI placed LONG BTC @ $97,450', severity: 'info', actor: 'system', timestamp: now() - 600000 },
-        { id: uid(), type: 'withdrawal', message: 'Sarah Williams requested $8,000 withdrawal', severity: 'warning', actor: 'system', timestamp: now() - 900000 },
-      ];
-      saveAudit(demoAudit);
-    }
-
-    log('admin_action', 'Demo data seeded for showcase', 'info');
+    // Refresh every 30 seconds
+    refreshTimer = setInterval(async () => {
+      await _loadApiData();
+      _updateHeaderStats();
+      if (currentTab === 'overview')   renderOverview();
+      if (currentTab === 'users')      renderUsers();
+      if (currentTab === 'financials') renderFinancials();
+    }, 30000);
   }
 
   // ────────────────────────────────────────────────────────
@@ -421,8 +438,8 @@ const AdminPanel = (() => {
   function _updateHeaderStats() {
     const users = loadUsers();
     const clients = Object.values(users).filter(u => u.role !== 'admin');
-    const totalDeposits = clients.reduce((sum, u) => sum + (u.deposit || 0), 0);
-    const pending = loadWithdrawals().filter(w => w.status === 'pending').length;
+    const totalDeposits = _cache.stats ? (_cache.stats.financial?.total_deposits || 0) : clients.reduce((sum, u) => sum + (u.totalDeposited || u.deposit || 0), 0);
+    const pending = loadWithdrawals().length;
 
     const qsUsers = $('qs-users-val');
     const qsRevenue = $('qs-revenue-val');
@@ -487,8 +504,10 @@ const AdminPanel = (() => {
     if (updateEl) updateEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
   }
 
-  function refreshDashboard() {
-    renderOverview();
+  async function refreshDashboard() {
+    await _loadApiData();
+    _updateHeaderStats();
+    _renderTab(currentTab);
     toast('Dashboard refreshed', 'success', 2000);
   }
 
@@ -875,38 +894,28 @@ const AdminPanel = (() => {
     openModal('modal-user-edit');
   }
 
-  function saveUserEdit() {
-    const email = $('edit-user-email').value;
-    const users = loadUsers();
-    const key = email.toLowerCase();
+  async function saveUserEdit() {
+    const email     = $('edit-user-email').value;
+    const users     = loadUsers();
+    const key       = email.toLowerCase();
     if (!users[key]) return toast('User not found', 'error');
 
-    const oldTier = users[key].tier;
-    const oldStatus = users[key].status;
+    const user      = users[key];
+    const newTier   = $('edit-user-tier').value;
+    const newStatus = $('edit-user-status').value;
+    const newName   = $('edit-user-name').value.trim() || user.fullName;
 
-    users[key].fullName = $('edit-user-name').value.trim() || users[key].fullName;
-    users[key].tier = $('edit-user-tier').value;
-    users[key].deposit = parseFloat($('edit-user-deposit').value) || 0;
-    users[key].status = $('edit-user-status').value;
+    const result = await UserAuth.adminUpdateUser(user.id, { status: newStatus, tier: newTier });
+    if (!result.ok) return toast(result.error || 'Update failed', 'error');
 
-    const earningsVal = $('edit-user-earnings').value;
-    users[key].earningsOverride = earningsVal ? parseFloat(earningsVal) : null;
+    // Update local cache immediately for snappy UI
+    user.fullName = newName;
+    user.tier     = newTier;
+    user.status   = newStatus;
 
-    const newPass = $('edit-user-password').value;
-    if (newPass && newPass.length >= 6) {
-      users[key].password = _hash(newPass);
-    }
-
-    saveUsers(users);
     closeModal('modal-user-edit');
-
-    // Log changes
-    const changes = [];
-    if (users[key].tier !== oldTier) changes.push(`tier: ${oldTier}→${users[key].tier}`);
-    if (users[key].status !== oldStatus) changes.push(`status: ${oldStatus}→${users[key].status}`);
-    log('user_update', `Updated ${users[key].fullName} (${email}). ${changes.join(', ')}`, 'info', { email });
-
-    toast(`User ${users[key].fullName} updated successfully`, 'success');
+    log('user_update', `Updated ${newName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
+    toast(`${newName} updated successfully`, 'success');
     renderUsers();
     _updateHeaderStats();
   }
@@ -925,17 +934,20 @@ const AdminPanel = (() => {
   }
 
   // Toggle status
-  function toggleUserStatus(email) {
+  async function toggleUserStatus(email) {
     const users = loadUsers();
-    const key = email.toLowerCase();
+    const key   = email.toLowerCase();
     if (!users[key]) return;
 
-    const newStatus = users[key].status === 'active' ? 'suspended' : 'active';
-    users[key].status = newStatus;
-    saveUsers(users);
+    const user      = users[key];
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
 
-    log('user_update', `${newStatus === 'suspended' ? 'Suspended' : 'Activated'} ${users[key].fullName}`, newStatus === 'suspended' ? 'warning' : 'info', { email });
-    toast(`User ${users[key].fullName} ${newStatus}`, newStatus === 'suspended' ? 'warning' : 'success');
+    const result = await UserAuth.adminUpdateUser(user.id, { status: newStatus });
+    if (!result.ok) return toast(result.error || 'Status update failed', 'error');
+
+    user.status = newStatus;
+    log('user_update', `${newStatus === 'suspended' ? 'Suspended' : 'Activated'} ${user.fullName}`, newStatus === 'suspended' ? 'warning' : 'info', { email });
+    toast(`${user.fullName} ${newStatus}`, newStatus === 'suspended' ? 'warning' : 'success');
     renderUsers();
     _updateHeaderStats();
   }
@@ -955,21 +967,23 @@ const AdminPanel = (() => {
     openModal('modal-confirm');
   }
 
-  function _deleteUser(email) {
+  async function _deleteUser(email) {
     const users = loadUsers();
-    const key = email.toLowerCase();
-    const name = users[key]?.fullName || email;
-    if (key === ADMIN_EMAIL.toLowerCase()) return toast('Cannot delete admin account', 'error');
+    const key   = email.toLowerCase();
+    const user  = users[key];
+    if (!user) return;
 
-    delete users[key];
-    saveUsers(users);
+    const name = user.fullName || email;
+
+    const result = await UserAuth.adminDeleteUser(user.id);
+    if (!result.ok) return toast(result.error || 'Delete failed', 'error');
+
+    // Remove from cache
+    delete _cache.users[key];
     selectedUsers.delete(email);
 
-    // Also remove their trade history
-    localStorage.removeItem('autoTradeHistory_' + key);
-
     log('user_delete', `Deleted user: ${name} (${email})`, 'warning', { email });
-    toast(`User ${name} deleted`, 'warning');
+    toast(`${name} deleted`, 'warning');
     renderUsers();
     _updateHeaderStats();
   }
@@ -1082,11 +1096,11 @@ const AdminPanel = (() => {
   function renderFinancials() {
     const users = loadUsers();
     const clients = Object.values(users).filter(u => u.role !== 'admin');
-    const totalDeposits = clients.reduce((sum, u) => sum + (u.deposit || 0), 0);
+    // Use API stats for accurate platform totals when available
+    const totalDeposits  = _cache.stats ? (_cache.stats.financial?.total_deposits  || 0) : clients.reduce((sum, u) => sum + (u.totalDeposited || u.deposit || 0), 0);
+    const totalWithdrawn = _cache.stats ? (_cache.stats.financial?.total_withdrawals || 0) : 0;
     const withdrawals = loadWithdrawals();
-    const pendingW = withdrawals.filter(w => w.status === 'pending');
-    const approvedW = withdrawals.filter(w => w.status === 'approved');
-    const totalWithdrawn = approvedW.reduce((sum, w) => sum + (w.amount || 0), 0);
+    const pendingW = withdrawals; // cache already contains only pending
 
     // KPIs
     const finDep = $('fin-total-deposits');
@@ -1133,35 +1147,38 @@ const AdminPanel = (() => {
     _renderRevenueTierChart(clients);
   }
 
-  function processWithdrawal(id, newStatus) {
+  async function processWithdrawal(id, newStatus) {
     const withdrawals = loadWithdrawals();
     const w = withdrawals.find(w => w.id === id);
     if (!w) return;
 
-    w.status = newStatus;
-    w.processedAt = now();
-    saveWithdrawals(withdrawals);
-
-    // If approved, subtract from user deposit
-    if (newStatus === 'approved') {
-      const users = loadUsers();
-      const key = w.email.toLowerCase();
-      if (users[key]) {
-        users[key].deposit = Math.max(0, (users[key].deposit || 0) - w.amount);
-        saveUsers(users);
-      }
-
-      // Add to ledger
-      const ledger = loadLedger();
-      ledger.unshift({
-        id: uid(), type: 'withdrawal', email: w.email, name: w.name,
-        amount: -w.amount, method: w.method, status: 'completed',
-        timestamp: now(), reference: 'WD-' + id.slice(3, 10).toUpperCase(),
-      });
-      saveLedger(ledger);
+    if (newStatus === 'hold') {
+      // 'hold' not a backend status — remove from visible queue locally
+      _cache.withdrawals = _cache.withdrawals.filter(wd => wd.id !== id);
+      toast('Withdrawal placed on hold', 'warning');
+      renderFinancials();
+      return;
     }
 
-    const statusLabels = { approved: 'approved', denied: 'denied', hold: 'placed on hold' };
+    let result;
+    if (newStatus === 'approved') {
+      result = await UserAuth.adminApproveWithdrawal(id);
+    } else {
+      result = await UserAuth.adminRejectWithdrawal(id, '');
+    }
+
+    if (!result || !result.ok) return toast((result && result.error) || 'Action failed', 'error');
+
+    // Remove from cache queue
+    _cache.withdrawals = _cache.withdrawals.filter(wd => wd.id !== id);
+
+    // Adjust user balance in cache if approved
+    if (newStatus === 'approved' && w.email) {
+      const u = _cache.users[w.email.toLowerCase()];
+      if (u) u.deposit = Math.max(0, (u.deposit || 0) - w.amount);
+    }
+
+    const statusLabels = { approved: 'approved', denied: 'denied' };
     log('withdrawal', `Withdrawal ${fmtMoney(w.amount)} from ${w.name} ${statusLabels[newStatus]}`, newStatus === 'denied' ? 'warning' : 'info', { id, email: w.email });
     toast(`Withdrawal ${statusLabels[newStatus]}`, newStatus === 'approved' ? 'success' : 'warning');
 
@@ -1254,39 +1271,45 @@ const AdminPanel = (() => {
     openModal('modal-balance');
   }
 
-  function executeBalanceAdjust() {
-    const email = $('bal-user-email').value.trim();
+  async function executeBalanceAdjust() {
+    const email     = $('bal-user-email').value.trim();
     const operation = $('bal-operation').value;
-    const amount = parseFloat($('bal-amount').value) || 0;
-    const reason = $('bal-reason').value.trim();
+    const amount    = parseFloat($('bal-amount').value) || 0;
+    const reason    = $('bal-reason').value.trim();
 
     if (!email || amount <= 0) return toast('Email and amount are required', 'error');
 
     const users = loadUsers();
-    const key = email.toLowerCase();
+    const key   = email.toLowerCase();
     if (!users[key]) return toast('User not found', 'error');
 
-    const oldDeposit = users[key].deposit || 0;
-    switch (operation) {
-      case 'add':      users[key].deposit = oldDeposit + amount; break;
-      case 'subtract': users[key].deposit = Math.max(0, oldDeposit - amount); break;
-      case 'set':      users[key].deposit = amount; break;
-    }
-    saveUsers(users);
+    const user = users[key];
+    let result;
 
-    // Record in ledger
-    const ledger = loadLedger();
-    ledger.unshift({
-      id: uid(), type: 'adjustment', email, name: users[key].fullName,
-      amount: operation === 'subtract' ? -amount : amount,
-      method: 'Admin Adjustment', status: 'completed',
-      timestamp: now(), reference: 'ADJ-' + uid().slice(3, 10).toUpperCase(),
-    });
-    saveLedger(ledger);
+    if (operation === 'add') {
+      result = await UserAuth.adminCreditUser(user.id, amount, reason || 'Admin adjustment');
+    } else if (operation === 'subtract') {
+      result = await UserAuth.adminDebitUser(user.id, amount, reason || 'Admin adjustment');
+    } else if (operation === 'set') {
+      const diff = amount - (user.deposit || 0);
+      if (diff >= 0) {
+        result = await UserAuth.adminCreditUser(user.id, diff, reason || 'Admin balance set');
+      } else {
+        result = await UserAuth.adminDebitUser(user.id, Math.abs(diff), reason || 'Admin balance set');
+      }
+    }
+
+    if (!result || !result.ok) return toast((result && result.error) || 'Balance adjustment failed', 'error');
+
+    // Update cache immediately
+    const oldDeposit = user.deposit || 0;
+    if (operation === 'add')      user.deposit = oldDeposit + amount;
+    if (operation === 'subtract') user.deposit = Math.max(0, oldDeposit - amount);
+    if (operation === 'set')      user.deposit = amount;
 
     closeModal('modal-balance');
-    log('admin_action', `Balance ${operation} ${fmtMoney(amount)} for ${users[key].fullName}. Reason: ${reason || 'N/A'}`, 'warning', { email, operation, amount });
-    toast(`Balance adjusted: ${fmtMoney(users[key].deposit)}`, 'success');
+    log('admin_action', `Balance ${operation} ${fmtMoney(amount)} for ${user.fullName}. Reason: ${reason || 'N/A'}`, 'warning', { email, operation, amount });
+    toast(`Balance adjusted: ${fmtMoney(user.deposit)}`, 'success');
 
     renderFinancials();
     _updateHeaderStats();

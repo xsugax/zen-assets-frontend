@@ -55,6 +55,7 @@ const RealDataAdapter = (() => {
   let restTimers = {};
   let cache = {};
   const subscribers = {};
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 
   // ── Initialize ───────────────────────────────────────────
   function init() {
@@ -80,7 +81,12 @@ const RealDataAdapter = (() => {
   // ═══════════════════════════════════════════════════════════
 
   function initBinanceWebSocket() {
-    CONFIG.binancePairs.forEach(pair => {
+    // On mobile, only connect top 3 pairs to save battery/CPU
+    const pairs = isMobile
+      ? CONFIG.binancePairs.slice(0, 3)   // BTC, ETH, SOL only
+      : CONFIG.binancePairs;
+
+    pairs.forEach(pair => {
       try {
         const ws = new WebSocket(`${CONFIG.apis.binanceWs}/${pair}@ticker`);
         ws.onopen  = () => console.log(`✅ WS: ${pair.toUpperCase()}`);
@@ -120,6 +126,7 @@ const RealDataAdapter = (() => {
   }
 
   function startCryptoPollFallback(pair) {
+    const interval = isMobile ? 15000 : CONFIG.updateInterval; // 15s on mobile
     setInterval(async () => {
       try {
         const url = `${CONFIG.apis.binance}/ticker/24hr?symbol=${pair.toUpperCase()}`;
@@ -131,7 +138,7 @@ const RealDataAdapter = (() => {
           n: d.count, E: Date.now(), b: d.bidPrice, a: d.askPrice, o: d.openPrice,
         });
       } catch {}
-    }, CONFIG.updateInterval);
+    }, interval);
   }
 
   async function fetchInitialCryptoData() {
@@ -167,7 +174,8 @@ const RealDataAdapter = (() => {
 
   function startNonCryptoPolling() {
     fetchAllNonCryptoData();
-    restTimers.nonCrypto = setInterval(fetchAllNonCryptoData, 8000);
+    const pollRate = isMobile ? 30000 : 8000; // 30s on mobile vs 8s desktop
+    restTimers.nonCrypto = setInterval(fetchAllNonCryptoData, pollRate);
   }
 
   async function fetchAllNonCryptoData() {

@@ -92,12 +92,16 @@ const MarketData = (() => {
     return hist;
   }
 
+  // ── Mobile Detection ──────────────────────────────────────
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+
   // ── Tick Engine ──────────────────────────────────────────
   function startTicker() {
+    const TICK_RATE = isMobile ? 3000 : 600;  // 3s on mobile vs 600ms desktop
     tickTimer = setInterval(() => {
       ASSETS.forEach(a => tick(a.id));
       emit('tick', getTickerSnapshot());
-    }, 600);
+    }, TICK_RATE);
   }
 
   function tick(id) {
@@ -548,6 +552,38 @@ const MarketData = (() => {
         priceHistory[symbol].shift();
       }
     }
+  }
+
+  // ── Real-Price Injection (called by RealDataAdapter) ────
+  // Overwrites the simulated state with live exchange prices
+  // so every downstream consumer (charts, tickers, order book) sees real data.
+  function _injectRealPrice(symbol, data) {
+    const s = state[symbol];
+    if (!s) return;                          // asset not in our list — ignore
+    if (!data.price || isNaN(data.price)) return;
+
+    const prev  = s.price;
+    s.price     = data.price;
+    s.ask       = data.ask  || parseFloat((data.price * 1.0002).toFixed(8));
+    s.bid       = data.bid  || parseFloat((data.price * 0.9998).toFixed(8));
+    s.spread    = parseFloat((s.ask - s.bid).toFixed(8));
+    s.lastUpdate = Date.now();
+
+    if (data.high24h && data.high24h > 0) s.high24h = data.high24h;
+    if (data.low24h  && data.low24h  > 0) s.low24h  = data.low24h;
+    if (data.vol24h  && data.vol24h  > 0) s.vol24h  = data.vol24h;
+    if (data.chg24h  != null)             s.chg24h  = data.chg24h;
+    if (data.pct24h  != null)             s.pct24h  = data.pct24h;
+
+    // Keep price history in sync
+    const hist = priceHistory[symbol];
+    if (hist) {
+      hist.push(data.price);
+      if (hist.length > HISTORY_SIZE) hist.shift();
+    }
+
+    // Fire the per-asset event so any listeners see the real price immediately
+    emit(`price:${symbol}`, { id: symbol, price: data.price, prev, chg: s.chg24h, pct: s.pct24h, ask: s.ask, bid: s.bid });
   }
 
   // ── Cleanup ──────────────────────────────────────────────
