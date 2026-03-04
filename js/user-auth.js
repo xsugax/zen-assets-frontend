@@ -182,20 +182,26 @@ const UserAuth = (() => {
 
   // ── Logout (async-safe but also works sync) ─────────────
   async function logout() {
+    // Get user email BEFORE clearing session
+    const sessionBefore = _loadSession();
+    const userEmailBefore = sessionBefore?.email;
+    
+    // Notify API about logout
     if (_loadToken()) {
       try { await _api('/auth/logout', { method: 'POST' }); } catch { /* ignore */ }
     }
+    
+    // Clear auth tokens and session
     _saveToken(null);
     _saveSession(null);
     _saveWallet(null);
     
-    // Clear all user-specific data from localStorage
-    const userEmail = _loadSession()?.email;
-    if (userEmail) {
-      localStorage.removeItem('zen_investment_' + userEmail.toLowerCase());
+    // Clear user-specific per-email data
+    if (userEmailBefore) {
+      localStorage.removeItem('zen_investment_' + userEmailBefore.toLowerCase());
     }
     
-    // Clear general user-data keys
+    // Clear ALL user-specific data keys
     const keysToRemove = [
       'zen_investment_state',
       'zen_trades',
@@ -205,11 +211,18 @@ const UserAuth = (() => {
       'zen_positions',
       'zen_settings',
       'zen_watchlist',
+      'zen_market_data_cache',
+      'zen_price_cache',
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Also clear sessionStorage
+    // Clear all session storage
     sessionStorage.clear();
+    
+    // Debug logging
+    console.log('🔓 Logout complete - all data cleared');
+    console.log('Session is now:', _loadSession());
+    console.log('Token is now:', _loadToken());
   }
 
   // ── Admin: User Management (async) ──────────────────────

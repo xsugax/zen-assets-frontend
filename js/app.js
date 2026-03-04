@@ -1826,13 +1826,24 @@ const App = (() => {
 
   // ── Entry Point ───────────────────────────────────────────
   function init() {
+    console.log('🔄 App init starting...');
+    
     // Initialize auth system first
     if (typeof UserAuth !== 'undefined') UserAuth.init();
 
-    // ── Session Restore: skip login if already authenticated ──
-    if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
-      const loginScreen = $('login-screen');
+    // Check session status
+    const isLogged = typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
+    console.log('📊 Session check - isLoggedIn:', isLogged);
+    
+    // Get DOM elements
+    const loginScreen = $('login-screen');
+    const appDiv = $('app');
+
+    if (isLogged) {
+      // User IS logged in - show app
+      console.log('✅ User logged in - showing dashboard');
       if (loginScreen) loginScreen.style.display = 'none';
+      if (appDiv) appDiv.classList.add('app-visible');
       document.body.style.overflow = 'hidden'; // Lock scroll for app view
       initRegisterScreen();
       initModalHandlers();
@@ -1840,6 +1851,12 @@ const App = (() => {
       return;
     }
 
+    // User is NOT logged in - show login screen
+    console.log('❌ User not logged in - showing login screen');
+    if (loginScreen) loginScreen.style.display = 'block';
+    if (appDiv) appDiv.classList.remove('app-visible');
+    document.body.style.overflow = 'auto';
+    
     initLoginScreen();
     initRegisterScreen();
     initModalHandlers();
@@ -2365,25 +2382,41 @@ const App = (() => {
     const logoutBtn = $('ud-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        // Stop trading
+        console.log('🔐 Starting logout sequence...');
+        
+        // Stop trading immediately
         if (typeof AutoTrader !== 'undefined') {
           AutoTrader.stop();
         }
-        // Disconnect modules (but don't save for logout)
+        
+        // Disconnect modules
         if (typeof InvestmentReturns !== 'undefined') {
           InvestmentReturns.saveAndDisconnect();
         }
         if (typeof Gamification !== 'undefined') {
           Gamification.saveAndDisconnect();
         }
-        // Clear all auth data - MUST await completion before reload
+        
+        // Clear all auth data and user state - MUST await
         if (typeof UserAuth !== 'undefined') {
           await UserAuth.logout();
         }
-        // Small delay to ensure all storage operations complete
+        
+        // Hide app and show login screen
+        const app = document.getElementById('app');
+        const loginScreen = document.getElementById('login-screen');
+        if (app) app.classList.remove('app-visible');
+        if (loginScreen) loginScreen.style.display = 'block';
+        
+        // Reset body scroll
+        document.body.style.overflow = 'auto';
+        
+        console.log('🔓 Logout complete - redirecting to login');
+        
+        // Reload page to reset all state (gives app.js a fresh init)
         setTimeout(() => {
-          location.href = window.location.pathname; // Reload to login screen
-        }, 100);
+          location.replace(window.location.pathname + (window.location.search || ''));
+        }, 200);
       });
     }
   }
