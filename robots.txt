@@ -1,0 +1,71 @@
+# ZEN ASSETS - robots.txt
+# Rules for search engine crawlers
+# Last Updated: March 4, 2026
+
+# Allow all crawlers by default
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /about-us.html
+Allow: /contact.html
+Allow: /privacy-policy.html
+Allow: /terms-of-service.html
+Allow: /health-monitor.html
+Allow: /diagnostics.html
+Allow: *.html
+Allow: /css/
+Allow: /js/
+
+# Disallow admin/private areas if any
+Disallow: /admin/
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /node_modules/
+Disallow: /build/
+
+# Crawl delay (respect server resources)
+Crawl-delay: 1
+
+# Request rate (requests per second)
+Request-rate: 30/1
+
+# Sitemap location for major search engines
+Sitemap: https://zenassets.tech/sitemap.xml
+
+# Google specific rules
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+Priority: 1
+
+# Bing specific rules
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Other crawler rules
+User-agent: *
+Allow: /
+Disallow: /cgi-bin/
+Disallow: /wp-admin/
+Disallow: /wp-includes/
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# Allow specific useful bots
+User-agent: Slurp
+Allow: /
+
+User-agent: baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
