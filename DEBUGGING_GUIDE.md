@@ -29,7 +29,83 @@ We've deployed comprehensive debugging infrastructure to identify and fix the ch
 - Generate detailed reports
 - **Impact**: Systematic troubleshooting instead of guessing
 
-## 🚀 Quick Start: Testing the System
+## 🏥 System Health Monitoring
+
+### New: Health Monitor Dashboard
+
+A comprehensive, real-time system health monitoring page is now available:
+
+**Access**: Navigate to `/health-monitor.html` (standalone, no login required)
+
+**Features**:
+- **Circuit Breaker Status**: Real-time state monitoring for all 4 service circuits
+- **Health Metrics**: WebSocket, REST API, Chart Engine, MarketData, Memory, Event Loop  
+- **Failure Statistics**: 5-minute rolling window of failures
+- **Auto-Refresh**: Updates automatically every 5 seconds
+- **One-Click Actions**:
+  - 🔍 Run Health Check (validates all systems)
+  - ✅ Run Full Validation (same as ChartValidation)
+  - 📥 Download Report (detailed JSON diagnostics)
+  - 🔄 Reset Circuits (manual recovery trigger)
+  - 🔁 Refresh Page
+
+**What to Look For**:
+```
+Circuit Breaker Status:
+✅ CLOSED (green) = Normal operation
+🟡 HALF_OPEN (yellow) = Testing recovery  
+🔴 OPEN (red) = Service blocked (auto-recovery in 30s)
+
+Health Status:
+✅ HEALTHY = All good
+⚠️ WARNING = Degraded performance
+❌ FAILED = Service unavailable
+🚨 CRITICAL = System risk
+
+Failure Count:
+- Shows consecutive failures for each service
+- Resets when service recovers
+- Example: "websocket: 3 failures" = 3 consecutive errors
+```
+
+## ✨ Circuit Breaker & Resilience System (NEW)
+
+### What is a Circuit Breaker?
+
+A circuit breaker prevents cascading failures by:
+1. **Detecting failures** - Counts consecutive errors
+2. **Blocking requests** - Opens circuit to stop retries (OPEN state)
+3. **Testing recovery** - Periodically tries again (HALF_OPEN state)
+4. **Auto-closing** - Resumes normal operation when healthy (CLOSED state)
+
+### How It Works
+
+```
+CLOSED (Normal)
+    ↓ (5 errors)
+OPEN (Blocked - fast fail, no retries)
+    ↓ (30 seconds)
+HALF_OPEN (Testing - accepts single request)
+    ↓ (3 successful requests)
+CLOSED (Recovery complete!)
+```
+
+### 4 Independent Circuit Breakers
+
+1. **WebSocket** - Binance ticker connections
+2. **REST API** - Historical candle data fetches
+3. **Chart Engine** - Candlestick updates
+4. **MarketData** - Price injection and state
+
+Each operates independently, so 1 failure doesn't collapse others.
+
+### Automatic Recovery
+
+- Waits 30 seconds before attempting recovery
+- Tries 1 request in HALF_OPEN state
+- Only re-opens circuit if that request succeeds
+- Auto-recovery runs continuously in background
+- No human intervention needed
 
 ### Step 1: Run System Validation
 
@@ -335,6 +411,14 @@ All changes have been committed:
 Commit: f7d4632
 Message: CRITICAL FIX: Resolve chart freeze issues with enhanced diagnostics
 Files Modified: 5 files, 549 insertions(+), 45 deletions(-)
+
+Commit: 629ca6b  
+Message: DOC: Add comprehensive debugging guide for chart freeze issues
+Files Modified: 1 file, 360 insertions(+)
+
+Commit: 20c6a3b
+Message: ADD: Enterprise-grade resilience and circuit breaker system
+Files Modified: 4 files, 738 insertions(+)
 ```
 
 **To deploy live:**
@@ -347,14 +431,80 @@ git push origin main
 ## ✨ Key Features
 
 - **Real-time Debug Panel**: Fixed bottom-right, always visible
-- **Chart Validation**: Comprehensive test suite (new)
-- **Error Capture**: Automatic console.error/warn tracking (new)
+- **Chart Validation**: Comprehensive test suite
+- **Resilience Engine**: Circuit breaker pattern for failure prevention
+- **Health Monitor**: Real-time system health dashboard (/health-monitor.html)
+- **Error Capture**: Automatic console.error/warn tracking
 - **Diagnostics Page**: Standalone tool, no login required
 - **Detailed Logging**: Every tick, update, and error logged
 - **Export Reports**: JSON and HTML formats for analysis
+
+## 📚 Complete Testing Procedure
+
+### Quick Test (2 minutes)
+
+```javascript
+// Run these in browser console F12
+
+// 1. Validate all systems
+ChartValidation.runFullValidation()
+// Expect: All ✅ checks passing
+
+// 2. Check real-time metrics
+DebugMonitor.getMetrics()
+// Expect: realDataTicks > 0, chartUpdates > 0, no chartUpdateFailures
+
+// 3. Check resilience status  
+ResilienceEngine.getStatistics()
+// Expect: All circuits CLOSED
+```
+
+### Comprehensive Test (10 minutes)
+
+1. **Initialization Check**
+   - Open `/index.html`
+   - Run `ChartValidation.runFullValidation()` 
+   - Expect: All modules loaded, all tests passing ✅
+
+2. **Health Monitoring**
+   - Navigate to `/health-monitor.html`
+   - Observe dashboard for 30 seconds
+   - Expect: All circuits CLOSED, Health = HEALTHY
+
+3. **Data Flow Verification**
+   - Watch debug-monitor panel (bottom-right) for 60 seconds
+   - Check that Ticket count increases
+   - Check DevTools Network tab for WebSocket connections
+   - Expect: 11 WebSocket connections to wss://stream.binance.com
+
+4. **Chart Rendering**
+   - Observe main price chart updates
+   - Switch timeframes (5m → 1h → 4d)
+   - Expect: Smooth updates, no freezing, no errors
+
+5. **Error Recovery**
+   - Optional: Temporarily disconnect internet
+   - Watch `/health-monitor.html` 
+   - Expect: Circuits transition CLOSED → OPEN → HALF_OPEN → CLOSED
+   - Reconnect internet after 30 seconds
+   - Expect: System recovers automatically
+
+## 🎯 Success Metrics
+
+Your system is working correctly when:
+
+| Component | Good | Acceptable | Problem |
+|-----------|------|-----------|---------|
+| Chart rendering | < 1s | < 3s | > 5s |
+| Tick arrival | < 500ms gaps | < 1000ms gaps | > 2000ms gaps |
+| Memory usage | 100-200MB | 200-400MB | > 400MB |
+| Event loop lag | < 10ms | < 50ms | > 100ms |
+| Circuit status | All CLOSED | Some HALF_OPEN | Any OPEN > 60s |
+| Error rate | 0/min | < 1/min | > 5/min |
+| Health status | HEALTHY | WARNING | FAILED |
 
 ---
 
 **Last Updated**: March 4, 2026  
 **Status**: ✅ Production Ready  
-**Support**: Run `ChartValidation.runFullValidation()` for system check
+**Support**: Run `ChartValidation.runFullValidation()` or visit `/health-monitor.html`
