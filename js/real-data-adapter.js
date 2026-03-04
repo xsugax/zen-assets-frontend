@@ -99,6 +99,10 @@ const RealDataAdapter = (() => {
         ws.onmessage = (e) => { try { processBinanceTicker(pair, JSON.parse(e.data)); } catch {} };
         ws.onerror = (err) => {
           console.error(`❌ WS ERROR on ${pair.toUpperCase()}: ${err.message}`);
+          // Track error in resilience engine
+          if (typeof ResilienceEngine !== 'undefined') {
+            ResilienceEngine.recordFailure('websocket', err);
+          }
           startCryptoPollFallback(pair);
         };
         ws.onclose = () => {

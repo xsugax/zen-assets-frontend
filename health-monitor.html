@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Health Monitor - ZEN ASSETS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0a0e16;
+            color: #e2e8f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        html { scroll-behavior: smooth; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        h1 { color: #5fb38e; margin-bottom: 20px; font-size: 24px; }
+        h2 { color: #d4a574; margin-top: 20px; margin-bottom: 10px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        
+        .card {
+            background: #151a24;
+            border: 1px solid rgba(95, 179, 142, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .card.error { border-color: rgba(214, 93, 93, 0.5); }
+        .card.warning { border-color: rgba(212, 165, 116, 0.5); }
+        .card.success { border-color: rgba(95, 179, 142, 0.5); }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .status-healthy { background: rgba(95, 179, 142, 0.2); color: #5fb38e; }
+        .status-warning { background: rgba(212, 165, 116, 0.2); color: #d4a574; }
+        .status-failed { background: rgba(214, 93, 93, 0.2); color: #d65d5d; }
+        .status-unknown { background: rgba(139, 152, 173, 0.2); color: #8b98ad; }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-label { color: #8b98ad; flex: 1; }
+        .metric-value { color: #5fb38e; font-weight: bold; text-align: right; flex: 1; }
+        .metric-value.warning { color: #d4a574; }
+        .metric-value.error { color: #d65d5d; }
+        
+        .circuit-breaker {
+            background: #0a0e16;
+            border: 1px solid rgba(95, 179, 142, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .circuit-name { font-weight: bold; color: #d4a574; margin-bottom: 8px; }
+        .circuit-state {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 8px;
+        }
+        .circuit-closed { background: rgba(95, 179, 142, 0.3); color: #5fb38e; }
+        .circuit-open { background: rgba(214, 93, 93, 0.3); color: #d65d5d; }
+        .circuit-half-open { background: rgba(212, 165, 116, 0.3); color: #d4a574; }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: rgba(95, 179, 142, 0.2);
+            border: 1px solid rgba(95, 179, 142, 0.5);
+            color: #5fb38e;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        button:hover { background: rgba(95, 179, 142, 0.3); }
+        button.danger {
+            background: rgba(214, 93, 93, 0.2);
+            border-color: rgba(214, 93, 93, 0.5);
+            color: #d65d5d;
+        }
+        button.danger:hover { background: rgba(214, 93, 93, 0.3); }
+        
+        .log-section {
+            background: #0a0e16;
+            border: 1px solid rgba(95, 179, 142, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            font-size: 11px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #8b98ad;
+        }
+        .log-entry.error { color: #d65d5d; }
+        .log-entry.warning { color: #d4a574; }
+        .log-entry.success { color: #5fb38e; }
+        .log-entry:last-child { border-bottom: none; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #5fb38e;
+            transition: width 0.3s;
+        }
+        .progress-fill.warning { background: #d4a574; }
+        .progress-fill.error { background: #d65d5d; }
+        
+        .summary {
+            background: linear-gradient(135deg, rgba(95, 179, 142, 0.1), rgba(212, 165, 116, 0.1));
+            border: 1px solid rgba(95, 179, 142, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .summary-title { font-weight: bold; color: #5fb38e; margin-bottom: 12px; }
+        .summary-stat {
+            display: inline-block;
+            margin-right: 20px;
+            padding-right: 20px;
+            border-right: 1px solid rgba(95, 179, 142, 0.2);
+        }
+        .summary-stat:last-child { border-right: none; }
+        .summary-value { font-weight: bold; color: #d4a574; }
+        
+        .timestamp { color: #64748b; font-size: 11px; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 1s infinite; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 System Health Monitor</h1>
+        
+        <!-- Controls -->
+        <div class="button-group">
+            <button onclick="runHealthCheck()">🔍 Run Health Check</button>
+            <button onclick="runValidation()">✅ Run Full Validation</button>
+            <button onclick="downloadReport()">📥 Download Report</button>
+            <button class="danger" onclick="resetCircuits()">🔄 Reset Circuits</button>
+            <button onclick="location.reload()">🔁 Refresh Page</button>
+        </div>
+
+        <!-- Overall Summary -->
+        <div class="summary">
+            <div class="summary-title">⚡ System Overview</div>
+            <div class="summary-stat">
+                Health: <span class="summary-value" id="overall-health">—</span>
+            </div>
+            <div class="summary-stat">
+                Circuits Open: <span class="summary-value" id="circuits-open">0</span>
+            </div>
+            <div class="summary-stat">
+                Last Check: <span class="summary-value timestamp" id="last-check">Never</span>
+            </div>
+        </div>
+
+        <!-- Circuit Breakers -->
+        <h2>🔌 Circuit Breakers</h2>
+        <div id="circuit-breakers-container"></div>
+
+        <!-- Health Status -->
+        <h2>📊 Health Status</h2>
+        <div class="grid-2">
+            <div id="health-results"></div>
+        </div>
+
+        <!-- Statistics -->
+        <h2>📈 Statistics</h2>
+        <div id="statistics-container"></div>
+
+        <!-- Recent Failures -->
+        <h2>⚠️ Recent Issues</h2>
+        <div class="log-section" id="failure-log"></div>
+
+        <!-- Auto-refresh indicator -->
+        <div style="text-align: center; margin-top: 40px; padding: 20px; opacity: 0.5;">
+            <p>⏱️ This page auto-updates every 5 seconds</p>
+            <p style="font-size: 11px; margin-top: 10px;">Open your browser console (F12) to see detailed logs</p>
+        </div>
+    </div>
+
+    <script>
+        let healthCheckInterval;
+
+        function runHealthCheck() {
+            console.log('🏥 User-triggered health check');
+            if (typeof ResilienceEngine !== 'undefined') {
+                const result = ResilienceEngine.runHealthCheck();
+                updateDisplay();
+            } else {
+                alert('⚠️ ResilienceEngine not loaded. Refresh page.');
+            }
+        }
+
+        function runValidation() {
+            console.log('✅ User-triggered full validation');
+            if (typeof ChartValidation !== 'undefined') {
+                ChartValidation.runFullValidation();
+                setTimeout(updateDisplay, 1000);
+            } else {
+                alert('⚠️ ChartValidation not loaded. Refresh page.');
+            }
+        }
+
+        function downloadReport() {
+            if (typeof ResilienceEngine !== 'undefined') {
+                const stats = ResilienceEngine.getStatistics();
+                const validation = typeof ChartValidation !== 'undefined' ? ChartValidation.getReport() : null;
+                const report = { resilience: stats, validation, timestamp: new Date().toISOString() };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `health-report-${Date.now()}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function resetCircuits() {
+            if (confirm('⚠️ Reset all circuit breakers? This will force recovery attempts.')) {
+                console.warn('🔄 User reset circuits');
+                if (typeof ResilienceEngine !== 'undefined') {
+                    const breakers = ResilienceEngine.getBreakers();
+                    Object.values(breakers).forEach(b => {
+                        b.state = ResilienceEngine.CircuitBreaker.CLOSED;
+                        b.failureCount = 0;
+                    });
+                    updateDisplay();
+                }
+            }
+        }
+
+        function updateDisplay() {
+            if (typeof ResilienceEngine === 'undefined') {
+                document.body.innerHTML = '<p style="padding: 20px;">⚠️ ResilienceEngine not loaded. Refresh page.</p>';
+                return;
+            }
+
+            const stats = ResilienceEngine.getStatistics();
+            const health = ResilienceEngine.getHealth();
+            const breakers = ResilienceEngine.getBreakers();
+
+            // Update summary
+            const healthValues = Object.values(health.results);
+            const hasFailures = healthValues.includes('FAILED');
+            const hasCritical = healthValues.includes('CRITICAL');
+            const hasWarnings = healthValues.includes('WARNING');
+            const overallHealth = hasCritical ? 'CRITICAL' : hasFailures ? 'FAILED' : hasWarnings ? 'WARNING' : 'HEALTHY';
+            
+            document.getElementById('overall-health').textContent = overallHealth;
+            document.getElementById('overall-health').className = `summary-value ${overallHealth.toLowerCase()}`;
+            
+            const openCount = Object.values(breakers).filter(b => b.state === 'OPEN').length;
+            document.getElementById('circuits-open').textContent = openCount;
+            document.getElementById('last-check').textContent = health.lastCheck ? 
+                new Date(health.lastCheck).toLocaleTimeString() : 'Never';
+
+            // Circuit breakers
+            const cbContainer = document.getElementById('circuit-breakers-container');
+            cbContainer.innerHTML = Object.entries(stats.circuitBreakers).map(([name, cb]) => {
+                const stateClass = `circuit-${cb.state.toLowerCase().replace('_', '-')}`;
+                const timeSinceFailure = cb.lastFailure ? 
+                    Math.round((Date.now() - new Date(cb.lastFailure)) / 1000) : null;
+                return `
+                    <div class="circuit-breaker">
+                        <div class="circuit-name">${name}</div>
+                        <span class="circuit-state ${stateClass}">${cb.state}</span>
+                        <span style="color: #8b98ad;">Failures: ${cb.failureCount}</span>
+                        ${timeSinceFailure ? `<span style="color: #64748b; margin-left: 16px;">Last failure: ${timeSinceFailure}s ago</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            // Health results
+            const healthContainer = document.getElementById('health-results');
+            healthContainer.innerHTML = Object.entries(health.results).map(([name, status]) => {
+                const className = status === 'HEALTHY' ? 'success' : status === 'WARNING' ? 'warning' : 'error';
+                return `
+                    <div class="card ${className}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>${name}</span>
+                            <span class="status-badge status-${status.toLowerCase()}">${status}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Statistics
+            const statsContainer = document.getElementById('statistics-container');
+            statsContainer.innerHTML = Object.entries(stats.failureSummary).map(([name, summary]) => {
+                const recent = summary.recentFailuresLast5Min || 0;
+                const severity = recent > 5 ? 'error' : recent > 2 ? 'warning' : 'success';
+                return `
+                    <div class="card">
+                        <div style="font-weight: bold; color: #d4a574; margin-bottom: 10px;">${name}</div>
+                        <div class="metric-row">
+                            <span class="metric-label">Total Failures</span>
+                            <span class="metric-value">${summary.totalFailures}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Recent (5min)</span>
+                            <span class="metric-value ${severity}">${recent}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${severity}" style="width: ${Math.min((recent / 10) * 100, 100)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Failure log
+            const logs = [];
+            Object.entries(stats.failureSummary).forEach(([name, summary]) => {
+                if (summary.totalFailures > 0) {
+                    logs.push({
+                        time: new Date(summary.lastFailureTime).toLocaleTimeString(),
+                        text: `${name}: ${summary.recentFailuresLast5Min} failures in last 5 minutes`,
+                        type: summary.recentFailuresLast5Min > 2 ? 'error' : 'warning'
+                    });
+                }
+            });
+
+            const logContainer = document.getElementById('failure-log');
+            logContainer.innerHTML = logs.length === 0 ?
+                '<div style="padding: 20px; text-align: center; color: #5fb38e;">✅ No recent issues detected</div>' :
+                logs.map(log => `<div class="log-entry ${log.type}">[${log.time}] ${log.text}</div>`).join('');
+        }
+
+        // Initial load
+        updateDisplay();
+        // Auto-refresh every 5 seconds
+        healthCheckInterval = setInterval(updateDisplay, 5000);
+        // Run health check every 30 seconds
+        setInterval(() => {
+            if (typeof ResilienceEngine !== 'undefined') {
+                ResilienceEngine.runHealthCheck();
+            }
+        }, 30000);
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => clearInterval(healthCheckInterval));
+    </script>
+</body>
+</html>
