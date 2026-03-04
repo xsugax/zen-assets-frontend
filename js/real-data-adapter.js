@@ -88,15 +88,26 @@ const RealDataAdapter = (() => {
       ? CONFIG.binancePairs.slice(0, 3)   // BTC, ETH, SOL only
       : CONFIG.binancePairs;
 
+    console.log(`🔌 Initializing Binance WebSocket for ${pairs.length} pairs:`, pairs);
+
     pairs.forEach(pair => {
       try {
         const ws = new WebSocket(`${CONFIG.apis.binanceWs}/${pair}@ticker`);
-        ws.onopen  = () => console.log(`✅ WS: ${pair.toUpperCase()}`);
+        ws.onopen  = () => {
+          console.log(`✅ WS OPENED: ${pair.toUpperCase()} — Ready for ticks`);
+        };
         ws.onmessage = (e) => { try { processBinanceTicker(pair, JSON.parse(e.data)); } catch {} };
-        ws.onerror = () => startCryptoPollFallback(pair);
-        ws.onclose = () => setTimeout(() => reconnectWS(pair), 5000);
+        ws.onerror = (err) => {
+          console.error(`❌ WS ERROR on ${pair.toUpperCase()}: ${err.message}`);
+          startCryptoPollFallback(pair);
+        };
+        ws.onclose = () => {
+          console.warn(`🔌 WS CLOSED: ${pair.toUpperCase()} — Reconnecting in 5s`);
+          setTimeout(() => reconnectWS(pair), 5000);
+        };
         wsConnections[pair] = ws;
-      } catch {
+      } catch (err) {
+        console.error(`❌ WS CREATION FAILED for ${pair}: ${err.message}`);
         startCryptoPollFallback(pair);
       }
     });
@@ -123,6 +134,10 @@ const RealDataAdapter = (() => {
       open: parseFloat(data.o), source: 'binance-ws',
     };
     cache[symbol] = normalized;
+    
+    // Log tick for debugging
+    console.log(`📥 TICK RECEIVED: ${symbol} @ ${normalized.price} (Timestamp: ${data.E}, Gap: ${Date.now() - data.E}ms)`);
+    
     emit('price_update', normalized);
     injectIntoMarketData(normalized);
   }

@@ -360,6 +360,10 @@ const AdvancedChartEngine = (() => {
           // Update candlestick immediately
           try { 
             candleSeries.update({ time: t, open: o, high: h, low: l, close: c }); 
+            // Log to debug monitor
+            if (typeof DebugMonitor !== 'undefined') {
+              DebugMonitor.recordChartUpdate(assetId, { o, h, l, c, v });
+            }
           } catch (e) {
             console.warn(`Candlestick update error: ${e.message}`);
           }
@@ -425,6 +429,10 @@ const AdvancedChartEngine = (() => {
           const t = Math.floor(c.t / 1000);
           try { 
             candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); 
+            // Log to debug monitor
+            if (typeof DebugMonitor !== 'undefined') {
+              DebugMonitor.recordChartUpdate(assetId, c);
+            }
           } catch (e) {
             console.warn(`Candle update failed: ${e.message}`);
           }
