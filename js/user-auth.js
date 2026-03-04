@@ -21,6 +21,47 @@ const UserAuth = (() => {
   const STORAGE_SESSION = 'zen_session';
   const STORAGE_TOKEN   = 'zen_token';
   const STORAGE_WALLET  = 'zen_wallet';
+  const STORAGE_USERS   = 'zen_users_db';  // Local user database
+  
+  // ── Demo Accounts (Fallback when API unavailable) ────────
+  const DEMO_USERS = {
+    'admin@zenassets.tech': {
+      id: 'user_admin_001',
+      email: 'admin@zenassets.tech',
+      password: 'Admin123!',  // Demo only; never do this in production!
+      fullName: 'Admin User',
+      role: 'admin',
+      tier: 'platinum',
+      createdAt: Date.now() - 90*24*60*60*1000,
+    },
+    'trader@zenassets.tech': {
+      id: 'user_trader_001',
+      email: 'trader@zenassets.tech',
+      password: 'Trader123!',
+      fullName: 'Pro Trader',
+      role: 'user',
+      tier: 'gold',
+      createdAt: Date.now() - 60*24*60*60*1000,
+    },
+    'investor@zenassets.tech': {
+      id: 'user_investor_001',
+      email: 'investor@zenassets.tech',
+      password: 'Investor123!',
+      fullName: 'Premium Investor',
+      role: 'user',
+      tier: 'platinum',
+      createdAt: Date.now() - 30*24*60*60*1000,
+    },
+    'demo@zenassets.tech': {
+      id: 'user_demo_001',
+      email: 'demo@zenassets.tech',
+      password: 'Demo123!',
+      fullName: 'Demo User',
+      role: 'user',
+      tier: 'silver',
+      createdAt: Date.now() - 7*24*60*60*1000,
+    },
+  };
 
   const TIERS = {
     bronze:   { label: 'Bronze',   minDeposit: 5000,    apyRange: '15–22%',  color: '#cd7f32', icon: 'fa-medal'  },
@@ -37,6 +78,36 @@ const UserAuth = (() => {
   function _saveToken(t)   { t ? localStorage.setItem(STORAGE_TOKEN, t) : localStorage.removeItem(STORAGE_TOKEN); }
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
   function _saveWallet(w)  { w ? localStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : localStorage.removeItem(STORAGE_WALLET); }
+
+  // ── Generate Mock JWT Token (for local auth) ─────────────
+  function _generateMockToken(user) {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      tier: user.tier,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
+    }));
+    // Fake signature (not cryptographically valid, but works for local demo)
+    const signature = btoa('mock_signature_for_local_auth');
+    return `${header}.${payload}.${signature}`;
+  }
+
+  // ── Local User Database Helpers ──────────────────────────
+  function _loadLocalUsers() {
+    try {
+      const stored = localStorage.getItem(STORAGE_USERS);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function _saveLocalUsers(users) {
+    localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+  }
 
   // ── API Helper ───────────────────────────────────────────
   async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
@@ -61,64 +132,96 @@ const UserAuth = (() => {
   // ── Register (async) ────────────────────────────────────
   async function register({ fullName, email, password, tier, deposit }) {
     if (!fullName || !email || !password || !tier) {
-      return { ok: false, error: 'All fields are required.' };
+      return { ok: false, error: 'All required fields must be filled in.' };
     }
-    if (password.length < 6) {
-      return { ok: false, error: 'Password must be at least 6 characters.' };
+
+    // Simple password validation
+    if (password.length < 8) {
+      return { ok: false, error: 'Password must be at least 8 characters.' };
     }
+
+    if (!email.includes('@')) {
+      return { ok: false, error: 'Please enter a valid email address.' };
+    }
+
     if (!TIERS[tier]) {
-      return { ok: false, error: 'Invalid membership tier.' };
+      return { ok: false, error: 'Please select a valid membership tier.' };
     }
+
     const minDep = TIERS[tier].minDeposit;
     const dep = parseFloat(deposit) || 0;
     if (dep < minDep) {
       return { ok: false, error: `${TIERS[tier].label} tier requires a minimum deposit of $${minDep.toLocaleString()}.` };
     }
 
+    // Call backend API
     const result = await _api('/auth/register', {
       method: 'POST',
-      body: { fullName, email, password, tier, depositAmount: dep },
+      body: { fullName, email: email.toLowerCase(), password, tier, depositAmount: dep },
       auth: false,
     });
 
-    if (result.ok) {
-      return { ok: true, user: result.user };
+    if (result.ok || result.success) {
+      // Store token if provided
+      if (result.token) _saveToken(result.token);
+      return { 
+        ok: true, 
+        user: result.user,
+        message: result.message || 'Account created successfully!'
+      };
     }
-    return result;
+
+    return { ok: false, error: result.error || 'Registration failed. Please try again.' };
   }
 
   // ── Login (async) ───────────────────────────────────────
   async function login(email, password) {
     if (!email || !password) return { ok: false, error: 'Email and password are required.' };
 
+    const emailLower = email.toLowerCase().trim();
+
+    // Call backend API
     const result = await _api('/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { email: emailLower, password },
       auth: false,
     });
 
-    if (result.ok) {
-      // Store JWT
-      _saveToken(result.token);
+    if (result.ok || result.success) {
+      // Store JWT token
+      if (result.token) {
+        _saveToken(result.token);
+      }
 
-      // Cache session data locally (for synchronous checks)
+      // Cache session data locally
       const session = {
         userId: result.user.id,
         email: result.user.email,
-        role: result.user.role,
-        tier: result.user.tier,
+        role: result.user.role || 'user',
+        tier: result.user.tier || 'gold',
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
       _saveSession(session);
 
       // Cache wallet
-      if (result.wallet) _saveWallet(result.wallet);
+      if (result.wallet) {
+        _saveWallet(result.wallet);
+      }
 
-      return { ok: true, user: result.user, session, wallet: result.wallet };
+      console.log('✓ Login successful:', emailLower);
+      return { 
+        ok: true, 
+        user: result.user, 
+        session, 
+        wallet: result.wallet,
+        message: 'Login successful!'
+      };
     }
 
-    return result;
+    // Login failed
+    console.error('Login failed:', result.error);
+    return { ok: false, error: result.error || 'Login failed. Please check your email and password.' };
   }
 
   // ── Session (synchronous — reads cache) ──────────────────

@@ -3489,19 +3489,95 @@
   
   // Smartsupp Chat
   window.openSmartsuppChat = function() {
-    if (typeof smartsupp !== 'undefined' && smartsupp.chat) {
-      smartsupp.chat.open();
-    } else {
-      // Fallback: open a callback form
-      alert('Chat is starting... Please wait.');
-      setTimeout(function() {
-        if (typeof smartsupp !== 'undefined' && smartsupp.chat) {
+    try {
+      // Try different Smartsupp implementations
+      if (window.$smartsupp && typeof window.$smartsupp === 'function') {
+        window.$smartsupp('openChat');
+        return;
+      }
+      
+      if (typeof smartsupp !== 'undefined' && smartsupp.chat) {
+        if (smartsupp.chat.open) {
           smartsupp.chat.open();
         }
-      }, 1000);
+        return;
+      }
+
+      // Fallback: show loading and try again
+      var btn = event.target;
+      var originalText = btn.textContent;
+      btn.textContent = '⏳ Loading Chat...';
+      btn.disabled = true;
+
+      setTimeout(function() {
+        if (window.$smartsupp) {
+          window.$smartsupp('openChat');
+        } else if (typeof smartsupp !== 'undefined' && smartsupp.chat && smartsupp.chat.open) {
+          smartsupp.chat.open();
+        }
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 1500);
+    } catch (e) {
+      console.error('Smartsupp chat error:', e);
+      alert('Chat support is starting. Please wait a moment...');
     }
   };
+
 })();
+</script>
+
+<!-- Smartsupp Chat Widget - Customer Support -->
+<script>
+(function() {
+  // Initialize Smartsupp with your account key
+  // Replace 'YOUR_ACCOUNT_KEY' with actual Smartsupp ID
+  var smartsuppAccountKey = 'YOUR_SMARTSUPP_KEY'; // Change this!
+  
+  // Load Smartsupp SDK
+  window.smartsuppConfig = {
+    key: smartsuppAccountKey,
+  };
+
+  (function(d) {
+    var s = d.createElement('script');
+    s.type = 'text/javascript';
+    s.async = true;
+    s.src = 'https://www.chatbot.com/embed.js';
+    (d.head || d.body).appendChild(s);
+  })(document);
+
+  // Ensure Smartsupp is available
+  window.smartsupp = window.smartsupp || {};
+  window.smartsupp.chat = window.smartsupp.chat || {};
+  
+  // Initialize on page load
+  window.addEventListener('load', function() {
+    // Set user properties if logged in
+    var session = localStorage.getItem('zen_session');
+    if (session) {
+      try {
+        var user = JSON.parse(session);
+        if (window.$smartsupp) {
+          window.$smartsupp('setVisitorEmail', user.email);
+          window.$smartsupp('setVisitorName', user.fullName);
+          window.$smartsupp('setVariable', 'tier', user.tier);
+        }
+      } catch (e) {
+        console.warn('Could not set Smartsupp user properties');
+      }
+    }
+  });
+})();
+</script>
+
+<!-- Chat Widget Status Indicator -->
+<script>
+// Show support status
+var supportStatusEl = document.getElementById('support-status');
+if (supportStatusEl) {
+  supportStatusEl.textContent = '🟢 Support Team Online';
+}
 </script>
 
 <!-- Surge Badge Killer — removes any injected branding on ALL devices -->
