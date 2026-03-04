@@ -357,32 +357,51 @@ const AdvancedChartEngine = (() => {
           const c  = parseFloat(k.c);
           const v  = parseFloat(k.v);
 
-          // Update candlestick immediately
+          // Validate candle data
+          if (isNaN(o) || isNaN(h) || isNaN(l) || isNaN(c) || isNaN(v)) {
+            console.error(`❌ Invalid candle data for ${assetId}: o=${o}, h=${h}, l=${l}, c=${c}, v=${v}`);
+            return;
+          }
+
+          // Update candlestick immediately with detailed error tracking
+          let candleUpdateSuccess = false;
           try { 
             candleSeries.update({ time: t, open: o, high: h, low: l, close: c }); 
+            candleUpdateSuccess = true;
+            console.log(`📊 Chart Update [${assetId}] ${tf.binance}: O=${o.toFixed(2)} H=${h.toFixed(2)} L=${l.toFixed(2)} C=${c.toFixed(2)} V=${v.toFixed(0)}`);
+            
             // Log to debug monitor
             if (typeof DebugMonitor !== 'undefined') {
               DebugMonitor.recordChartUpdate(assetId, { o, h, l, c, v });
             }
-          } catch (e) {
-            console.warn(`Candlestick update error: ${e.message}`);
+          } catch (updateErr) {
+            console.error(`❌ Candlestick update FAILED for ${assetId}: ${updateErr.message}`);
+            console.error(`   Data: time=${t}, o=${o}, h=${h}, l=${l}, c=${c}`);
+            console.error(`   Stacktrace:`, updateErr.stack);
           }
           
-          // Update volume immediately
-          try { 
-            volumeSeries.update({ time: t, value: v, color: c >= o ? THEME.volume.up : THEME.volume.down }); 
-          } catch (e) {
-            console.warn(`Volume update error: ${e.message}`);
+          // Update volume immediately (only if candlestick succeeded)
+          if (candleUpdateSuccess) {
+            try { 
+              volumeSeries.update({ time: t, value: v, color: c >= o ? THEME.volume.up : THEME.volume.down }); 
+            } catch (volErr) {
+              console.warn(`Volume update error: ${volErr.message}`);
+            }
           }
 
           // Sync real price for tickers
           if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
-            MarketData._injectRealPrice(assetId, { price: c, high24h: h, low24h: l });
+            try {
+              MarketData._injectRealPrice(assetId, { price: c, high24h: h, low24h: l });
+            } catch (injErr) {
+              console.error(`❌ MarketData injection failed: ${injErr.message}`);
+            }
           }
           
           lastUpdateTime = Date.now();
         } catch (err) {
-          console.error(`Kline message parse error: ${err.message}`);
+          console.error(`❌ Kline message parse error: ${err.message}`);
+          console.error(`   Message:`, e.data);
         }
       };
 
@@ -418,37 +437,63 @@ const AdvancedChartEngine = (() => {
     console.log(`🔄 REST FALLBACK: ${assetId} every ${intervalMs / 1000}s`);
 
     updateIntervals[containerId] = setInterval(async () => {
-      if (typeof RealDataAdapter === 'undefined') return;
+      if (typeof RealDataAdapter === 'undefined') {
+        console.warn(`⚠️ RealDataAdapter not available for ${assetId}`);
+        return;
+      }
       try {
         // Fetch last 3 candles to ensure we get the latest
         const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 3);
-        if (!candles || !candles.length) return;
+        if (!candles || !candles.length) {
+          console.warn(`⚠️ No candles returned for ${assetId} from RealDataAdapter`);
+          return;
+        }
 
         // Update BOTH closed and forming candles for smooth progression
+        let updateCount = 0;
         for (const c of candles) {
           const t = Math.floor(c.t / 1000);
+          
+          // Validate candle data
+          if (isNaN(c.o) || isNaN(c.h) || isNaN(c.l) || isNaN(c.c)) {
+            console.error(`❌ Invalid candle data in REST: o=${c.o}, h=${c.h}, l=${c.l}, c=${c.c}`);
+            continue;
+          }
+          
           try { 
             candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); 
+            updateCount++;
+            console.log(`📊 REST Update [${assetId}] ${tf.binance}: O=${c.o.toFixed(2)} H=${c.h.toFixed(2)} L=${c.l.toFixed(2)} C=${c.c.toFixed(2)}`);
+            
             // Log to debug monitor
             if (typeof DebugMonitor !== 'undefined') {
               DebugMonitor.recordChartUpdate(assetId, c);
             }
-          } catch (e) {
-            console.warn(`Candle update failed: ${e.message}`);
+          } catch (updateErr) {
+            console.error(`❌ REST Candle update failed: ${updateErr.message}`);
           }
+          
           try { 
             volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); 
-          } catch (e) {
-            console.warn(`Volume update failed: ${e.message}`);
+          } catch (volErr) {
+            console.warn(`REST Volume update error: ${volErr.message}`);
           }
+        }
+        
+        if (updateCount === 0) {
+          console.warn(`⚠️ No candle updates succeeded for ${assetId} from REST`);
         }
 
         const latest = candles[candles.length - 1];
         if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
-          MarketData._injectRealPrice(assetId, { price: latest.c });
+          try {
+            MarketData._injectRealPrice(assetId, { price: latest.c });
+          } catch (injErr) {
+            console.error(`❌ REST MarketData injection failed: ${injErr.message}`);
+          }
         }
       } catch (err) {
-        console.error(`REST fallback error:`, err.message);
+        console.error(`❌ REST fallback error for ${assetId}:`, err.message);
       }
     }, intervalMs);
   }

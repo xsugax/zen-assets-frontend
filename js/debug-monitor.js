@@ -20,11 +20,14 @@ const DebugMonitor = (() => {
     realDataTicks: 0,
     marketDataUpdates: 0,
     chartUpdates: 0,
+    chartUpdateFailures: 0,
     wsConnections: 0,
+    wsErrors: 0,
     cachedAssets: 0,
     lastTickTime: null,
     lastUpdateTime: null,
     lastChartUpdateTime: null,
+    lastErrorTime: null,
     tickTimestamps: [],
     updateTimestamps: [],
     chartUpdateTimestamps: [],
@@ -32,6 +35,7 @@ const DebugMonitor = (() => {
     eventLoopLags: [],
     memorySnapshots: [],
     cpuSnapshots: [],
+    errors: [],  // NEW: Track errors
   };
 
   const HISTORY_SIZE = 300; // 5 minutes at 100ms interval
@@ -72,7 +76,9 @@ const DebugMonitor = (() => {
         <div id="monitor-ticks" style="margin: 4px 0; color: #d4a574;">Ticks: <span style="color: #5fb38e;">0</span></div>
         <div id="monitor-last-tick" style="margin: 4px 0; color: #8b98ad;">Last Tick: Never</div>
         <div id="monitor-ws-status" style="margin: 4px 0; color: #8b98ad;">WebSocket: <span style="color: #d65d5d;">●</span> Closed</div>
-        <div id="monitor-chart-status" style="margin: 4px 0; color: #8b98ad;">Charts: <span style="color: #d65d5d;">●</span> Idle</div>
+        <div id="monitor-chart-status" style="margin: 4px 0; color: #8b98ad;">Charts: <span style="color: #d65d5d;">●</span> Updated 0 times</div>
+        <div id="monitor-chart-failures" style="margin: 4px 0; color: #d65d5d;">⚠️ Chart Failures: <span style="color: #d65d5d;">0</span></div>
+        <div id="monitor-ws-errors" style="margin: 4px 0; color: #d65d5d;">⚠️ WS Errors: <span style="color: #d65d5d;">0</span></div>
       </div>
 
       <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
@@ -147,6 +153,20 @@ const DebugMonitor = (() => {
     wsStatusDisplay.textContent = wsCount > 0 ? '●' : '●';
     wsStatusDisplay.style.color = wsCount > 0 ? '#5fb38e' : '#d65d5d';
     wsStatusDisplay.parentElement.textContent = `WebSocket: ${wsStatusDisplay.outerHTML} (${wsCount} active)`;
+
+    // Chart status
+    chartStatusDisplay.textContent = '●';
+    const chartColor = metrics.chartUpdates > 0 ? '#5fb38e' : '#d65d5d';
+    chartStatusDisplay.style.color = chartColor;
+    chartStatusDisplay.parentElement.textContent = `Charts: ${chartStatusDisplay.outerHTML} Updated ${metrics.chartUpdates} times`;
+
+    // Chart failures
+    document.querySelector('#monitor-chart-failures span').textContent = metrics.chartUpdateFailures;
+    document.querySelector('#monitor-chart-failures').style.display = metrics.chartUpdateFailures > 0 ? 'block' : 'none';
+
+    // WS errors  
+    document.querySelector('#monitor-ws-errors span').textContent = metrics.wsErrors;
+    document.querySelector('#monitor-ws-errors').style.display = metrics.wsErrors > 0 ? 'block' : 'none';
 
     // Memory
     if (performance.memory) {
@@ -227,6 +247,44 @@ const DebugMonitor = (() => {
     MarketData._subscriberCount = () => subscriberCount;
   }
 
+  // ── Error Capture ────────────────────────────────────────
+  function hookErrorCapture() {
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    
+    console.error = function(...args) {
+      const msg = args.join(' ');
+      metrics.errors.push({
+        time: Date.now(),
+        level: 'error',
+        message: msg,
+      });
+      if (metrics.errors.length > 100) metrics.errors.shift();
+      
+      // Track specific errors
+      if (msg.includes('❌') || msg.includes('failed') || msg.includes('FAILED')) {
+        metrics.chartUpdateFailures++;
+        metrics.lastErrorTime = Date.now();
+      }
+      if (msg.includes('WebSocket') || msg.includes('WS')) {
+        metrics.wsErrors++;
+      }
+      
+      return originalError.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+      const msg = args.join(' ');
+      metrics.errors.push({
+        time: Date.now(),
+        level: 'warn',
+        message: msg,
+      });
+      if (metrics.errors.length > 100) metrics.errors.shift();
+      return originalWarn.apply(console, args);
+    };
+  }
+
   // ── Event Loop Lag Detector ──────────────────────────────
   function detectEventLoopLag() {
     const startTime = performance.now();
@@ -264,15 +322,20 @@ const DebugMonitor = (() => {
         totalTicks: metrics.realDataTicks,
         totalUpdates: metrics.marketDataUpdates,
         totalChartUpdates: metrics.chartUpdates,
+        chartUpdateFailures: metrics.chartUpdateFailures,
+        wsErrors: metrics.wsErrors,
         avgTickGap: metrics.tickGaps.length ? 
           Math.round(metrics.tickGaps.reduce((a,b) => a+b, 0) / metrics.tickGaps.length) : 0,
         maxTickGap: metrics.tickGaps.length ? Math.max(...metrics.tickGaps) : 0,
         avgEventLoopLag: metrics.eventLoopLags.length ?
           Math.round(metrics.eventLoopLags.reduce((a,b) => a+b, 0) / metrics.eventLoopLags.length) : 0,
         maxEventLoopLag: metrics.eventLoopLags.length ? Math.max(...metrics.eventLoopLags) : 0,
+        lastErrorTime: metrics.lastErrorTime,
       },
       recentTicks: metrics.tickTimestamps.slice(-20),
       recentUpdates: metrics.updateTimestamps.slice(-20),
+      recentChartUpdates: metrics.chartUpdateTimestamps.slice(-20),
+      recentErrors: metrics.errors.slice(-20),  // NEW: Include recent errors
       cache: typeof RealDataAdapter !== 'undefined' ? 
         RealDataAdapter.getAllCachedData?.() : {},
       wsStatus: countActiveWebSockets(),
@@ -299,6 +362,7 @@ const DebugMonitor = (() => {
     createMonitorPanel();
     hookRealDataAdapter();
     hookMarketData();
+    hookErrorCapture();  // NEW: Hook error capture
 
     // Update display every 500ms
     setInterval(updateDisplay, 500);

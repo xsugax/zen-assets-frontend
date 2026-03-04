@@ -528,32 +528,6 @@ const MarketData = (() => {
     (subscribers[event] || []).forEach(fn => { try { fn(data); } catch(e) {} });
   }
 
-  // ── Real Data Injection (for RealDataAdapter) ───────────
-  function _injectRealPrice(symbol, data) {
-    const s = state[symbol];
-    if (!s) return;
-    
-    // Update state with real data
-    if (data.price) s.price = data.price;
-    if (data.high24h) s.high24h = data.high24h;
-    if (data.low24h) s.low24h = data.low24h;
-    if (data.vol24h) s.vol24h = data.vol24h;
-    if (data.chg24h !== undefined) s.chg24h = data.chg24h;
-    if (data.pct24h !== undefined) s.pct24h = data.pct24h;
-    if (data.bid) s.bid = data.bid;
-    if (data.ask) s.ask = data.ask;
-    
-    s.lastUpdate = Date.now();
-    
-    // Update price history
-    if (priceHistory[symbol] && data.price) {
-      priceHistory[symbol].push(data.price);
-      if (priceHistory[symbol].length > HISTORY_SIZE) {
-        priceHistory[symbol].shift();
-      }
-    }
-  }
-
   // ── Real-Price Injection (called by RealDataAdapter) ────
   // Overwrites the simulated state with live exchange prices
   // so every downstream consumer (charts, tickers, order book) sees real data.
