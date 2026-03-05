@@ -16,27 +16,6 @@ const AuthManager = (() => {
    * Switch between login and register views
    * @param {string} viewName - 'login' or 'register'
    */
-  // iOS Safari: lock the scrollable container behind any modal overlay
-  function _lockScroll() {
-    const c = document.querySelector('.login-container');
-    if (c) {
-      c._savedScrollTop = c.scrollTop;
-      c.style.overflowY = 'hidden';
-    }
-  }
-
-  // iOS Safari: restore scroll after modal closes
-  function _unlockScroll() {
-    const c = document.querySelector('.login-container');
-    if (c) {
-      c.style.overflowY = '';
-      if (c._savedScrollTop != null) {
-        c.scrollTop = c._savedScrollTop;
-        c._savedScrollTop = null;
-      }
-    }
-  }
-
   function switchView(viewName) {
     const loginScreen    = document.getElementById('login-screen');
     const registerOverlay = document.getElementById('register-overlay');
@@ -50,9 +29,6 @@ const AuthManager = (() => {
       registerOverlay.removeAttribute('style');
     }
     if (topNav) topNav.classList.remove('view-login', 'view-register');
-
-    // Lock scroll behind modal (iOS Safari scroll-bleed fix)
-    _lockScroll();
 
     currentView = viewName;
 
@@ -95,8 +71,6 @@ const AuthManager = (() => {
     currentView = null;
     const topNav = document.querySelector('.login-top-nav');
     if (topNav) topNav.classList.remove('view-login', 'view-register');
-    // Restore scroll behind modal (iOS Safari scroll-bleed fix)
-    _unlockScroll();
   }
 
   /**
@@ -2141,20 +2115,41 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
+
+    // Force-logout via URL parameter: zenassets.tech?logout=1
+    if (new URLSearchParams(window.location.search).get('logout') !== null) {
+      if (typeof UserAuth !== 'undefined') UserAuth.logout();
+      localStorage.clear();
+      sessionStorage.clear();
+      history.replaceState(null, '', window.location.pathname);
+      // fall through — isLoggedIn() will now be false
+    }
+
+    // Initialize auth system first
+    if (typeof UserAuth !== 'undefined') UserAuth.init();
+
+    // Check session status
+    const isLogged = typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
+    console.log('📊 Session check - isLoggedIn:', isLogged);
     
-    // AUTH INIT DISABLED — do not call UserAuth.init() to prevent auto-login / session restore
-    // if (typeof UserAuth !== 'undefined') UserAuth.init();
-
-    // AUTO-LOGIN DISABLED — always show login screen
-    const isLogged = false; // was: typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
-    console.log('📊 Auto-login disabled — forcing login screen');
-
     // Get DOM elements
     const loginScreen = $('login-screen');
     const appDiv = $('app');
 
+    if (isLogged) {
+      // User IS logged in - show app
+      console.log('✅ User logged in - showing dashboard');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appDiv) appDiv.classList.add('app-visible');
+      document.body.style.overflow = 'hidden'; // Lock scroll for app view
+      initRegisterScreen();
+      initModalHandlers();
+      proceedAfterLogin();
+      return;
+    }
+
     // User is NOT logged in - show login screen
-    console.log('❌ Auto-login disabled - showing login screen');
+    console.log('❌ User not logged in - showing login screen');
     if (loginScreen) loginScreen.style.display = 'block';
     if (appDiv) appDiv.classList.remove('app-visible');
     document.body.style.overflow = 'auto';
