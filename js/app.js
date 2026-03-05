@@ -185,7 +185,10 @@ const App = (() => {
     const loading = $('loading-screen');
     if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
     const app = $('app');
-    if (app) app.classList.add('app-visible');
+    if (app) {
+      app.style.display = ''; // clear any inline override so CSS class can take effect
+      app.classList.add('app-visible');
+    }
     // startCursorTrail(); // Removed — clean professional UI
     startClock();
     initData();
@@ -2127,10 +2130,13 @@ const App = (() => {
     const loginScreen = $('login-screen');
     const appDiv = $('app');
     if (loginScreen) {
-      loginScreen.style.display = ''; // let CSS flex rule take over
+      loginScreen.style.display = 'flex'; // explicitly keep visible
       loginScreen.style.opacity  = '1';
     }
-    if (appDiv) { appDiv.classList.remove('app-visible'); appDiv.style.display = 'none'; }
+    if (appDiv) {
+      appDiv.classList.remove('app-visible');
+      appDiv.style.display = ''; // clear any inline override — CSS hides #app by default
+    }
     document.body.style.overflow = 'auto';
 
     initLoginScreen();
