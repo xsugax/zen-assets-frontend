@@ -11,6 +11,48 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>ZEN ASSETS — OmniVest AI · Quantum Trading Platform</title>
 
+  <!-- ═══ SEO — Google Search ═══════════════════════════════ -->
+  <meta name="description" content="ZEN ASSETS is an AI-powered trading platform offering automated crypto & stock portfolio management, real-time market analytics, and intelligent wealth growth. Start with as little as $5,000." />
+  <meta name="keywords" content="AI trading platform, automated investing, crypto trading, stock portfolio management, OmniVest AI, wealth management, passive income, algorithmic trading, ZEN ASSETS" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="author" content="ZEN ASSETS" />
+  <link rel="canonical" href="https://zenassets.com/" />
+
+  <!-- Open Graph (Facebook, LinkedIn, WhatsApp previews) -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://zenassets.com/" />
+  <meta property="og:site_name"   content="ZEN ASSETS" />
+  <meta property="og:title"       content="ZEN ASSETS — AI-Powered Wealth Platform" />
+  <meta property="og:description" content="Grow your wealth with OmniVest AI. Automated crypto &amp; stock trading, real-time analytics, and intelligent portfolio management. Join thousands of investors today." />
+  <meta property="og:image"       content="https://zenassets.com/og-image.png" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale"      content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="ZEN ASSETS — AI-Powered Wealth Platform" />
+  <meta name="twitter:description" content="Grow your wealth with OmniVest AI. Automated crypto &amp; stock trading, real-time analytics, and intelligent portfolio management." />
+  <meta name="twitter:image"       content="https://zenassets.com/og-image.png" />
+
+  <!-- Structured Data — Financial Service (Google Rich Results) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FinancialService",
+    "name": "ZEN ASSETS",
+    "alternateName": "OmniVest AI",
+    "url": "https://zenassets.com",
+    "logo": "https://zenassets.com/og-image.png",
+    "description": "AI-powered trading platform offering automated crypto and stock portfolio management, real-time market analytics, and intelligent wealth growth.",
+    "email": "support@zenassets.com",
+    "serviceType": ["Automated Trading", "Portfolio Management", "Crypto Investment", "Wealth Management"],
+    "areaServed": "Worldwide",
+    "availableLanguage": "English",
+    "sameAs": []
+  }
+  </script>
+
   <!-- Security Module (must load early) -->
   <script src="js/security.js" defer></script>
 
@@ -3533,6 +3575,35 @@
     }).observe(document.body||document.documentElement,{childList:true,subtree:true});
   }
 })();
+</script>
+
+<!-- ═══ SMARTSUPP LIVE CHAT ═══════════════════════════════════
+     1. Sign up / log in at https://www.smartsupp.com
+     2. Go to Settings → Chat box → Installation
+     3. Copy your unique KEY and replace YOUR_SMARTSUPP_KEY below
+════════════════════════════════════════════════════════════ -->
+<script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = 'YOUR_SMARTSUPP_KEY';   /* ← replace with your key */
+  _smartsupp.name  = 'ZEN ASSETS Support';
+  _smartsupp.color = '#00d4ff';
+  window.smartsupp||(function(d){
+    var s,c,o=window.smartsupp=function(){o._.push(arguments)};o._=[];
+    s=d.createElement('script');s.type='text/javascript';
+    s.charset='utf-8';s.async=true;
+    s.src='https://www.smartsupp.com/loader.js?key='+_smartsupp.key;
+    c=d.getElementsByTagName('script')[0];
+    c.parentNode.insertBefore(s,c);
+  })(document);
+  /* Pre-set visitor info when they are logged in */
+  document.addEventListener('DOMContentLoaded', function(){
+    var session = null;
+    try { session = JSON.parse(localStorage.getItem('zen_session') || 'null'); } catch(e){}
+    if (session && session.email) {
+      smartsupp('name',  session.fullName || session.name || 'Investor');
+      smartsupp('email', session.email);
+    }
+  });
 </script>
 </body>
 </html>
