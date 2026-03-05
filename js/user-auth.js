@@ -18,12 +18,9 @@ const UserAuth = (() => {
     ? 'http://localhost:4000/api'
     : 'https://api.zenassets.tech/api';
 
-  const STORAGE_SESSION  = 'zen_session';
-  const STORAGE_TOKEN    = 'zen_token';
-  const STORAGE_WALLET   = 'zen_wallet';
-  const STORAGE_REMEMBER = 'zen_remember_me'; // set only when user checks "Keep me signed in"
-
-  let _pendingRememberMe = false; // preserved across the OTP step during login
+  const STORAGE_SESSION = 'zen_session';
+  const STORAGE_TOKEN   = 'zen_token';
+  const STORAGE_WALLET  = 'zen_wallet';
 
   // ════════════════════════════════════════════════════════
   //  LOCAL USER STORE — Fully functional offline auth
@@ -199,34 +196,13 @@ const UserAuth = (() => {
   };
 
   // ── Local Cache Helpers ──────────────────────────────────
-  // Read from localStorage first (remember-me sessions), fall back to sessionStorage (session-only).
-  function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION) || sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
-  function _saveSession(s) { s ? localStorage.setItem(STORAGE_SESSION, JSON.stringify(s)) : localStorage.removeItem(STORAGE_SESSION); }
-  function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || sessionStorage.getItem(STORAGE_TOKEN) || null; }
-  function _saveToken(t)   { t ? localStorage.setItem(STORAGE_TOKEN, t) : localStorage.removeItem(STORAGE_TOKEN); }
-  function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
-  function _saveWallet(w)  { w ? localStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : localStorage.removeItem(STORAGE_WALLET); }
-
-  // ── Persist auth — localStorage (remember-me) or sessionStorage (tab-only) ──
-  function _persistAuth(token, session, wallet, remember) {
-    // Wipe both storages first to avoid stale cross-storage data
-    [localStorage, sessionStorage].forEach(s => {
-      s.removeItem(STORAGE_TOKEN);
-      s.removeItem(STORAGE_SESSION);
-      s.removeItem(STORAGE_WALLET);
-    });
-    if (!token) return;
-    const store = remember ? localStorage : sessionStorage;
-    store.setItem(STORAGE_TOKEN, token);
-    if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
-    if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
-    // Set or clear the remember-me flag accordingly
-    if (remember) {
-      localStorage.setItem(STORAGE_REMEMBER, '1');
-    } else {
-      localStorage.removeItem(STORAGE_REMEMBER);
-    }
-  }
+  // Auth is session-only (sessionStorage). localStorage is never used for auth tokens.
+  function _loadSession()  { try { return JSON.parse(sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
+  function _saveSession(s) { s ? sessionStorage.setItem(STORAGE_SESSION, JSON.stringify(s)) : sessionStorage.removeItem(STORAGE_SESSION); }
+  function _loadToken()    { return sessionStorage.getItem(STORAGE_TOKEN) || null; }
+  function _saveToken(t)   { t ? sessionStorage.setItem(STORAGE_TOKEN, t) : sessionStorage.removeItem(STORAGE_TOKEN); }
+  function _loadWallet()   { try { return JSON.parse(sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
+  function _saveWallet(w)  { w ? sessionStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : sessionStorage.removeItem(STORAGE_WALLET); }
 
   // ── API Helper — tries live API first, falls back to localStore ──
   async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
@@ -364,7 +340,7 @@ const UserAuth = (() => {
   }
 
   // ── Login (async) ───────────────────────────────────────
-  async function login(email, password, rememberMe = false) {
+  async function login(email, password) {
     if (!email || !password) return { ok: false, error: 'Email and password are required.' };
 
     const result = await _api('/auth/login', {
@@ -375,11 +351,12 @@ const UserAuth = (() => {
 
     // Live backend: requires email OTP before issuing JWT
     if (result.ok && result.requires_otp) {
-      _pendingRememberMe = rememberMe; // preserve choice across the OTP step
       return { ok: false, requires_otp: true, userId: result.userId, message: result.message };
     }
 
     if (result.ok && result.token) {
+      // Session-only: stored in sessionStorage, cleared on page reload
+      _saveToken(result.token);
       const session = {
         userId: result.user.id,
         email: result.user.email,
@@ -388,7 +365,8 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, rememberMe);
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
@@ -400,9 +378,10 @@ const UserAuth = (() => {
     if (!userId || !code) return { ok: false, error: 'userId and code are required.' };
     const result = await _api('/auth/verify-email', { method: 'POST', body: { userId, code }, auth: false });
     if (result.ok && result.token) {
+      _saveToken(result.token);
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
-      // New registrations always use session-only storage — user must log in manually on next visit
-      _persistAuth(result.token, session, result.wallet, false);
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -413,9 +392,10 @@ const UserAuth = (() => {
     if (!userId || !code) return { ok: false, error: 'userId and code are required.' };
     const result = await _api('/auth/verify-login-otp', { method: 'POST', body: { userId, code }, auth: false });
     if (result.ok && result.token) {
+      _saveToken(result.token);
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
-      // Use the remember-me preference captured at the login step
-      _persistAuth(result.token, session, result.wallet, _pendingRememberMe);
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -575,13 +555,12 @@ const UserAuth = (() => {
     
     // ═ STEP 6: Clear Auth Tokens & Session ═
     console.log('🔐 LOGOUT: Clearing authentication...');
-    localStorage.removeItem(STORAGE_REMEMBER);
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
-    console.log('✓ Auth tokens, remember-me flag, and session cleared');
+    console.log('✓ Auth tokens and session cleared');
     
     // ═ STEP 7: Clear User-Specific Data ═
     console.log('🔐 LOGOUT: Clearing user data...');
@@ -763,15 +742,15 @@ const UserAuth = (() => {
   }
 
   // ── Init ─────────────────────────────────────────────────
+  // Auth is NEVER persisted across page loads. On every page load we wipe all
+  // auth data from both storages so the login screen is always shown.
   function init() {
-    // If "Remember Me" was NOT checked on the last login, wipe any persisted
-    // auth tokens from localStorage so the user must log in manually every visit.
-    if (!localStorage.getItem(STORAGE_REMEMBER)) {
-      localStorage.removeItem(STORAGE_TOKEN);
-      localStorage.removeItem(STORAGE_SESSION);
-      localStorage.removeItem(STORAGE_WALLET);
-    }
-    if (_loadToken()) refreshSession().catch(() => {});
+    [localStorage, sessionStorage].forEach(s => {
+      s.removeItem(STORAGE_TOKEN);
+      s.removeItem(STORAGE_SESSION);
+      s.removeItem(STORAGE_WALLET);
+    });
+    // Deliberately NOT calling refreshSession() — credentials required every visit.
   }
 
   return {
