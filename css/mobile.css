@@ -73,6 +73,26 @@
     max-width: 100% !important;
   }
 
+  /* ── iOS Safari: prevent scroll bleed through modal overlays ────────── */
+  /* Lock container scroll when Sign In modal is open */
+  .login-screen.show-login-modal .login-container {
+    overflow-y: hidden !important;
+  }
+  /* Block touch-scroll pass-through on modal backdrops */
+  .login-screen.show-login-modal .login-form-section,
+  .register-overlay.visible {
+    touch-action: none !important;
+    overscroll-behavior: none !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+  /* Allow scroll ONLY inside the modal card — not the backdrop */
+  .login-screen.show-login-modal .login-form-card,
+  .register-overlay.visible .register-card {
+    touch-action: pan-y !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
   /* Goals strip */
   .goals-preview-strip {
     flex-direction: column !important;

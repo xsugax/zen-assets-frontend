@@ -16,6 +16,27 @@ const AuthManager = (() => {
    * Switch between login and register views
    * @param {string} viewName - 'login' or 'register'
    */
+  // iOS Safari: lock the scrollable container behind any modal overlay
+  function _lockScroll() {
+    const c = document.querySelector('.login-container');
+    if (c) {
+      c._savedScrollTop = c.scrollTop;
+      c.style.overflowY = 'hidden';
+    }
+  }
+
+  // iOS Safari: restore scroll after modal closes
+  function _unlockScroll() {
+    const c = document.querySelector('.login-container');
+    if (c) {
+      c.style.overflowY = '';
+      if (c._savedScrollTop != null) {
+        c.scrollTop = c._savedScrollTop;
+        c._savedScrollTop = null;
+      }
+    }
+  }
+
   function switchView(viewName) {
     const loginScreen    = document.getElementById('login-screen');
     const registerOverlay = document.getElementById('register-overlay');
@@ -29,6 +50,9 @@ const AuthManager = (() => {
       registerOverlay.removeAttribute('style');
     }
     if (topNav) topNav.classList.remove('view-login', 'view-register');
+
+    // Lock scroll behind modal (iOS Safari scroll-bleed fix)
+    _lockScroll();
 
     currentView = viewName;
 
@@ -71,6 +95,8 @@ const AuthManager = (() => {
     currentView = null;
     const topNav = document.querySelector('.login-top-nav');
     if (topNav) topNav.classList.remove('view-login', 'view-register');
+    // Restore scroll behind modal (iOS Safari scroll-bleed fix)
+    _unlockScroll();
   }
 
   /**
@@ -571,7 +597,8 @@ const App = (() => {
   }
 
   function updateAllocTotal(totalValue) {
-    setText('alloc-total', `$${fmt(totalValue, 0)}`);
+    setText('alloc-total',      `$${fmt(totalValue, 0)}`);
+    setText('port-alloc-total', `$${fmt(totalValue, 0)}`);
   }
 
   // ── Investment Returns UI Update ─────────────────────────
@@ -1028,6 +1055,31 @@ const App = (() => {
         ChartEngine.createSparkline(`spark-${a.id}`, hist, a.pct24h >= 0 ? '#00ff88' : '#ff4757');
       });
     }, 80);
+
+    // Capital Flow by Asset Class
+    const flowData = [
+      { vol: 42 + Math.random() * 16, up: true  },   // Crypto
+      { vol: 28 + Math.random() * 12, up: false },   // Equities
+      { vol: 18 + Math.random() * 8,  up: true  },   // Forex
+      { vol: 12 + Math.random() * 6,  up: true  },   // Commodities
+    ];
+    ChartEngine.createVolumeChart('capital-flow-chart', flowData);
+
+    // Liquidity Heatmap
+    const heatEl = $('liquidity-heatmap');
+    if (heatEl) {
+      const hmAssets = MarketData.getAllAssets().slice(0, 8);
+      heatEl.innerHTML = hmAssets.map(a => {
+        const intensity = Math.min(0.75, 0.15 + Math.abs(a.pct24h) / 12);
+        const bg     = a.pct24h >= 0 ? `rgba(46,189,133,${intensity})` : `rgba(246,70,93,${intensity})`;
+        const border = a.pct24h >= 0 ? 'rgba(46,189,133,.4)' : 'rgba(246,70,93,.4)';
+        return `<div class="hm-cell" style="background:${bg};border-color:${border}">` +
+          `<span>${a.sym}</span>` +
+          `<span class="${a.pct24h >= 0 ? 'up' : 'down'}">${a.pct24h >= 0 ? '+' : ''}${a.pct24h.toFixed(2)}%</span>` +
+          `</div>`;
+      }).join('');
+    }
+
     renderOrderBook('BTC');
   }
 
@@ -1063,15 +1115,31 @@ const App = (() => {
     renderAISetups();
     updateCrisisBanner();
     setText('setup-count-badge', AIEngine.getSignals().length);
-    // Analytics charts
+    // AI Charts — LSTM Forecast · Monte Carlo · Volatility Cone
     const hist = MarketData.getPriceHistory(id, 80);
-    ChartEngine.createMainChart('ai-main-chart', hist);
-    const rsi = Array.from({ length: 50 }, (_, i) => Math.max(20, Math.min(80, 50 + Math.sin(i * 0.3) * 20 + (Math.random() - 0.5) * 8)));
-    ChartEngine.createRSIChart('ai-rsi-chart', rsi);
-    const macdLine = Array.from({ length: 50 }, (_, i) => Math.sin(i * 0.2) * 200 + (Math.random() - 0.5) * 40);
-    const signalLine = macdLine.map(v => v * 0.85 + (Math.random() - 0.5) * 20);
-    const histLine = macdLine.map((v, i) => v - signalLine[i]);
-    ChartEngine.createMACDChart('ai-macd-chart', macdLine, signalLine, histLine);
+    const lstmPred = AIEngine.computeLSTMPrediction(id);
+
+    // LSTM Forecast — historical prices extended with predicted trajectory
+    const forecastTail = Array.from({ length: 20 }, (_, i) => {
+      const last = hist[hist.length - 1];
+      const drift = lstmPred.nextBar * 0.01 * (i + 1) / 20;
+      return last * (1 + drift + (Math.random() - 0.5) * 0.004);
+    });
+    ChartEngine.createEquityCurve('lstm-forecast-chart', [...hist, ...forecastTail]);
+
+    // Monte Carlo — randomised price simulation paths averaged into one series
+    const mcBase = hist[hist.length - 1];
+    const mcSim = Array.from({ length: 50 }, (_, i) => {
+      let p = mcBase;
+      for (let j = 0; j < i; j++) p *= (1 + (Math.random() - 0.48) * 0.018);
+      return p;
+    });
+    ChartEngine.createMainChart('monte-carlo-chart', mcSim);
+
+    // Volatility Cone — rolling realised volatility profile
+    const volCone = Array.from({ length: 50 }, (_, i) =>
+      Math.max(5, Math.min(80, 20 + Math.sin(i * 0.25) * 14 + (Math.random() - 0.5) * 6)));
+    ChartEngine.createRSIChart('vol-cone-chart', volCone);
   }
 
   function renderAILayers(id) {
@@ -1079,31 +1147,46 @@ const App = (() => {
     const lstm  = AIEngine.computeLSTMPrediction(id);
     const bhv   = AIEngine.computeBehavioral(id);
     const macro = AIEngine.getMacroScore();
+    const fg    = bhv.fearGreed;
 
-    // L1 Quant
-    setText('l1-rsi',   quant.rsi);
-    setText('l1-macd',  quant.macd);
-    setText('l1-bb',    quant.bbPos + '%');
-    setText('l1-vol',   quant.volatility);
+    const row = (name, val, sig = '', sigCls = '') =>
+      `<div class="indicator-row">` +
+      `<span class="ind-name">${name}</span>` +
+      `<span class="ind-value">${val}</span>` +
+      (sig ? `<span class="ind-signal ${sigCls}">${sig}</span>` : '') +
+      `</div>`;
 
-    // L2 LSTM
-    setText('l2-pred',   (quant.rsi > 50 ? '+' : '') + lstm.nextBar.toFixed(2) + '%');
-    setText('l2-conf',   lstm.confidence.toFixed(1) + '%');
-    setText('l2-bull',   lstm.regimeProb.Bull + '%');
-    setText('l2-attn',   lstm.attention.toFixed(3));
+    // L1 — Technical Analysis
+    const techEl = $('tech-indicators');
+    if (techEl) techEl.innerHTML =
+      row('RSI',        quant.rsi,        quant.rsi > 70 ? 'OVB' : quant.rsi < 30 ? 'OVS' : '', quant.rsi > 70 ? 'down' : 'up') +
+      row('MACD',       quant.macd) +
+      row('BB Pos',     quant.bbPos + '%', quant.bbPos > 75 ? 'UB' : quant.bbPos < 25 ? 'LB' : '', quant.bbPos > 75 ? 'up' : 'down') +
+      row('Volatility', quant.volatility);
 
-    // L3 Behavioral
-    const fg = bhv.fearGreed;
-    setText('l3-fg',    `${fg.value} — ${fg.label}`);
-    setText('l3-whale', (bhv.whaleRatio * 100).toFixed(0) + '%');
-    setText('l3-fund',  bhv.fundingRate);
-    setText('l3-oi',    bhv.openInterestChg);
+    // L2 — Quantitative Models
+    const quantEl = $('quant-models');
+    if (quantEl) quantEl.innerHTML =
+      row('Prediction',  (lstm.nextBar >= 0 ? '+' : '') + lstm.nextBar.toFixed(2) + '%', lstm.nextBar >= 0 ? '▲' : '▼', lstm.nextBar >= 0 ? 'up' : 'down') +
+      row('Confidence',  lstm.confidence.toFixed(1) + '%') +
+      row('Bull Prob',   lstm.regimeProb.Bull + '%', lstm.regimeProb.Bull > 55 ? 'BULL' : 'BEAR', lstm.regimeProb.Bull > 55 ? 'up' : 'down') +
+      row('Attention',   lstm.attention.toFixed(3));
 
-    // L4 Macro
-    setText('l4-vix',   macro.vix.toFixed(2));
-    setText('l4-dxy',   macro.dxy.toFixed(2));
-    setText('l4-corr',  macro.sp500Corr.toFixed(2));
-    setText('l4-rate',  macro.rateExpect);
+    // L3 — Behavioral Finance
+    const bhvEl = $('behavioral-analytics');
+    if (bhvEl) bhvEl.innerHTML =
+      row('Fear/Greed',   `${fg.value} — ${fg.label}`, fg.value > 60 ? 'GREED' : fg.value < 40 ? 'FEAR' : 'NEUT', fg.value > 60 ? 'up' : fg.value < 40 ? 'down' : '') +
+      row('Whale Ratio',  (bhv.whaleRatio * 100).toFixed(0) + '%') +
+      row('Funding Rate', bhv.fundingRate) +
+      row('OI Change',    bhv.openInterestChg);
+
+    // L4 — Macro / LSTM Summary
+    const lstmEl = $('lstm-summary');
+    if (lstmEl) lstmEl.innerHTML =
+      row('VIX',          macro.vix.toFixed(2),       macro.vix > 25 ? 'HIGH' : 'LOW', macro.vix > 25 ? 'down' : 'up') +
+      row('DXY',          macro.dxy.toFixed(2)) +
+      row('SP500 Corr',   macro.sp500Corr.toFixed(2)) +
+      row('Rate Outlook', macro.rateExpect);
   }
 
   function renderAISetups() {
@@ -1255,6 +1338,15 @@ const App = (() => {
     setText('pos-total-pnl', `${signPnl(totalPnL)}$${fmt(Math.abs(totalPnL), 2)}`);
     setClass('pos-total-pnl', clsPnl(totalPnL));
     setText('pos-count-badge', positions.length);
+
+    if (positions.length === 0) {
+      container.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px 16px;color:#4a6080;font-size:12px">` +
+        `<i class="fa fa-inbox" style="font-size:28px;opacity:.35"></i>` +
+        `<span>No open positions</span>` +
+        `<span style="font-size:10px;opacity:.6">Use the order form below to open a trade</span></div>`;
+      return;
+    }
+
     container.innerHTML = positions.map(p => {
       const pnlCls = clsPnl(p.pnl);
       const sideColor = p.side === 'long' ? '#00ff88' : '#ff4757';
@@ -1450,6 +1542,19 @@ const App = (() => {
     // Equity for analytics
     ChartEngine.createEquityCurve('analytics-dd-chart', Portfolio.getEquityHistory().slice(-60));
 
+    // Bollinger Bands — midline history with band context
+    const bb = MarketData.computeBB(id);
+    const bbHistory = Array.from({ length: 40 }, (_, i) =>
+      bb.middle * (1 + Math.sin(i * 0.22) * 0.008 + (Math.random() - 0.5) * 0.006));
+    ChartEngine.createEquityCurve('bb-chart', bbHistory);
+
+    // Market Regime — bars showing regime strength over time
+    const regimeData = Array.from({ length: 30 }, (_, i) => ({
+      vol: Math.max(5, 40 + Math.sin(i * 0.28) * 22 + (Math.random() - 0.5) * 10),
+      up: i % 5 !== 0,
+    }));
+    ChartEngine.createVolumeChart('regime-chart', regimeData);
+
     // Correlation
     const { syms, matrix } = Portfolio.correlationMatrix();
     renderCorrelationTable(syms, matrix);
@@ -1623,6 +1728,29 @@ const App = (() => {
         }, 5000);
       }
     }
+
+    // Active Sessions List
+    const sessionsList = $('sessions-list');
+    if (sessionsList) {
+      const sessions = [
+        { icon: 'fa-desktop',    device: 'Windows · Chrome 120',    ip: '192.168.x.x',   location: 'Current Device',  time: 'Active now', current: true  },
+        { icon: 'fa-mobile-alt', device: 'iPhone · Safari 17',      ip: '31.xxx.xx.x',   location: 'London, UK',      time: '2h ago',     current: false },
+        { icon: 'fa-laptop',     device: 'MacBook · Firefox 121',   ip: '82.xxx.xx.x',   location: 'New York, US',    time: '1d ago',     current: false },
+        { icon: 'fa-tablet-alt', device: 'iPad · Chrome Mobile',    ip: '5.xx.xxx.xx',   location: 'Berlin, DE',      time: '3d ago',     current: false },
+      ];
+      sessionsList.innerHTML = sessions.map(s => `
+        <div class="session-row${s.current ? ' current' : ''}">
+          <i class="fa ${s.icon}"></i>
+          <div class="sess-info">
+            <b>${s.device}</b>
+            <span>${s.ip} · ${s.location}</span>
+          </div>
+          <span class="sess-time">${s.time}</span>
+          ${s.current
+            ? '<span class="badge-current">CURRENT</span>'
+            : '<button class="btn btn-danger btn-xs" onclick="App.revokeSession && App.revokeSession(this)">Revoke</button>'}
+        </div>`).join('');
+    }
   }
 
   // ── Live Feed ─────────────────────────────────────────────
@@ -1652,6 +1780,37 @@ const App = (() => {
         updateCrisisBanner();
         renderAILayers($('ai-asset-filter')?.value || 'BTC');
       }
+
+      // ── Sentiment panel (dashboard) ───────────────────────
+      if (_section === 'dashboard') {
+        const fg2 = MarketData.getFearGreed();
+        const sentLabelEl = $('sent-label');
+        const sentValueEl = $('sent-value');
+        const sentBrkEl   = $('sentiment-breakdown');
+        if (sentLabelEl) {
+          sentLabelEl.textContent = fg2.label;
+          sentLabelEl.className   = `sent-label ${fg2.value > 60 ? 'up' : fg2.value < 40 ? 'down' : ''}`;
+        }
+        if (sentValueEl) sentValueEl.textContent = fg2.value;
+        if (sentBrkEl) {
+          const mkBar = (lbl, pct, color) =>
+            `<div class="sb-row"><span style="min-width:52px">${lbl}</span>` +
+            `<div class="sb-bar"><div style="width:${Math.min(100,pct)}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div></div>` +
+            `<span style="min-width:28px;text-align:right">${Math.min(100,pct)}%</span></div>`;
+          const bullPct = fg2.value;
+          const bearPct = 100 - fg2.value;
+          const neutPct = Math.round(50 - Math.abs(fg2.value - 50) * 0.5);
+          sentBrkEl.innerHTML =
+            mkBar('Bullish', bullPct, '#2ebd85') +
+            mkBar('Bearish', bearPct, '#f6465d') +
+            mkBar('Neutral', neutPct, '#f0a500');
+        }
+      }
+
+      // ── Execution speed (topbar) ─────────────────────────
+      const execEl = $('exec-speed');
+      if (execEl) execEl.textContent = (0.2 + Math.random() * 1.3).toFixed(1) + 'ms';
+
       updateAIOrb();
     });
 
@@ -1659,6 +1818,23 @@ const App = (() => {
       renderSignalsMini(sigs.slice(0, 6));
       if (_section === 'signals') renderSignals();
       if (_section === 'ai-engine') renderAISetups();
+
+      // ── AI Alert Panel ───────────────────────────────────
+      const alertList = $('alert-list');
+      if (alertList) {
+        const top = sigs.slice(0, 10);
+        alertList.innerHTML = top.length > 0
+          ? top.map(s => {
+              const clr  = s.dir === 'buy' ? '#2ebd85' : '#f6465d';
+              const icon = s.dir === 'buy' ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down';
+              return `<div class="np-item unread">` +
+                `<div class="np-icon" style="background:${clr}1a;color:${clr}"><i class="fa ${icon}"></i></div>` +
+                `<div><b>${s.symbol} ${s.dir.toUpperCase()}</b> — ${s.pattern}` +
+                `<small>${s.conf}% confidence · ${s.timeframe} · R:R ${s.rr}</small></div></div>`;
+            }).join('')
+          : `<div class="np-item"><div class="np-icon ai"><i class="fa fa-circle-notch fa-spin"></i></div>` +
+            `<div><b>Scanning markets…</b><small>AI is analysing ${MarketData.getAllAssets().length} assets</small></div></div>`;
+      }
     });
 
     AIEngine.on('regime', r => {
