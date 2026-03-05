@@ -17,84 +17,60 @@ const AuthManager = (() => {
    * @param {string} viewName - 'login' or 'register'
    */
   function switchView(viewName) {
-    if (viewName === currentView) return; // Already on this view
-    
-    const loginForm = document.getElementById('login-form');
+    const loginScreen    = document.getElementById('login-screen');
     const registerOverlay = document.getElementById('register-overlay');
-    const registerCard = registerOverlay ? registerOverlay.querySelector('.register-card') : null;
-    const loginTabs = document.querySelectorAll('.auth-tab');
-    
-    // Update top nav active state
-    const topNav = document.querySelector('.login-top-nav');
-    if (topNav) {
-      topNav.classList.remove('view-login', 'view-register');
-      topNav.classList.add('view-' + viewName);
+    const topNav         = document.querySelector('.login-top-nav');
+
+    // ── Reset both modals ──
+    if (loginScreen)     loginScreen.classList.remove('show-login-modal');
+    if (registerOverlay) {
+      registerOverlay.classList.remove('visible');
+      // Clear any legacy inline styles from old code
+      registerOverlay.removeAttribute('style');
     }
+    if (topNav) topNav.classList.remove('view-login', 'view-register');
+
+    currentView = viewName;
 
     if (viewName === 'register') {
-      // Switch to Register view
-      currentView = 'register';
-      
-      // Update tabs
-      loginTabs.forEach(tab => {
-        if (tab.dataset.authView === 'register') {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
-        }
-      });
-      
-      // Show register, hide login
-      if (loginForm) loginForm.style.display = 'none';
-      if (registerOverlay) {
-        registerOverlay.classList.add('visible');
-        registerOverlay.style.position = 'static';
-        registerOverlay.style.background = 'none';
-        registerOverlay.style.backdropFilter = 'none';
-        registerOverlay.style.inset = 'auto';
-        registerOverlay.style.alignItems = 'stretch';
-        registerOverlay.style.justifyContent = 'stretch';
-        registerOverlay.style.margin = '0';
-        registerOverlay.style.padding = '0';
-        registerOverlay.style.zIndex = '1';
-      }
-      if (registerCard) {
-        registerCard.style.maxWidth = '100%';
-        registerCard.style.width = '100%';
-        registerCard.style.borderRadius = '8px';
-        registerCard.style.boxShadow = 'none';
-      }
-      
-      console.log('📝 AUTH: Switched to Register view');
+      // ── Open Register Modal ──
+      if (registerOverlay) registerOverlay.classList.add('visible');
+      if (topNav) topNav.classList.add('view-register');
+      // Focus first field
+      setTimeout(() => {
+        const f = document.getElementById('reg-name');
+        if (f) f.focus();
+      }, 120);
+      console.log('📝 AUTH: Register modal opened');
     } else {
-      // Switch to Login view (default)
-      currentView = 'login';
-      
-      // Update tabs
-      loginTabs.forEach(tab => {
-        if (tab.dataset.authView === 'login') {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
-        }
-      });
-      
-      // Show login, hide register
-      if (loginForm) loginForm.style.display = 'flex';
-      if (registerOverlay) {
-        registerOverlay.classList.remove('visible');
-        registerOverlay.style.position = 'fixed';
-        registerOverlay.style.background = 'rgba(6,8,14,0.92)';
-        registerOverlay.style.backdropFilter = 'blur(24px)';
-        registerOverlay.style.inset = '0';
-      }
-      if (registerCard) {
-        registerCard.style.maxWidth = '560px';
-        registerCard.style.boxShadow = '0 24px 80px rgba(0,0,0,0.6), 0 0 60px rgba(212,165,116,0.06)';
-      }
-      
-      console.log('🔐 AUTH: Switched to Login view');
+      // ── Open Login Modal ──
+      if (loginScreen) loginScreen.classList.add('show-login-modal');
+      if (topNav) topNav.classList.add('view-login');
+      // Focus email
+      setTimeout(() => {
+        const f = document.getElementById('login-email');
+        if (f) f.focus();
+      }, 120);
+      console.log('🔐 AUTH: Login modal opened');
     }
+
+    // Keep inline tabs in sync
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.authView === viewName);
+    });
+  }
+
+  function closeAllModals() {
+    const loginScreen = document.getElementById('login-screen');
+    const registerOverlay = document.getElementById('register-overlay');
+    if (loginScreen) loginScreen.classList.remove('show-login-modal');
+    if (registerOverlay) {
+      registerOverlay.classList.remove('visible');
+      registerOverlay.removeAttribute('style');
+    }
+    currentView = null;
+    const topNav = document.querySelector('.login-top-nav');
+    if (topNav) topNav.classList.remove('view-login', 'view-register');
   }
 
   /**
@@ -124,6 +100,7 @@ const AuthManager = (() => {
   // Public API
   return {
     switchView,
+    closeAllModals,
     getCurrentView,
     init,
   };

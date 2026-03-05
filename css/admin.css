@@ -3,30 +3,18 @@
    OmniVest AI / ZEN ASSETS
 ════════════════════════════════════════════════════════════ */
 
-/* ── Registration Overlay ─────────────────────────────────── */
+/* ── Registration Overlay (Centered Modal) ───────────────── */
 .register-overlay {
-  position: fixed; inset: 0; z-index: 10000;
+  position: fixed; inset: 0; z-index: 99999;
   background: rgba(6,8,14,0.92);
   backdrop-filter: blur(24px);
   display: none; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.4s ease;
+  opacity: 0; transition: opacity 0.35s ease;
   pointer-events: none;
+  padding: 20px;
 }
-.register-overlay.visible { display: flex; opacity: 1; pointer-events: all; }
-
-/* ── Integrated Register View (inline with login form) ─── */
-.register-overlay[style*="position: static"] {
-  position: static !important;
-  inset: auto !important;
-  background: none !important;
-  backdrop-filter: none !important;
-  display: none !important;
-  opacity: 1 !important;
-  pointer-events: all !important;
-  z-index: 1;
-}
-.register-overlay[style*="position: static"].visible {
-  display: block !important;
+.register-overlay.visible {
+  display: flex; opacity: 1; pointer-events: all;
 }
 
 .register-card {
