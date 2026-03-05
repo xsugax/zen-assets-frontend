@@ -211,66 +211,35 @@ const AdvancedChartEngine = (() => {
   }
 
   // ── Load Chart Data ──────────────────────────────────────
-  // Strategy: try real Binance/Yahoo candles first (4 second window).
-  // If real data arrives → show it. If not → show simulated and keep retrying.
-  // This means charts always show real historical prices whenever possible.
+  // INSTANT strategy: simulated candles render in <100ms — zero wait.
+  // Real Binance/Yahoo data fetches in the background and silently upgrades
+  // the chart the moment it arrives. User never sees a loading delay.
   async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
     const assetId = symbol.split('/')[0];
     const tf = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
 
-    let candles = null;
-    let isReal  = false;
+    // ── STEP 1: Render simulated immediately — no network, no wait ──
+    let simCandles = [];
+    try {
+      if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
+        simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
+      }
+    } catch (e) { console.warn('[Chart] MarketData.getOHLCV failed:', e.message); }
 
-    // ── Attempt real data with 4s timeout ──────────────────
-    if (typeof RealDataAdapter !== 'undefined') {
-      try {
-        const timeout = new Promise(r => setTimeout(() => r(null), 4000));
-        candles = await Promise.race([
-          RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit),
-          timeout,
-        ]);
-        if (candles && candles.length >= 5) {
-          isReal = true;
-          console.log(`[Chart] Real candles loaded — ${assetId} (${candles.length})`);
-        } else {
-          candles = null;
-          console.warn(`[Chart] Real data empty/timeout for ${assetId} — using simulated`);
+    if (simCandles.length > 0) {
+      _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, simCandles, symbol, false, timeframe);
+    }
+
+    // ── STEP 2: Fetch real data in background — no blocking ──────
+    // Upgrades chart seamlessly whenever real candles arrive.
+    if (typeof RealDataAdapter === 'undefined') return;
+    RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit)
+      .then(real => {
+        if (real && real.length >= 5) {
+          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
         }
-      } catch (e) {
-        candles = null;
-        console.warn(`[Chart] Real data error for ${assetId}:`, e.message);
-      }
-    }
-
-    // ── Fallback: simulated candles ─────────────────────────
-    if (!candles || candles.length < 5) {
-      try {
-        candles = (typeof MarketData !== 'undefined' && MarketData.getOHLCV)
-          ? MarketData.getOHLCV(assetId, tf.limit, timeframe) || []
-          : [];
-      } catch (e) {
-        console.error(`[Chart] MarketData.getOHLCV failed:`, e.message);
-        candles = [];
-      }
-      // Even showing simulated: try to upgrade in background after 5s
-      setTimeout(async () => {
-        try {
-          if (typeof RealDataAdapter === 'undefined') return;
-          const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
-          if (real && real.length >= 5) {
-            console.log(`[Chart] Late upgrade to real data — ${assetId}`);
-            _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
-          }
-        } catch {}
-      }, 5000);
-    }
-
-    if (!candles || candles.length === 0) {
-      console.error(`[Chart] No data at all for ${assetId}`);
-      return;
-    }
-
-    _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe);
+      })
+      .catch(() => {}); // simulated already showing — no action needed
   }
 
   // Render a candle dataset onto all chart series
