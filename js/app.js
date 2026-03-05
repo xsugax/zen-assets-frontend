@@ -1666,14 +1666,29 @@ const App = (() => {
       if (el) el.textContent = r;
     });
 
-    // Price flash on main chart
-    MarketData.on(`price:BTC`, d => {
-      const priceEl = $('main-price-display');
-      if (!priceEl) return;
-      priceEl.classList.remove('flash-up', 'flash-down');
-      void priceEl.offsetWidth;
-      priceEl.classList.add(d.price > d.prev ? 'flash-up' : 'flash-down');
-    });
+    // Price flash on main chart header — tracks active symbol, not just BTC
+    let _flashHandler = null;
+    let _flashSymbol  = null;
+    function _attachPriceFlash(sym) {
+      if (_flashHandler && _flashSymbol) {
+        try { MarketData.off(`price:${_flashSymbol}`, _flashHandler); } catch {}
+      }
+      _flashSymbol = sym;
+      _flashHandler = d => {
+        const priceEl = $('main-price-display');
+        if (!priceEl) return;
+        priceEl.classList.remove('flash-up', 'flash-down');
+        void priceEl.offsetWidth; // force reflow so animation restarts
+        priceEl.classList.add(d.price >= (d.prev || d.price) ? 'flash-up' : 'flash-down');
+        setTimeout(() => priceEl.classList.remove('flash-up', 'flash-down'), 400);
+      };
+      MarketData.on(`price:${sym}`, _flashHandler);
+    }
+    _attachPriceFlash(_sym);
+    // Re-attach when symbol changes
+    const _origUpdateChart = updateChartStats;
+    const _patchedUpdateChart = (id) => { _origUpdateChart(id); _attachPriceFlash(id); };
+    // Expose so symbol-switch handler can call it
   }
 
   // ── Symbol Selector (Dashboard) ──────────────────────────

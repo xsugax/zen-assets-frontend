@@ -53,10 +53,11 @@ const ChartDataIndicator = (() => {
     if (!badge) return;
 
     // Always show live status — real market data feed
-    badge.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${timeframe.toUpperCase()} - Binance`;
-    badge.style.background = 'linear-gradient(135deg, rgba(95,179,142,0.25), rgba(74,156,166,0.2))';
-    badge.style.border = '1px solid rgba(95,179,142,0.4)';
-    badge.style.color = '#5fb38e';
+    badge.innerHTML = `LIVE · ${symbol} · ${timeframe.toUpperCase()}`;
+    badge.style.background = 'rgba(8,12,22,0.88)';
+    badge.style.border = '1px solid rgba(46,189,133,0.3)';
+    badge.style.color = '#2ebd85';
+    badge.style.borderRadius = '20px';
 
     badge.style.display = 'inline-flex';
   }
@@ -77,10 +78,11 @@ const ChartDataIndicator = (() => {
     const badge = createBadge(chartContainerId);
     if (!badge) return;
 
-    badge.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading Market Data...`;
-    badge.style.background = 'linear-gradient(135deg, rgba(139,152,173,0.25), rgba(100,116,139,0.2))';
-    badge.style.border = '1px solid rgba(139,152,173,0.4)';
-    badge.style.color = '#8b98ad';
+    badge.innerHTML = `FETCHING ···`;
+    badge.style.background = 'rgba(8,12,22,0.88)';
+    badge.style.border = '1px solid rgba(139,152,173,0.2)';
+    badge.style.color = '#4a5568';
+    badge.style.borderRadius = '20px';
     badge.style.display = 'inline-flex';
   }
 

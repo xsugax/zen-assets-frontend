@@ -20,40 +20,40 @@ const AdvancedChartEngine = (() => {
   // ── Professional Color Scheme ────────────────────────────
   const THEME = {
     bg: {
-      chart: '#0a0e16',
-      panel: '#151a24',
-      hover: '#1a2029',
+      chart: '#0b0f1a',
+      panel: '#10141e',
+      hover: '#161c28',
     },
     candle: {
-      up: { body: '#5fb38e', wick: '#5fb38e', border: '#5fb38e' },
-      down: { body: '#d65d5d', wick: '#d65d5d', border: '#d65d5d' },
+      up:   { body: '#2ebd85', wick: '#2ebd85', border: '#2ebd85' }, // Binance green
+      down: { body: '#f6465d', wick: '#f6465d', border: '#f6465d' }, // Binance red
     },
     volume: {
-      up: 'rgba(95,179,142,0.4)',
-      down: 'rgba(214,93,93,0.4)',
+      up:   'rgba(46,189,133,0.55)',
+      down: 'rgba(246,70,93,0.55)',
     },
     grid: {
-      main: 'rgba(255,255,255,0.04)',
-      sub: 'rgba(255,255,255,0.02)',
+      main: 'rgba(255,255,255,0.055)',
+      sub:  'rgba(255,255,255,0.025)',
     },
     text: {
-      primary: '#e2e8f0',
-      secondary: '#8b98ad',
-      muted: '#64748b',
+      primary:   '#e8edf5',
+      secondary: '#7d8a9a',
+      muted:     '#4a5568',
     },
     indicators: {
-      ma20: '#d4a574',
-      ma50: '#4a9ca6',
+      ma20:  '#f0a500',
+      ma50:  '#3c8fbf',
       ma200: '#8b98ad',
-      ema: '#e6b887',
-      bb: 'rgba(139,152,173,0.3)',
-      rsi: '#d4a574',
-      macd: { line: '#5fb38e', signal: '#d65d5d', hist: '#8b98ad' },
+      ema:   '#e6b887',
+      bb:    'rgba(139,152,173,0.3)',
+      rsi:   '#d4a574',
+      macd:  { line: '#2ebd85', signal: '#f6465d', hist: '#8b98ad' },
     },
     levels: {
-      support: 'rgba(95,179,142,0.5)',
-      resistance: 'rgba(214,93,93,0.5)',
-      fibonacci: 'rgba(212,165,116,0.3)',
+      support:    'rgba(46,189,133,0.55)',
+      resistance: 'rgba(246,70,93,0.55)',
+      fibonacci:  'rgba(212,165,116,0.3)',
     },
   };
 
@@ -91,96 +91,110 @@ const AdvancedChartEngine = (() => {
     }
 
     const chart = LightweightCharts.createChart(container, {
-      width: container.clientWidth  || container.offsetWidth  || 600,
-      height: container.clientHeight || container.offsetHeight || 280,
+      width:  container.clientWidth  || container.offsetWidth  || 600,
+      height: container.clientHeight || container.offsetHeight || 360,
       layout: {
         background: { color: THEME.bg.chart },
-        textColor: THEME.text.secondary,
-        fontSize: 11,
-        fontFamily: "'JetBrains Mono', monospace",
+        textColor:  THEME.text.secondary,
+        fontSize:   12,
+        fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
       },
       grid: {
-        vertLines: { color: THEME.grid.sub },
-        horzLines: { color: THEME.grid.main },
+        vertLines: { color: THEME.grid.sub,  style: LightweightCharts.LineStyle.Dotted },
+        horzLines: { color: THEME.grid.main, style: LightweightCharts.LineStyle.Dotted },
       },
       crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
         vertLine: {
-          color: 'rgba(212,165,116,0.5)',
-          width: 1,
-          style: LightweightCharts.LineStyle.Dashed,
+          color:                'rgba(212,165,116,0.75)',
+          width:                1,
+          style:                LightweightCharts.LineStyle.Solid,
+          labelBackgroundColor: '#c89858',
         },
         horzLine: {
-          color: 'rgba(212,165,116,0.5)',
-          width: 1,
-          style: LightweightCharts.LineStyle.Dashed,
+          color:                'rgba(212,165,116,0.75)',
+          width:                1,
+          style:                LightweightCharts.LineStyle.Solid,
+          labelBackgroundColor: '#c89858',
         },
       },
       timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderColor: THEME.grid.main,
+        timeVisible:    true,
+        secondsVisible: timeframe === '1m',
+        borderColor:    'rgba(255,255,255,0.06)',
+        rightOffset:    8,
+        barSpacing:     timeframe === '1m' ? 6 : 8,
+        minBarSpacing:  2,
       },
       rightPriceScale: {
-        borderColor: THEME.grid.main,
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.2,
-        },
+        borderColor:  'rgba(255,255,255,0.06)',
+        scaleMargins: { top: 0.08, bottom: 0.22 },
+        autoScale:    true,
+      },
+      handleScroll: {
+        mouseWheel:       true,
+        pressedMouseMove: true,
+        horzTouchDrag:    true,
+        vertTouchDrag:    false,
+      },
+      handleScale: {
+        mouseWheel:           true,
+        pinch:                true,
+        axisPressedMouseMove: { time: true, price: true },
       },
       watermark: {
-        visible: true,
-        fontSize: 48,
+        visible:   true,
+        fontSize:  44,
         horzAlign: 'center',
         vertAlign: 'center',
-        color: 'rgba(255,255,255,0.02)',
-        text: 'ZEN ASSETS',
+        color:     'rgba(255,255,255,0.018)',
+        text:      'ZEN ASSETS',
       },
     });
 
-    // Candlestick series with proper OHLC rendering
+    // Candlestick series — Binance-standard colors, price line shows current level
     const candleSeries = chart.addCandlestickSeries({
-      upColor: THEME.candle.up.body,
-      downColor: THEME.candle.down.body,
-      borderUpColor: THEME.candle.up.border,
-      borderDownColor: THEME.candle.down.border,
-      wickUpColor: THEME.candle.up.wick,
-      wickDownColor: THEME.candle.down.wick,
-      borderVisible: true,    // Show candle borders
-      wickVisible: true,      // Show wicks (critical for proper candlesticks!)
+      upColor:          THEME.candle.up.body,
+      downColor:        THEME.candle.down.body,
+      borderUpColor:    THEME.candle.up.border,
+      borderDownColor:  THEME.candle.down.border,
+      wickUpColor:      THEME.candle.up.wick,
+      wickDownColor:    THEME.candle.down.wick,
+      borderVisible:    true,
+      wickVisible:      true,
+      priceLineVisible: true,              // dashed current-price line across chart
+      priceLineWidth:   1,
+      priceLineStyle:   LightweightCharts.LineStyle.Dotted,
+      priceLineColor:   '#2ebd85',
+      lastValueVisible: true,              // price label on right axis
     });
 
     // Volume series (histogram)
     const volumeSeries = chart.addHistogramSeries({
       color: THEME.volume.up,
-      priceFormat: {
-        type: 'volume',
-      },
+      priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
     });
 
     chart.priceScale('volume').applyOptions({
-      scaleMargins: {
-        top: 0.85,
-        bottom: 0,
-      },
+      scaleMargins: { top: 0.82, bottom: 0 },
     });
 
-    // Moving averages — thin and subtle so chart isn't cluttered
+    // Moving averages — visible but don't fight the candles
     const ma20Series = chart.addLineSeries({
-      color: 'rgba(212,165,116,0.35)',
-      lineWidth: 1,
-      title: 'MA20',
+      color:            'rgba(240,165,0,0.75)',
+      lineWidth:        1,
+      title:            'MA20',
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: true,
     });
 
     const ma50Series = chart.addLineSeries({
-      color: 'rgba(74,156,166,0.30)',
-      lineWidth: 1,
-      title: 'MA50',
+      color:            'rgba(60,143,191,0.70)',
+      lineWidth:        1,
+      title:            'MA50',
       priceLineVisible: false,
-      lastValueVisible: false,
+      lastValueVisible: true,
     });
 
     // Start live tick feed FIRST — forming candle begins building immediately
