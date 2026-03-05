@@ -91,13 +91,9 @@
   html { font-size: 13px !important; }
 
   /* ── Login Layout ───────────────────────────────────── */
-  .login-brand-section {
-    padding: 24px 16px !important;
-    gap: 20px !important;
-  }
-
+  /* brand section is display:none — no padding needed */
   .login-form-section {
-    padding: 24px 16px !important;
+    padding: 0 16px !important;
   }
 
   /* Logo */
@@ -388,13 +384,8 @@
 
   html { font-size: 12.5px !important; }
 
-  .login-brand-section {
-    padding: 20px 12px !important;
-    gap: 16px !important;
-  }
-
   .login-form-section {
-    padding: 20px 12px !important;
+    padding: 0 12px !important;
   }
 
   .logo-main { font-size: 18px !important; letter-spacing: 2px !important; }
@@ -467,8 +458,7 @@
    ULTRA-SMALL / SE (≤360px)
 ═══════════════════════════════════════════════════════ */
 @media (max-width: 360px) {
-  .login-brand-section { padding: 16px 10px !important; }
-  .login-form-section { padding: 16px 10px !important; }
+  .login-form-section { padding: 0 10px !important; }
   .logo-main { font-size: 16px !important; }
   .lvp-title { font-size: 15px !important; }
   .cb-rate { font-size: 14px !important; }
@@ -601,12 +591,8 @@
    LANDSCAPE PHONE
 ═══════════════════════════════════════════════════════ */
 @media (max-height: 500px) and (orientation: landscape) {
-  .login-brand-section {
-    padding: 16px !important;
-    gap: 12px !important;
-  }
   .login-form-section {
-    padding: 16px !important;
+    padding: 0 16px !important;
   }
   .login-logo { gap: 8px !important; }
   .logo-icon { width: 32px !important; height: 32px !important; font-size: 18px !important; }
