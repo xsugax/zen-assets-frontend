@@ -95,9 +95,48 @@ const MarketData = (() => {
   // ── Mobile Detection ──────────────────────────────────────
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 
+  // ── Market Regime Engine ──────────────────────────────────
+  // Each asset gets an independent regime:
+  //   bull  (+1) : trending up   — drift positive
+  //   bear  (-1) : trending down — drift negative
+  //   range ( 0) : sideways      — mean-reverting, tight range
+  // Regimes change naturally after a variable number of ticks.
+  // This produces real-looking charts: rallies, corrections, consolidations.
+  const _regime = {};
+
+  function _initRegime(id) {
+    const roll = Math.random();
+    _regime[id] = {
+      dir:       roll < 0.45 ? 1 : roll < 0.80 ? -1 : 0,  // 45% bull, 35% bear, 20% range
+      strength:  0.25 + Math.random() * 0.75,   // regime intensity 0.25–1.0
+      remaining: 25  + Math.floor(Math.random() * 90), // ticks before next regime
+      volMult:   0.7 + Math.random() * 0.6,     // 0.7×–1.3× base volatility
+      momentum:  0,                              // price momentum carry
+    };
+  }
+
+  function _advanceRegime(id, vol) {
+    const reg = _regime[id];
+    reg.remaining--;
+    if (reg.remaining > 0) return;
+
+    // Regime expired — pick a new one with realistic transitions
+    const prev = reg.dir;
+    const r    = Math.random();
+    if (prev === 1)  reg.dir = r < 0.40 ? -1 : r < 0.65 ? 0 : 1;   // bull → often correct or range
+    else if (prev === -1) reg.dir = r < 0.35 ? 1 : r < 0.60 ? 0 : -1; // bear → often bounce or range
+    else            reg.dir = r < 0.45 ? 1 : r < 0.80 ? -1 : 0;    // range → break either way
+
+    reg.strength  = 0.20 + Math.random() * 0.80;
+    reg.remaining = 20   + Math.floor(Math.random() * 100);
+    // Volatility often expands on regime change (breakout) then settles
+    reg.volMult   = 0.8  + Math.random() * 1.2;
+    reg.momentum  = 0;  // reset momentum on regime switch
+  }
+
   // ── Tick Engine ──────────────────────────────────────────
   function startTicker() {
-    const TICK_RATE = isMobile ? 3000 : 600;  // 3s on mobile vs 600ms desktop
+    const TICK_RATE = isMobile ? 2500 : 600;
     tickTimer = setInterval(() => {
       ASSETS.forEach(a => tick(a.id));
       emit('tick', getTickerSnapshot());
@@ -107,10 +146,31 @@ const MarketData = (() => {
   function tick(id) {
     const s   = state[id];
     const vol = VOLS[s.cat] || 0.001;
-    const drift = (Math.random() - 0.49) * vol;   // slight upward bias
-    const noise = (Math.random() - 0.5)  * vol * 1.5;
-    const raw   = s.price * (1 + drift + noise);
-    const price = parseFloat(raw.toFixed(s.price > 100 ? 2 : s.price > 1 ? 4 : 6));
+
+    // Boot regime on first tick
+    if (!_regime[id]) _initRegime(id);
+    const reg = _regime[id];
+    _advanceRegime(id, vol);
+
+    // ── Price move = regime drift + volatility noise + momentum carry ──
+    // Regime drift: direction * strength governs the trend component
+    const drift       = reg.dir * reg.strength * vol * 0.45;
+    // Noise: fat-tailed — occasionally a bigger move (± 3× normal)
+    const u = Math.random();
+    const noiseScale  = u < 0.05 ? 3.0 : u < 0.15 ? 1.8 : 1.0; // 5% spike, 10% elevated
+    const noise       = (Math.random() - 0.5) * vol * 1.8 * noiseScale * reg.volMult;
+    // Momentum carry: 18% of previous move continues (short-term autocorrelation)
+    const carry       = reg.momentum * 0.18;
+
+    const totalMove   = drift + noise + carry;
+    reg.momentum      = totalMove;  // store for next tick
+
+    const raw   = s.price * (1 + totalMove);
+    // Clamp: prevent runaway price (soft mean-reversion toward seed price at extreme ±40%)
+    const seed  = ASSETS.find(a => a.id === id)?.price || s.price;
+    const ratio = raw / seed;
+    const clamped = ratio > 1.4 ? raw * 0.9992 : ratio < 0.6 ? raw * 1.0008 : raw;
+    const price = parseFloat(clamped.toFixed(s.price > 10000 ? 1 : s.price > 100 ? 2 : s.price > 1 ? 4 : 6));
 
     const prev  = s.price;
     s.price     = price;
@@ -125,10 +185,10 @@ const MarketData = (() => {
     s.chg24h = parseFloat((price - s.prevClose).toFixed(8));
     s.pct24h = parseFloat(((s.chg24h / s.prevClose) * 100).toFixed(3));
 
-    // Rolling volume variation
-    s.vol24h = s.vol24h * (1 + (Math.random() - 0.5) * 0.002);
+    // Volume spikes on bigger moves (realistic market microstructure)
+    const movePct = Math.abs(totalMove);
+    s.vol24h = s.vol24h * (1 + (Math.random() - 0.5) * 0.003 + movePct * 2);
 
-    // History
     const hist = priceHistory[id];
     hist.push(price);
     if (hist.length > HISTORY_SIZE) hist.shift();
