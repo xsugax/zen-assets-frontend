@@ -203,10 +203,22 @@ const RealDataAdapter = (() => {
   //  STOCKS / FOREX / COMMODITIES / INDICES — Yahoo Finance
   // ═══════════════════════════════════════════════════════════
 
+  // Priority assets — polled faster for the main chart display
+  const PRIORITY_SYMBOLS = new Set(['AAPL','TSLA','GOLD','SILVER','OIL','EURUSD','GBPUSD','USDJPY','SPY','QQQ','SPX','NDX']);
+
   function startNonCryptoPolling() {
     fetchAllNonCryptoData();
-    const pollRate = isMobile ? 30000 : 8000; // 30s on mobile vs 8s desktop
+    const pollRate     = isMobile ? 30000 : 8000;
+    const fastPollRate = isMobile ? 10000 : 3000; // 3s fast lane for key assets
     restTimers.nonCrypto = setInterval(fetchAllNonCryptoData, pollRate);
+    // Fast lane: poll priority assets every 3s
+    restTimers.priority = setInterval(() => {
+      for (const [assetId, yfSymbol] of Object.entries(CONFIG.yahooSymbols)) {
+        if (PRIORITY_SYMBOLS.has(assetId)) {
+          fetchYahooQuote(assetId, yfSymbol).catch(() => {});
+        }
+      }
+    }, fastPollRate);
   }
 
   async function fetchAllNonCryptoData() {

@@ -211,41 +211,66 @@ const AdvancedChartEngine = (() => {
   }
 
   // ── Load Chart Data ──────────────────────────────────────
-  // STEP 1: Render MarketData candles instantly (zero latency, always works)
-  // STEP 2: Silently upgrade to real Binance data in background
+  // Strategy: try real Binance/Yahoo candles first (4 second window).
+  // If real data arrives → show it. If not → show simulated and keep retrying.
+  // This means charts always show real historical prices whenever possible.
   async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
     const assetId = symbol.split('/')[0];
     const tf = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
 
-    // Get simulated candles — deterministic GBM, instant, no network needed
-    let candles = [];
-    try {
-      if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
-        candles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
+    let candles = null;
+    let isReal  = false;
+
+    // ── Attempt real data with 4s timeout ──────────────────
+    if (typeof RealDataAdapter !== 'undefined') {
+      try {
+        const timeout = new Promise(r => setTimeout(() => r(null), 4000));
+        candles = await Promise.race([
+          RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit),
+          timeout,
+        ]);
+        if (candles && candles.length >= 5) {
+          isReal = true;
+          console.log(`[Chart] Real candles loaded — ${assetId} (${candles.length})`);
+        } else {
+          candles = null;
+          console.warn(`[Chart] Real data empty/timeout for ${assetId} — using simulated`);
+        }
+      } catch (e) {
+        candles = null;
+        console.warn(`[Chart] Real data error for ${assetId}:`, e.message);
       }
-    } catch (e) {
-      console.error(`[Chart] MarketData.getOHLCV failed for ${assetId}:`, e.message);
     }
 
-    if (candles.length === 0) {
-      console.warn(`[Chart] No candle data for ${assetId} — chart will be empty`);
+    // ── Fallback: simulated candles ─────────────────────────
+    if (!candles || candles.length < 5) {
+      try {
+        candles = (typeof MarketData !== 'undefined' && MarketData.getOHLCV)
+          ? MarketData.getOHLCV(assetId, tf.limit, timeframe) || []
+          : [];
+      } catch (e) {
+        console.error(`[Chart] MarketData.getOHLCV failed:`, e.message);
+        candles = [];
+      }
+      // Even showing simulated: try to upgrade in background after 5s
+      setTimeout(async () => {
+        try {
+          if (typeof RealDataAdapter === 'undefined') return;
+          const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
+          if (real && real.length >= 5) {
+            console.log(`[Chart] Late upgrade to real data — ${assetId}`);
+            _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          }
+        } catch {}
+      }, 5000);
+    }
+
+    if (!candles || candles.length === 0) {
+      console.error(`[Chart] No data at all for ${assetId}`);
       return;
     }
 
-    console.log(`[Chart] Rendering ${candles.length} candles — ${assetId} ${tf.label}`);
-    _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, false, timeframe);
-
-    // Silently try real Binance data — upgrade chart when it arrives
-    try {
-      if (typeof RealDataAdapter !== 'undefined') {
-        RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit).then(real => {
-          if (real && real.length >= 5) {
-            console.log(`[Chart] Upgraded to real Binance data — ${assetId} (${real.length} candles)`);
-            _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
-          }
-        }).catch(() => {}); // silent — already showing simulated
-      }
-    } catch {}
+    _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe);
   }
 
   // Render a candle dataset onto all chart series
