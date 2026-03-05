@@ -6,22 +6,18 @@
 /* ── Global Mobile Fixes ────────────────────────────────── */
 @media (max-width: 1024px) {
 
-  /* Allow scrolling on login screen */
+  /* Prevent body scroll — login-screen is always position:fixed */
   body {
-    overflow: auto !important;
+    overflow: hidden !important;
     overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
   }
 
-  /* Login screen needs to be scrollable */
+  /* Keep login screen locked to viewport — inner container scrolls instead */
   .login-screen {
-    position: relative !important;
-    min-height: 100vh;
-    height: auto !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch;
+    position: fixed !important;
+    inset: 0 !important;
+    height: 100vh !important;
+    overflow: hidden !important;
   }
 
   /* Remove all backdrop-filter on mobile — massive GPU saver */
@@ -36,32 +32,41 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Login container: stack vertically */
+  /* Login container: stack vertically and become the scroll container */
   .login-container {
     flex-direction: column !important;
     width: 100% !important;
     max-width: 100% !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
     background: rgba(21, 26, 36, 0.95) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
   }
 
-  /* Left brand section — compact on tablet */
+  /* Left brand section — natural height, flows into container scroll */
   .login-brand-section {
     border-right: none !important;
     border-bottom: 1px solid rgba(212,165,116,0.12) !important;
     padding: 32px 24px !important;
     gap: 24px !important;
     overflow-y: visible !important;
+    min-height: auto !important;
+    flex-shrink: 0 !important;
   }
 
-  /* Right form section */
+  /* Right form section — natural height, flows into container scroll */
   .login-form-section {
     padding: 32px 24px !important;
     overflow-y: visible !important;
+    min-height: auto !important;
+    flex-shrink: 0 !important;
+    justify-content: flex-start !important;
   }
 
   .login-form-card {
