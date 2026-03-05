@@ -91,8 +91,8 @@ const AdvancedChartEngine = (() => {
     }
 
     const chart = LightweightCharts.createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight,
+      width: container.clientWidth  || container.offsetWidth  || 600,
+      height: container.clientHeight || container.offsetHeight || 280,
       layout: {
         background: { color: THEME.bg.chart },
         textColor: THEME.text.secondary,
@@ -211,92 +211,93 @@ const AdvancedChartEngine = (() => {
   }
 
   // ── Load Chart Data ──────────────────────────────────────
-  // Strategy: render MarketData candles IMMEDIATELY (no waiting),
-  // then fetch real Binance data in background and upgrade silently.
-  async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '1h') {
+  // STEP 1: Render MarketData candles instantly (zero latency, always works)
+  // STEP 2: Silently upgrade to real Binance data in background
+  async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
     const assetId = symbol.split('/')[0];
-    const tf = TIMEFRAMES[timeframe];
+    const tf = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
 
-    console.log(`📊 Loading chart: ${assetId} ${tf.label}`);
-
-    // ── STEP 1: Render good-looking data INSTANTLY ──────────
-    // MarketData.getOHLCV uses GBM + Brownian bridge — it looks real.
-    // This ensures chartcomponents are always populated on page load.
-    let candles = null;
-    let usingRealData = false;
-
-    if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
-      candles = MarketData.getOHLCV(assetId, tf.limit, timeframe);
-      if (candles && candles.length > 0) {
-        console.log(`⚡ Instant render: ${candles.length} simulated candles for ${assetId}`);
-        _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, false, timeframe);
+    // Get simulated candles — deterministic GBM, instant, no network needed
+    let candles = [];
+    try {
+      if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
+        candles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
       }
-    }
-
-    // ── STEP 2: Fetch real Binance/Yahoo data in background ─
-    // If real data arrives, silently upgrade the chart.
-    _fetchAndUpgradeChart(assetId, tf, candleSeries, volumeSeries, ma20Series, ma50Series, symbol, timeframe);
-
-    return { candleData: candles, usingRealData: false };
-  }
-
-  // Fetch real data and upgrade the chart when it arrives
-  async function _fetchAndUpgradeChart(assetId, tf, candleSeries, volumeSeries, ma20Series, ma50Series, symbol, timeframe) {
-    try {
-      if (typeof RealDataAdapter === 'undefined') return;
-      const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
-      if (!candles || candles.length < 5) return;
-      console.log(`✅ UPGRADED to real data: ${assetId} (${candles.length} candles)`);
-      _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, true, timeframe);
-      updateDataSourceIndicator(symbol, true, timeframe);
     } catch (e) {
-      console.warn(`ℹ️ ${assetId} staying on simulated — real data unavailable (${e.message})`);
+      console.error(`[Chart] MarketData.getOHLCV failed for ${assetId}:`, e.message);
     }
+
+    if (candles.length === 0) {
+      console.warn(`[Chart] No candle data for ${assetId} — chart will be empty`);
+      return;
+    }
+
+    console.log(`[Chart] Rendering ${candles.length} candles — ${assetId} ${tf.label}`);
+    _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, false, timeframe);
+
+    // Silently try real Binance data — upgrade chart when it arrives
+    try {
+      if (typeof RealDataAdapter !== 'undefined') {
+        RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit).then(real => {
+          if (real && real.length >= 5) {
+            console.log(`[Chart] Upgraded to real Binance data — ${assetId} (${real.length} candles)`);
+            _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          }
+        }).catch(() => {}); // silent — already showing simulated
+      }
+    } catch {}
   }
 
-  // Apply a candle dataset to all series
-  function _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe) {
+  // Render a candle dataset onto all chart series
+  // Each series.setData call is independently guarded so one failure can't block others
+  function _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe) {
+    const candleData = candles.map(c => ({
+      time: Math.floor(c.t / 1000),
+      open: c.o, high: c.h, low: c.l, close: c.c,
+    }));
+    const volumeData = candles.map(c => ({
+      time: Math.floor(c.t / 1000),
+      value: c.v,
+      color: c.c >= c.o ? THEME.volume.up : THEME.volume.down,
+    }));
+
+    try { candleSeries.setData(candleData); }
+    catch (e) { console.error('[Chart] candleSeries.setData failed:', e.message); return; }
+
+    try { volumeSeries.setData(volumeData); }
+    catch (e) { console.error('[Chart] volumeSeries.setData failed:', e.message); }
+
+    try { ma20Series.setData(calculateMA(candleData, 20)); }
+    catch (e) { console.error('[Chart] MA20 failed:', e.message); }
+
+    try { ma50Series.setData(calculateMA(candleData, 50)); }
+    catch (e) { console.error('[Chart] MA50 failed:', e.message); }
+
+    // Non-critical enhancements — failures OK
+    try { addSupportResistanceLevels(candleSeries, candleData); } catch {}
+
     try {
-      const candleData = candles.map(c => ({
-        time: Math.floor(c.t / 1000),
-        open: c.o, high: c.h, low: c.l, close: c.c,
-      }));
-      const volumeData = candles.map(c => ({
-        time: Math.floor(c.t / 1000),
-        value: c.v,
-        color: c.c >= c.o ? THEME.volume.up : THEME.volume.down,
-      }));
-
-      candleSeries.setData(candleData);
-      volumeSeries.setData(volumeData);
-      ma20Series.setData(calculateMA(candleData, 20));
-      ma50Series.setData(calculateMA(candleData, 50));
-
-      addSupportResistanceLevels(candleSeries, candleData);
-
       if (typeof MarketData !== 'undefined' && MarketData.detectPatterns) {
-        try {
-          const detected = MarketData.detectPatterns(candles);
-          if (detected && detected.length > 0) {
-            const priority = { morning_star: 5, evening_star: 5, three_soldiers: 5, three_crows: 5, engulfing: 4, piercing: 3, dark_cloud: 3, hammer: 2, shooting_star: 2, marubozu: 1, doji: 0 };
-            const ranked = detected.sort((a, b) => (priority[b.type] || 0) - (priority[a.type] || 0)).slice(0, 6);
-            const markers = ranked.map(p => ({
+        const detected = MarketData.detectPatterns(candles);
+        if (detected && detected.length > 0) {
+          const priority = { morning_star:5, evening_star:5, three_soldiers:5, three_crows:5, engulfing:4, piercing:3, dark_cloud:3, hammer:2, shooting_star:2, marubozu:1, doji:0 };
+          const markers = detected
+            .sort((a, b) => (priority[b.type] || 0) - (priority[a.type] || 0))
+            .slice(0, 6)
+            .map(p => ({
               time: Math.floor(p.t / 1000),
               position: p.signal === 'bullish' ? 'belowBar' : p.signal === 'bearish' ? 'aboveBar' : 'inBar',
               color: p.signal === 'bullish' ? '#5fb38e' : p.signal === 'bearish' ? '#d65d5d' : '#d4a574',
               shape: p.signal === 'bullish' ? 'arrowUp' : p.signal === 'bearish' ? 'arrowDown' : 'circle',
               text: p.name,
-            }));
-            markers.sort((a, b) => a.time - b.time);
-            try { candleSeries.setMarkers(markers); } catch {}
-          }
-        } catch {}
+            }))
+            .sort((a, b) => a.time - b.time);
+          try { candleSeries.setMarkers(markers); } catch {}
+        }
       }
+    } catch {}
 
-      updateDataSourceIndicator(symbol, isReal, timeframe);
-    } catch (e) {
-      console.error('Chart applyCandles failed:', e.message);
-    }
+    try { updateDataSourceIndicator(symbol, isReal, timeframe); } catch {}
   }
 
   // ── Real-Time Updates — Binance Kline WebSocket ───────────
