@@ -185,10 +185,7 @@ const App = (() => {
     const loading = $('loading-screen');
     if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
     const app = $('app');
-    if (app) {
-      app.style.display = ''; // clear any inline override so CSS class can take effect
-      app.classList.add('app-visible');
-    }
+    if (app) app.classList.add('app-visible');
     // startCursorTrail(); // Removed — clean professional UI
     startClock();
     initData();
@@ -2118,38 +2115,45 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
-
-    // ── AUTO-LOGIN DISABLED ───────────────────────────────────
-    // Clear session FIRST so refreshSession() inside UserAuth.init() is never triggered.
-    if (typeof UserAuth !== 'undefined') UserAuth.forceLogoutSync();
-
-    // Initialize auth system (token is now gone, so no async refresh fires)
+    
+    // Initialize auth system first
     if (typeof UserAuth !== 'undefined') UserAuth.init();
 
-    // Always show login screen — users must sign in every visit
+    // Check session status
+    const isLogged = typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
+    console.log('📊 Session check - isLoggedIn:', isLogged);
+    
+    // Get DOM elements
     const loginScreen = $('login-screen');
     const appDiv = $('app');
-    if (loginScreen) {
-      loginScreen.style.display = 'flex'; // explicitly keep visible
-      loginScreen.style.opacity  = '1';
-    }
-    if (appDiv) {
-      appDiv.classList.remove('app-visible');
-      appDiv.style.display = ''; // clear any inline override — CSS hides #app by default
-    }
-    document.body.style.overflow = 'auto';
 
+    if (isLogged) {
+      // User IS logged in - show app
+      console.log('✅ User logged in - showing dashboard');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appDiv) appDiv.classList.add('app-visible');
+      document.body.style.overflow = 'hidden'; // Lock scroll for app view
+      initRegisterScreen();
+      initModalHandlers();
+      proceedAfterLogin();
+      return;
+    }
+
+    // User is NOT logged in - show login screen
+    console.log('❌ User not logged in - showing login screen');
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appDiv) appDiv.classList.remove('app-visible');
+    document.body.style.overflow = 'auto';
+    if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
+    
     initLoginScreen();
     initRegisterScreen();
     initModalHandlers();
-
-    // Open the login modal (adds show-login-modal class & focuses email)
-    if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
   }
 
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) { console.warn('⚠ #login-form not found in DOM'); return; }
+    if (!loginForm) { proceedAfterLogin(); return; }
     
     // ── Addictive Login Enhancements ──
     _initLoginParticles();
@@ -2741,9 +2745,17 @@ const App = (() => {
       InvestmentReturns.loadForUser(); // catches up compounding from time away
     }
 
-    // Balance is ONLY funded via explicit admin credit from the backend.
-    // Do NOT auto-deposit from registration data or local cache.
-    // The wallet balance shown always comes from the live API /auth/me response.
+    // If admin has funded this user, sync the deposit as wallet balance
+    if (typeof UserAuth !== 'undefined' && typeof InvestmentReturns !== 'undefined') {
+      const fullUser = UserAuth.getCurrentUser();
+      if (fullUser && fullUser.deposit > 0) {
+        const snap = InvestmentReturns.getSnapshot();
+        // Only deposit if wallet hasn't been funded yet (avoid re-depositing)
+        if (snap.walletBalance === 0 && snap.initialDeposit === 0) {
+          InvestmentReturns.deposit(fullUser.deposit);
+        }
+      }
+    }
 
     // Load per-user trade history
     if (typeof AutoTrader !== 'undefined') {

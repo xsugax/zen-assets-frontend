@@ -107,7 +107,7 @@ const UserAuth = (() => {
         id, fullName, email: email.toLowerCase(),
         passwordHash: _simpleHash(password),
         tier: tier || 'bronze',
-        depositAmount: 0,   // balance always starts at $0; only funded via admin credit
+        depositAmount: parseFloat(depositAmount) || 0,
         role: 'user', balance: 0, earnings: 0,
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -421,24 +421,6 @@ const UserAuth = (() => {
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
-
-  // ── Force logout synchronously (no API call) — used on page load ──
-  function forceLogoutSync() {
-    // Clear all known auth keys
-    _saveToken(null);
-    _saveSession(null);
-    _saveWallet(null);
-    sessionStorage.clear();
-    // Wipe session/cache keys but PRESERVE zen_users_db (offline user registry)
-    const keysToNuke = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (k === 'zen_users_db') continue; // keep offline user registry intact
-      if (k.startsWith('zen_') || k.startsWith('autoTradeHistory')) keysToNuke.push(k);
-    }
-    keysToNuke.forEach(k => localStorage.removeItem(k));
-  }
 
   function getCurrentUser() {
     const s = _loadSession();
@@ -767,7 +749,7 @@ const UserAuth = (() => {
   }
 
   return {
-    init, register, login, logout, forceLogoutSync,
+    init, register, login, logout,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
