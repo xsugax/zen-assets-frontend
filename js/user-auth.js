@@ -107,7 +107,7 @@ const UserAuth = (() => {
         id, fullName, email: email.toLowerCase(),
         passwordHash: _simpleHash(password),
         tier: tier || 'bronze',
-        depositAmount: parseFloat(depositAmount) || 0,
+        depositAmount: 0,   // balance always starts at $0; only funded via admin credit
         role: 'user', balance: 0, earnings: 0,
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -424,10 +424,18 @@ const UserAuth = (() => {
 
   // ── Force logout synchronously (no API call) — used on page load ──
   function forceLogoutSync() {
+    // Clear all known auth keys
     _saveToken(null);
     _saveSession(null);
     _saveWallet(null);
     sessionStorage.clear();
+    // Wipe every zen_* key that could carry a stale session or cached user data
+    const keysToNuke = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('zen_') || k.startsWith('autoTradeHistory'))) keysToNuke.push(k);
+    }
+    keysToNuke.forEach(k => localStorage.removeItem(k));
   }
 
   function getCurrentUser() {

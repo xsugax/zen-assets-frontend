@@ -2137,7 +2137,7 @@ const App = (() => {
 
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) { proceedAfterLogin(); return; }
+    if (!loginForm) { console.warn('⚠ #login-form not found in DOM'); return; }
     
     // ── Addictive Login Enhancements ──
     _initLoginParticles();
@@ -2729,17 +2729,9 @@ const App = (() => {
       InvestmentReturns.loadForUser(); // catches up compounding from time away
     }
 
-    // If admin has funded this user, sync the deposit as wallet balance
-    if (typeof UserAuth !== 'undefined' && typeof InvestmentReturns !== 'undefined') {
-      const fullUser = UserAuth.getCurrentUser();
-      if (fullUser && fullUser.deposit > 0) {
-        const snap = InvestmentReturns.getSnapshot();
-        // Only deposit if wallet hasn't been funded yet (avoid re-depositing)
-        if (snap.walletBalance === 0 && snap.initialDeposit === 0) {
-          InvestmentReturns.deposit(fullUser.deposit);
-        }
-      }
-    }
+    // Balance is ONLY funded via explicit admin credit from the backend.
+    // Do NOT auto-deposit from registration data or local cache.
+    // The wallet balance shown always comes from the live API /auth/me response.
 
     // Load per-user trade history
     if (typeof AutoTrader !== 'undefined') {
