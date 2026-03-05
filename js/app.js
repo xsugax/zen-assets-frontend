@@ -2126,13 +2126,19 @@ const App = (() => {
     // Always show login screen — users must sign in every visit
     const loginScreen = $('login-screen');
     const appDiv = $('app');
-    if (loginScreen) loginScreen.style.display = 'block';
-    if (appDiv) appDiv.classList.remove('app-visible');
+    if (loginScreen) {
+      loginScreen.style.display = ''; // let CSS flex rule take over
+      loginScreen.style.opacity  = '1';
+    }
+    if (appDiv) { appDiv.classList.remove('app-visible'); appDiv.style.display = 'none'; }
     document.body.style.overflow = 'auto';
 
     initLoginScreen();
     initRegisterScreen();
     initModalHandlers();
+
+    // Open the login modal (adds show-login-modal class & focuses email)
+    if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
   }
 
   function initLoginScreen() {
