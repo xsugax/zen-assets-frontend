@@ -456,9 +456,6 @@ const AdvancedChartEngine = (() => {
       }
     }, intervalMs);
   }
-      }
-    }, 250); // 250ms = 4 updates per second = LIVE TRADING FEEL
-  }
 
   function stopRealtimeUpdates(containerId) {
     const ws = klineWsConnections[containerId];
