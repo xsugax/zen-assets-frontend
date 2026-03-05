@@ -239,7 +239,7 @@ const UserAuth = (() => {
         if (!user) return { ok: false, error: 'User not found.' };
         const token = _makeToken(user.id);
         const { passwordHash, ...safe } = user;
-        return { ok: true, token, user: safe, wallet: { totalDeposited: user.depositAmount || 0, balance: user.balance || 0, earnings: user.earnings || 0, currency: 'USD' } };
+        return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
       }
 
       // ── Verify login OTP (local: auto-succeed) ──
@@ -248,7 +248,7 @@ const UserAuth = (() => {
         if (!user) return { ok: false, error: 'User not found.' };
         const token = _makeToken(user.id);
         const { passwordHash, ...safe } = user;
-        return { ok: true, token, user: safe, wallet: { totalDeposited: user.depositAmount || 0, balance: user.balance || 0, earnings: user.earnings || 0, currency: 'USD' } };
+        return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
       }
 
       // ── Resend OTP (local: no-op) ──
