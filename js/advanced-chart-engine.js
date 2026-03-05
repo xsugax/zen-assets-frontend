@@ -70,7 +70,7 @@ const AdvancedChartEngine = (() => {
   let currentTimeframe = '5m'; // Default to 5 minutes (better UX - shows more action)
 
   // ── Initialize Lightweight Chart (TradingView Style) ────
-  function createLightweightChart(containerId, symbol, timeframe = '5m') {
+  async function createLightweightChart(containerId, symbol, timeframe = '5m') {
     const container = document.getElementById(containerId);
     if (!container) {
       console.warn('Chart container not found:', containerId);
@@ -183,11 +183,12 @@ const AdvancedChartEngine = (() => {
       lastValueVisible: false,
     });
 
-    // Load data with selected timeframe
-    loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe);
-    
-    // Start real-time updates at correct interval
+    // Start live tick feed FIRST — forming candle begins building immediately
+    // This runs in parallel while historical data is fetched
     startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe);
+
+    // Load historical data — awaited so callers know when chart is ready
+    await loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe);
 
     // Handle resize
     const resizeObserver = new ResizeObserver(entries => {
@@ -211,35 +212,67 @@ const AdvancedChartEngine = (() => {
   }
 
   // ── Load Chart Data ──────────────────────────────────────
-  // INSTANT strategy: simulated candles render in <100ms — zero wait.
-  // Real Binance/Yahoo data fetches in the background and silently upgrades
-  // the chart the moment it arrives. User never sees a loading delay.
-  async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
-    const assetId = symbol.split('/')[0];
-    const tf = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
+  // Binance-like strategy:
+  //   1. Show loading badge
+  //   2. Wait for real Binance/Yahoo candles (1.5s for crypto, 2.5s for non-crypto)
+  //   3. Render real data cleanly — no jarring swap, no fake placeholder
+  //   4. Only fall back to simulated if real data truly fails, with background retries
+  // This makes each timeframe feel genuinely different because the data IS different:
+  //   1m = real micro-movements, 4h = real macro swings.
+  async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
+    const assetId  = symbol.split('/')[0];
+    const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
+    const isCrypto = CRYPTO_SYMBOLS.has(assetId);
+    const maxWait  = isCrypto ? 1500 : 2500; // Binance REST ~300ms, Yahoo proxy ~1-2s
 
-    // ── STEP 1: Render simulated immediately — no network, no wait ──
+    // Show loading badge while we wait for real data
+    try { if (typeof ChartDataIndicator !== 'undefined') ChartDataIndicator.showLoading(containerId); } catch {}
+
+    // ── Try real data first ────────────────────────────────
+    if (typeof RealDataAdapter !== 'undefined') {
+      try {
+        const timeoutP = new Promise(r => setTimeout(() => r(null), maxWait));
+        const real = await Promise.race([
+          RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit),
+          timeoutP,
+        ]);
+        if (real && real.length >= 5) {
+          // Clean render — real data, no visual swap later
+          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          return;
+        }
+      } catch {}
+    }
+
+    // ── Fallback: simulated (only when real data truly failed) ──
+    // getOHLCV anchors to live price so current level is correct;
+    // only the historical path looks estimated.
     let simCandles = [];
     try {
       if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
         simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
       }
-    } catch (e) { console.warn('[Chart] MarketData.getOHLCV failed:', e.message); }
+    } catch {}
 
     if (simCandles.length > 0) {
       _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, simCandles, symbol, false, timeframe);
     }
 
-    // ── STEP 2: Fetch real data in background — no blocking ──────
-    // Upgrades chart seamlessly whenever real candles arrive.
-    if (typeof RealDataAdapter === 'undefined') return;
-    RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit)
-      .then(real => {
+    // ── Background retries — upgrade simulated → real once network recovers ──
+    let retryMs = 3000;
+    const tryUpgrade = async () => {
+      if (typeof RealDataAdapter === 'undefined') return;
+      try {
+        const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
         if (real && real.length >= 5) {
           _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          return; // success — stop retrying
         }
-      })
-      .catch(() => {}); // simulated already showing — no action needed
+      } catch {}
+      retryMs = Math.min(retryMs * 1.5, 15000); // exponential back-off, max 15s
+      setTimeout(tryUpgrade, retryMs);
+    };
+    setTimeout(tryUpgrade, retryMs);
   }
 
   // Render a candle dataset onto all chart series
