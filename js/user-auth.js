@@ -567,12 +567,13 @@ const UserAuth = (() => {
     // ═ STEP 7: Clear User-Specific Data ═
     console.log('🔐 LOGOUT: Clearing user data...');
     
-    if (userEmailBefore) {
-      localStorage.removeItem('zen_investment_' + userEmailBefore.toLowerCase());
-    }
+    // NOTE: Per-user investment state (zen_investment_<email>) is intentionally
+    // preserved — it holds the user's balance & earnings history so it's intact
+    // on their next login. Only generic/shared keys are cleared below.
     
     const keysToRemove = [
-      'zen_investment_state',
+      // 'zen_investment_state' — excluded: per-user state uses email-keyed key; generic
+      //   key is only used when no session exists (guest), so preserving it is safe.
       'zen_trades',
       'zen_auto_trades',
       'zen_gamification',
