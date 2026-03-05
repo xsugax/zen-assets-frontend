@@ -211,116 +211,119 @@ const AdvancedChartEngine = (() => {
   }
 
   // ── Load Chart Data ──────────────────────────────────────
+  // Strategy: render MarketData candles IMMEDIATELY (no waiting),
+  // then fetch real Binance data in background and upgrade silently.
   async function loadChartData(symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '1h') {
     const assetId = symbol.split('/')[0];
     const tf = TIMEFRAMES[timeframe];
-    
-    console.log(`📊 Loading ${assetId} chart data: ${tf.label} (${tf.binance})`);
-    
-    // ALWAYS try to get real Binance data first (this is critical!)
+
+    console.log(`📊 Loading chart: ${assetId} ${tf.label}`);
+
+    // ── STEP 1: Render good-looking data INSTANTLY ──────────
+    // MarketData.getOHLCV uses GBM + Brownian bridge — it looks real.
+    // This ensures chartcomponents are always populated on page load.
     let candles = null;
     let usingRealData = false;
-    
-    if (typeof RealDataAdapter !== 'undefined' && RealDataAdapter.isRealDataEnabled()) {
-      candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
-      if (candles && candles.length > 0) {
-        usingRealData = true;
-        console.log(`✅ Using REAL market data for ${assetId} (${candles.length} ${tf.binance} candles)`);
-      }
-    }
-    
-    // Only fallback to simulated data if real data unavailable
-    if (!candles && typeof MarketData !== 'undefined') {
-      console.warn(`⚠️ Real data unavailable - using simulated data (NOT RECOMMENDED)`);
+
+    if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
       candles = MarketData.getOHLCV(assetId, tf.limit, timeframe);
-      usingRealData = false;
-    }
-
-    if (!candles || candles.length === 0) {
-      console.error('❌ No chart data available for', symbol);
-      return;
-    }
-    
-    // Show data source indicator
-    updateDataSourceIndicator(symbol, usingRealData, timeframe);
-
-    // Format data for TradingView
-    const candleData = candles.map(c => ({
-      time: Math.floor(c.t / 1000), // Convert to seconds
-      open: c.o,
-      high: c.h,
-      low: c.l,
-      close: c.c,
-    }));
-
-    const volumeData = candles.map(c => ({
-      time: Math.floor(c.t / 1000),
-      value: c.v,
-      color: c.c >= c.o ? THEME.volume.up : THEME.volume.down,
-    }));
-
-    candleSeries.setData(candleData);
-    volumeSeries.setData(volumeData);
-
-    // Calculate and add moving averages
-    const ma20Data = calculateMA(candleData, 20);
-    const ma50Data = calculateMA(candleData, 50);
-
-    ma20Series.setData(ma20Data);
-    ma50Series.setData(ma50Data);
-
-    // Add support/resistance levels
-    addSupportResistanceLevels(candleSeries, candleData);
-
-    // ── Pattern Recognition — only the strongest signals ──
-    if (typeof MarketData !== 'undefined' && MarketData.detectPatterns) {
-      const detected = MarketData.detectPatterns(candles);
-      if (detected && detected.length > 0) {
-        // Rank: multi-candle patterns > single, keep max 6 to avoid clutter
-        const priority = { morning_star: 5, evening_star: 5, three_soldiers: 5, three_crows: 5, engulfing: 4, piercing: 3, dark_cloud: 3, hammer: 2, shooting_star: 2, marubozu: 1, doji: 0 };
-        const ranked = detected.sort((a, b) => (priority[b.type] || 0) - (priority[a.type] || 0)).slice(0, 6);
-        const markers = ranked.map(p => ({
-          time: Math.floor(p.t / 1000),
-          position: p.signal === 'bullish' ? 'belowBar' : p.signal === 'bearish' ? 'aboveBar' : 'inBar',
-          color: p.signal === 'bullish' ? '#5fb38e' : p.signal === 'bearish' ? '#d65d5d' : '#d4a574',
-          shape: p.signal === 'bullish' ? 'arrowUp' : p.signal === 'bearish' ? 'arrowDown' : 'circle',
-          text: p.name,
-        }));
-        markers.sort((a, b) => a.time - b.time);
-        try { candleSeries.setMarkers(markers); } catch(e) {}
+      if (candles && candles.length > 0) {
+        console.log(`⚡ Instant render: ${candles.length} simulated candles for ${assetId}`);
+        _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, false, timeframe);
       }
     }
-    
-    return { candleData, volumeData, usingRealData };
+
+    // ── STEP 2: Fetch real Binance/Yahoo data in background ─
+    // If real data arrives, silently upgrade the chart.
+    _fetchAndUpgradeChart(assetId, tf, candleSeries, volumeSeries, ma20Series, ma50Series, symbol, timeframe);
+
+    return { candleData: candles, usingRealData: false };
+  }
+
+  // Fetch real data and upgrade the chart when it arrives
+  async function _fetchAndUpgradeChart(assetId, tf, candleSeries, volumeSeries, ma20Series, ma50Series, symbol, timeframe) {
+    try {
+      if (typeof RealDataAdapter === 'undefined') return;
+      const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
+      if (!candles || candles.length < 5) return;
+      console.log(`✅ UPGRADED to real data: ${assetId} (${candles.length} candles)`);
+      _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, true, timeframe);
+      updateDataSourceIndicator(symbol, true, timeframe);
+    } catch (e) {
+      console.warn(`ℹ️ ${assetId} staying on simulated — real data unavailable (${e.message})`);
+    }
+  }
+
+  // Apply a candle dataset to all series
+  function _applyCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe) {
+    try {
+      const candleData = candles.map(c => ({
+        time: Math.floor(c.t / 1000),
+        open: c.o, high: c.h, low: c.l, close: c.c,
+      }));
+      const volumeData = candles.map(c => ({
+        time: Math.floor(c.t / 1000),
+        value: c.v,
+        color: c.c >= c.o ? THEME.volume.up : THEME.volume.down,
+      }));
+
+      candleSeries.setData(candleData);
+      volumeSeries.setData(volumeData);
+      ma20Series.setData(calculateMA(candleData, 20));
+      ma50Series.setData(calculateMA(candleData, 50));
+
+      addSupportResistanceLevels(candleSeries, candleData);
+
+      if (typeof MarketData !== 'undefined' && MarketData.detectPatterns) {
+        try {
+          const detected = MarketData.detectPatterns(candles);
+          if (detected && detected.length > 0) {
+            const priority = { morning_star: 5, evening_star: 5, three_soldiers: 5, three_crows: 5, engulfing: 4, piercing: 3, dark_cloud: 3, hammer: 2, shooting_star: 2, marubozu: 1, doji: 0 };
+            const ranked = detected.sort((a, b) => (priority[b.type] || 0) - (priority[a.type] || 0)).slice(0, 6);
+            const markers = ranked.map(p => ({
+              time: Math.floor(p.t / 1000),
+              position: p.signal === 'bullish' ? 'belowBar' : p.signal === 'bearish' ? 'aboveBar' : 'inBar',
+              color: p.signal === 'bullish' ? '#5fb38e' : p.signal === 'bearish' ? '#d65d5d' : '#d4a574',
+              shape: p.signal === 'bullish' ? 'arrowUp' : p.signal === 'bearish' ? 'arrowDown' : 'circle',
+              text: p.name,
+            }));
+            markers.sort((a, b) => a.time - b.time);
+            try { candleSeries.setMarkers(markers); } catch {}
+          }
+        } catch {}
+      }
+
+      updateDataSourceIndicator(symbol, isReal, timeframe);
+    } catch (e) {
+      console.error('Chart applyCandles failed:', e.message);
+    }
   }
 
   // ── Real-Time Updates — Binance Kline WebSocket ───────────
-  // Each chart gets its own dedicated kline stream from Binance.
-  // This is the same data source TradingView uses — every price
-  // movement Binance processes is pushed to us instantly, keeping
-  // the forming candle's O/H/L/C/V perfectly in sync with reality.
-  const updateIntervals  = {};   // REST fallback poll timers
-  const klineWsConnections = {}; // WebSocket per containerId
+  // Each chart gets its own dedicated kline stream.
+  // WebSockets bypass CORS — direct connection to Binance works fine.
+  // REST polling is NOT used — WebSocket handles all live updates.
+  const updateIntervals  = {};   // (kept for stopRealtimeUpdates cleanup only)
+  const klineWsConnections = {};
 
   const CRYPTO_SYMBOLS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','LINK','MATIC','UNI','AAVE']);
 
   function startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe) {
-    stopRealtimeUpdates(containerId); // always clean up first
+    stopRealtimeUpdates(containerId);
 
     const tf      = TIMEFRAMES[timeframe];
     const assetId = symbol.split('/')[0];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
 
-    console.log(`🚀 STARTING REALTIME: ${assetId} ${tf.binance} (Crypto: ${isCrypto})`);
+    console.log(`🚀 REALTIME: ${assetId} ${tf.binance} (Crypto: ${isCrypto})`);
 
-    // AGGRESSIVE: Update every 250ms for ultra-responsive candlesticks
     if (isCrypto) {
+      // Primary: Binance kline WebSocket — tick-perfect live updates
       _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries);
+    } else {
+      // Non-crypto: poll Yahoo every 10s (market hours only)
+      _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 10000);
     }
-    
-    // FALLBACK: Always run aggressive REST polling (250ms) even if WS works
-    // This ensures continuous candle updates no matter what
-    _startAggressiveRestPolling(containerId, assetId, tf, candleSeries, volumeSeries);
   }
 
   function _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries) {
@@ -430,134 +433,29 @@ const AdvancedChartEngine = (() => {
     connect();
   }
 
-  // REST fallback — polls Binance (crypto) or Yahoo (non-crypto) for the latest candle
+  // REST fallback — polls for the latest candle (non-crypto or WS failure)
   function _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, intervalMs) {
-    if (updateIntervals[containerId]) return; // already running
-
-    console.log(`🔄 REST FALLBACK: ${assetId} every ${intervalMs / 1000}s`);
-
-    updateIntervals[containerId] = setInterval(async () => {
-      if (typeof RealDataAdapter === 'undefined') {
-        console.warn(`⚠️ RealDataAdapter not available for ${assetId}`);
-        return;
-      }
-      try {
-        // Fetch last 3 candles to ensure we get the latest
-        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 3);
-        if (!candles || !candles.length) {
-          console.warn(`⚠️ No candles returned for ${assetId} from RealDataAdapter`);
-          return;
-        }
-
-        // Update BOTH closed and forming candles for smooth progression
-        let updateCount = 0;
-        for (const c of candles) {
-          const t = Math.floor(c.t / 1000);
-          
-          // Validate candle data
-          if (isNaN(c.o) || isNaN(c.h) || isNaN(c.l) || isNaN(c.c)) {
-            console.error(`❌ Invalid candle data in REST: o=${c.o}, h=${c.h}, l=${c.l}, c=${c.c}`);
-            continue;
-          }
-          
-          try { 
-            candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); 
-            updateCount++;
-            console.log(`📊 REST Update [${assetId}] ${tf.binance}: O=${c.o.toFixed(2)} H=${c.h.toFixed(2)} L=${c.l.toFixed(2)} C=${c.c.toFixed(2)}`);
-            
-            // Log to debug monitor
-            if (typeof DebugMonitor !== 'undefined') {
-              DebugMonitor.recordChartUpdate(assetId, c);
-            }
-          } catch (updateErr) {
-            console.error(`❌ REST Candle update failed: ${updateErr.message}`);
-          }
-          
-          try { 
-            volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); 
-          } catch (volErr) {
-            console.warn(`REST Volume update error: ${volErr.message}`);
-          }
-        }
-        
-        if (updateCount === 0) {
-          console.warn(`⚠️ No candle updates succeeded for ${assetId} from REST`);
-        }
-
-        const latest = candles[candles.length - 1];
-        if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
-          try {
-            MarketData._injectRealPrice(assetId, { price: latest.c });
-          } catch (injErr) {
-            console.error(`❌ REST MarketData injection failed: ${injErr.message}`);
-          }
-        }
-      } catch (err) {
-        console.error(`❌ REST fallback error for ${assetId}:`, err.message);
-      }
-    }, intervalMs);
-  }
-
-  // AGGRESSIVE polling every 250ms — guaranteed live candlesticks
-  function _startAggressiveRestPolling(containerId, assetId, tf, candleSeries, volumeSeries) {
-    if (updateIntervals[containerId]) clearInterval(updateIntervals[containerId]);
-
-    console.log(`⚡ ULTRA-AGGRESSIVE: ${assetId} updating every 250ms`);
-
-    let consecutiveErrors = 0;
-
+    if (updateIntervals[containerId]) return;
+    console.log(`🔄 REST POLL: ${assetId} every ${intervalMs / 1000}s`);
     updateIntervals[containerId] = setInterval(async () => {
       try {
         if (typeof RealDataAdapter === 'undefined') return;
-        
-        // Fetch the last 5 candles for maximum freshness
-        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 5);
-        if (!candles || !candles.length) {
-          consecutiveErrors++;
-          if (consecutiveErrors > 10) console.warn(`⚠️ ${assetId} data fetch failing repeatedly`);
-          return;
-        }
-
-        consecutiveErrors = 0;
-
-        // Update all recent candles (ensures forming candle is always fresh)
+        const candles = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, 3);
+        if (!candles || !candles.length) return;
         for (const c of candles) {
           const t = Math.floor(c.t / 1000);
-          
-          // Update candlestick
-          try { 
-            candleSeries.update({ 
-              time: t, 
-              open: c.o, 
-              high: c.h, 
-              low: c.l, 
-              close: c.c 
-            }); 
-          } catch {}
-
-          // Update volume
-          try { 
-            volumeSeries.update({ 
-              time: t, 
-              value: c.v, 
-              color: c.c >= c.o ? THEME.volume.up : THEME.volume.down 
-            }); 
-          } catch {}
+          try { candleSeries.update({ time: t, open: c.o, high: c.h, low: c.l, close: c.c }); } catch {}
+          try { volumeSeries.update({ time: t, value: c.v, color: c.c >= c.o ? THEME.volume.up : THEME.volume.down }); } catch {}
         }
-
-        // Sync latest price to MarketData for UI updates
         const latest = candles[candles.length - 1];
         if (typeof MarketData !== 'undefined' && MarketData._injectRealPrice) {
-          MarketData._injectRealPrice(assetId, { 
-            price: latest.c,
-            high24h: latest.h,
-            low24h: latest.l,
-            vol: latest.v
-          });
+          try { MarketData._injectRealPrice(assetId, { price: latest.c }); } catch {}
         }
       } catch (err) {
-        consecutiveErrors++;
-        if (consecutiveErrors <= 3) console.error(`Aggressive polling error: ${err.message}`);
+        // silent — fallback already renders via MarketData tick injection
+      }
+    }, intervalMs);
+  }
       }
     }, 250); // 250ms = 4 updates per second = LIVE TRADING FEEL
   }

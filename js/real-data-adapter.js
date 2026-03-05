@@ -353,7 +353,7 @@ const RealDataAdapter = (() => {
   function getPrice(symbol) { return cache[symbol]?.price || null; }
   function getTickerData(symbol) { return cache[symbol] || null; }
   function getAllCachedData() { return { ...cache }; }
-  function isRealDataEnabled() { return CONFIG.enableRealData && Object.keys(cache).length > 0; }
+  function isRealDataEnabled() { return CONFIG.enableRealData; }
 
   function on(event, fn) { if (!subscribers[event]) subscribers[event] = []; subscribers[event].push(fn); }
   function emit(event, data) { (subscribers[event] || []).forEach(fn => { try { fn(data); } catch {} }); }
