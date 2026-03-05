@@ -45,6 +45,28 @@
   
   <!-- Floating Particle Canvas -->
   <canvas id="login-particles" class="login-particles"></canvas>
+
+  <!-- ═══ LOGIN SCREEN TOP NAV ═══ -->
+  <nav class="login-top-nav">
+    <div class="ltn-brand">
+      <div class="ltn-logo-icon">Z</div>
+      <div class="ltn-logo-text">
+        <span class="ltn-name">ZEN ASSETS</span>
+        <span class="ltn-tagline">AI Wealth Platform</span>
+      </div>
+      <div class="ltn-live-pill"><span class="live-dot"></span> LIVE</div>
+    </div>
+    <div class="ltn-actions">
+      <button class="ltn-btn ltn-signin" id="ltn-signin-btn" onclick="AuthManager.switchView('login'); document.querySelector('.login-form-section').scrollIntoView({behavior:'smooth'})">
+        <i class="fa fa-sign-in-alt"></i>
+        <span>Sign In</span>
+      </button>
+      <button class="ltn-btn ltn-register" id="ltn-register-btn" onclick="AuthManager.switchView('register'); document.querySelector('.login-form-section').scrollIntoView({behavior:'smooth'})">
+        <i class="fa fa-user-plus"></i>
+        <span>Create Account</span>
+      </button>
+    </div>
+  </nav>
   
   <!-- FOMO Banner - Scrolling urgency -->
   <div class="fomo-banner">

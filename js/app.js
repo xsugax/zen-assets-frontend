@@ -24,6 +24,13 @@ const AuthManager = (() => {
     const registerCard = registerOverlay ? registerOverlay.querySelector('.register-card') : null;
     const loginTabs = document.querySelectorAll('.auth-tab');
     
+    // Update top nav active state
+    const topNav = document.querySelector('.login-top-nav');
+    if (topNav) {
+      topNav.classList.remove('view-login', 'view-register');
+      topNav.classList.add('view-' + viewName);
+    }
+
     if (viewName === 'register') {
       // Switch to Register view
       currentView = 'register';
