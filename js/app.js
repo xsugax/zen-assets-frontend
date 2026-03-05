@@ -2142,8 +2142,8 @@ const App = (() => {
   function init() {
     console.log('🔄 App init starting...');
     
-    // Initialize auth system first
-    if (typeof UserAuth !== 'undefined') UserAuth.init();
+    // AUTH INIT DISABLED — do not call UserAuth.init() to prevent auto-login / session restore
+    // if (typeof UserAuth !== 'undefined') UserAuth.init();
 
     // AUTO-LOGIN DISABLED — always show login screen
     const isLogged = false; // was: typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();

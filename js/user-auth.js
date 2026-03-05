@@ -348,10 +348,8 @@ const UserAuth = (() => {
   // ── Session (synchronous — reads cache) ──────────────────
   function getSession()     { return _loadSession(); }
   function isLoggedIn() {
-    const session = _loadSession();
-    const token = _loadToken();
-    // Both must exist AND token must be non-empty string
-    return !!(session && token && token.length > 0);
+    // AUTO-LOGIN DISABLED — always return false until re-enabled
+    return false;
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
@@ -678,7 +676,9 @@ const UserAuth = (() => {
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
-    if (_loadToken()) refreshSession().catch(() => {});
+    // AUTO-LOGIN DISABLED — wipe any saved token/session so nothing sneaks through
+    _saveToken(null);
+    _saveSession(null);
   }
 
   return {
