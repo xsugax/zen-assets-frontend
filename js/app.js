@@ -2115,23 +2115,17 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
-    
-    // Initialize auth system first
-    if (typeof UserAuth !== 'undefined') UserAuth.init();
 
-    // ── AUTO-LOGIN DISABLED ──────────────────────────────────
-    // Always show login screen on every page load.
-    // Users must sign in manually every time.
-    // ────────────────────────────────────────────────────────
-
-    // Get DOM elements
-    const loginScreen = $('login-screen');
-    const appDiv = $('app');
-
-    // Force logout any existing session
+    // ── AUTO-LOGIN DISABLED ───────────────────────────────────
+    // Clear session FIRST so refreshSession() inside UserAuth.init() is never triggered.
     if (typeof UserAuth !== 'undefined') UserAuth.forceLogoutSync();
 
-    // Always show login screen
+    // Initialize auth system (token is now gone, so no async refresh fires)
+    if (typeof UserAuth !== 'undefined') UserAuth.init();
+
+    // Always show login screen — users must sign in every visit
+    const loginScreen = $('login-screen');
+    const appDiv = $('app');
     if (loginScreen) loginScreen.style.display = 'block';
     if (appDiv) appDiv.classList.remove('app-visible');
     document.body.style.overflow = 'auto';
