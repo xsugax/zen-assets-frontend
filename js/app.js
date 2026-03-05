@@ -2117,12 +2117,19 @@ const App = (() => {
     console.log('🔄 App init starting...');
 
     // Force-logout via URL parameter: zenassets.tech?logout=1
+    // Wipe storage synchronously BEFORE UserAuth.init() so refreshSession() never fires
     if (new URLSearchParams(window.location.search).get('logout') !== null) {
-      if (typeof UserAuth !== 'undefined') UserAuth.logout();
-      localStorage.clear();
+      ['zen_session', 'zen_token', 'zen_wallet'].forEach(k => localStorage.removeItem(k));
       sessionStorage.clear();
       history.replaceState(null, '', window.location.pathname);
-      // fall through — isLoggedIn() will now be false
+      // Show login screen immediately and stop — no init needed
+      const ls = document.getElementById('login-screen');
+      const ap = document.getElementById('app');
+      if (ls) { ls.style.display = 'block'; ls.style.opacity = '1'; }
+      if (ap) { ap.classList.remove('app-visible'); ap.style.display = 'none'; }
+      document.body.style.overflow = 'hidden';
+      if (typeof AuthManager !== 'undefined') AuthManager.init();
+      return;
     }
 
     // Initialize auth system first
