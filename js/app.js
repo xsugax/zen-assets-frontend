@@ -445,20 +445,33 @@ const App = (() => {
 
   // ── Init Charts ───────────────────────────────────────────
   async function initCharts() {
-    // Show loading indicator
+    const symbol = _sym;
+
+    // ── Destroy any stale chart instance first ──────────────
+    // Like unplugging and plugging back in — ensures a clean slate
+    // before the container's real dimensions are measured.
+    if (typeof AdvancedChartEngine !== 'undefined') {
+      try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
+    }
+
+    // ── Wait for two animation frames ──────────────────────
+    // The container needs at least one paint cycle to have its real
+    // clientWidth/clientHeight. Without this the chart can be 0px tall.
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    // Show loading badge AFTER the RAF so it appears on the real element
     if (typeof ChartDataIndicator !== 'undefined') {
       ChartDataIndicator.showLoading('main-price-chart');
     }
-    
-    // Main price chart — use AdvancedChartEngine for proper real-time updates
-    const symbol = _sym;
+
+    // ── Create chart ────────────────────────────────────────
     if (typeof AdvancedChartEngine !== 'undefined') {
       await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
     } else {
       await ChartEngine.createCandlestickChart('main-price-chart', [], symbol, _activeTimeframe);
     }
-    
-    // Update indicator based on whether we got real data
+
+    // Update indicator
     if (typeof ChartDataIndicator !== 'undefined' && typeof RealDataAdapter !== 'undefined') {
       const isReal = RealDataAdapter.isRealDataEnabled();
       ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, _activeTimeframe);
