@@ -233,6 +233,29 @@ const UserAuth = (() => {
 
     // ── LOCAL STORE FALLBACK (register / login / me / logout) ─
     if (!apiOk) {
+      // ── Verify email OTP (local: auto-succeed, no real email in offline mode) ──
+      if (endpoint === '/auth/verify-email' && method === 'POST') {
+        const user = _localStore.findById(body.userId);
+        if (!user) return { ok: false, error: 'User not found.' };
+        const token = _makeToken(user.id);
+        const { passwordHash, ...safe } = user;
+        return { ok: true, token, user: safe, wallet: { totalDeposited: user.depositAmount || 0, balance: user.balance || 0, earnings: user.earnings || 0, currency: 'USD' } };
+      }
+
+      // ── Verify login OTP (local: auto-succeed) ──
+      if (endpoint === '/auth/verify-login-otp' && method === 'POST') {
+        const user = _localStore.findById(body.userId);
+        if (!user) return { ok: false, error: 'User not found.' };
+        const token = _makeToken(user.id);
+        const { passwordHash, ...safe } = user;
+        return { ok: true, token, user: safe, wallet: { totalDeposited: user.depositAmount || 0, balance: user.balance || 0, earnings: user.earnings || 0, currency: 'USD' } };
+      }
+
+      // ── Resend OTP (local: no-op) ──
+      if (endpoint === '/auth/resend-otp' && method === 'POST') {
+        return { ok: true, message: 'Code sent (offline mode).' };
+      }
+
       // ── Register ──────────────────────────────────────────
       if (endpoint === '/auth/register' && method === 'POST') {
         return _localStore.register(body);
@@ -305,6 +328,10 @@ const UserAuth = (() => {
       auth: false,
     });
 
+    // Live backend: requires email OTP verification before activating account
+    if (result.ok && result.requiresVerification) {
+      return { ok: false, requiresVerification: true, userId: result.userId };
+    }
     if (result.ok) {
       return { ok: true, user: result.user };
     }
@@ -321,7 +348,12 @@ const UserAuth = (() => {
       auth: false,
     });
 
-    if (result.ok) {
+    // Live backend: requires email OTP before issuing JWT
+    if (result.ok && result.requires_otp) {
+      return { ok: false, requires_otp: true, userId: result.userId, message: result.message };
+    }
+
+    if (result.ok && result.token) {
       // Store JWT
       _saveToken(result.token);
 
@@ -345,11 +377,47 @@ const UserAuth = (() => {
     return result;
   }
 
+  // ── Verify Email OTP (after registration) ───────────────
+  async function verifyEmailOTP(userId, code) {
+    if (!userId || !code) return { ok: false, error: 'userId and code are required.' };
+    const result = await _api('/auth/verify-email', { method: 'POST', body: { userId, code }, auth: false });
+    if (result.ok && result.token) {
+      _saveToken(result.token);
+      const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
+      return { ok: true, user: result.user, session, wallet: result.wallet };
+    }
+    return result;
+  }
+
+  // ── Verify Login OTP (after email + password) ───────────
+  async function verifyLoginOTP(userId, code) {
+    if (!userId || !code) return { ok: false, error: 'userId and code are required.' };
+    const result = await _api('/auth/verify-login-otp', { method: 'POST', body: { userId, code }, auth: false });
+    if (result.ok && result.token) {
+      _saveToken(result.token);
+      const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
+      _saveSession(session);
+      if (result.wallet) _saveWallet(result.wallet);
+      return { ok: true, user: result.user, session, wallet: result.wallet };
+    }
+    return result;
+  }
+
+  // ── Resend OTP (rate-limited at backend) ────────────────
+  async function resendOTP(userId, type) {
+    if (!userId || !type) return { ok: false, error: 'userId and type are required.' };
+    return _api('/auth/resend-otp', { method: 'POST', body: { userId, type }, auth: false });
+  }
+
   // ── Session (synchronous — reads cache) ──────────────────
   function getSession()     { return _loadSession(); }
   function isLoggedIn() {
-    // AUTO-LOGIN DISABLED — always return false until re-enabled
-    return false;
+    const session = _loadSession();
+    const token = _loadToken();
+    // Both must exist AND token must be non-empty string
+    return !!(session && token && token.length > 0);
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
@@ -676,13 +744,12 @@ const UserAuth = (() => {
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
-    // AUTO-LOGIN DISABLED — wipe any saved token/session so nothing sneaks through
-    _saveToken(null);
-    _saveSession(null);
+    if (_loadToken()) refreshSession().catch(() => {});
   }
 
   return {
     init, register, login, logout,
+    verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
     refreshSession,

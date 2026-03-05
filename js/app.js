@@ -2115,23 +2115,7 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
-
-    // Force-logout via URL parameter: zenassets.tech?logout=1
-    // Wipe storage synchronously BEFORE UserAuth.init() so refreshSession() never fires
-    if (new URLSearchParams(window.location.search).get('logout') !== null) {
-      ['zen_session', 'zen_token', 'zen_wallet'].forEach(k => localStorage.removeItem(k));
-      sessionStorage.clear();
-      history.replaceState(null, '', window.location.pathname);
-      // Show login screen immediately and stop — no init needed
-      const ls = document.getElementById('login-screen');
-      const ap = document.getElementById('app');
-      if (ls) { ls.style.display = 'block'; ls.style.opacity = '1'; }
-      if (ap) { ap.classList.remove('app-visible'); ap.style.display = 'none'; }
-      document.body.style.overflow = 'hidden';
-      if (typeof AuthManager !== 'undefined') AuthManager.init();
-      return;
-    }
-
+    
     // Initialize auth system first
     if (typeof UserAuth !== 'undefined') UserAuth.init();
 
@@ -2200,11 +2184,73 @@ const App = (() => {
       const result = await UserAuth.login(email, password);
       if (result.ok) {
         _dismissLoginScreen();
+      } else if (result.requires_otp) {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        _showLoginOTPStep(email, result.userId, result.message);
+        return;
       } else {
         _showLoginError(result.error);
       }
       if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
+  }
+
+  // ── Login OTP Step ──────────────────────────────────────────
+  function _showLoginOTPStep(email, userId, message) {
+    const loginForm = $('login-form');
+    const otpStep   = $('login-otp-step');
+    if (!loginForm || !otpStep) return;
+
+    loginForm.style.display = 'none';
+    otpStep.style.display   = 'block';
+    const emailLabel = $('login-otp-email');
+    if (emailLabel) emailLabel.textContent = email;
+
+    setTimeout(() => { const inp = $('login-otp-code'); if (inp) inp.focus(); }, 100);
+    _startOTPTimer('login-otp-timer', 'login-otp-resend');
+
+    // OTP form submit
+    const otpForm = $('login-otp-form');
+    if (otpForm) {
+      otpForm.onsubmit = async (ev) => {
+        ev.preventDefault();
+        const code = ($('login-otp-code') || {}).value || '';
+        const btn  = otpForm.querySelector('button[type="submit"]');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = '<span>Verifying...</span>'; btn.disabled = true; }
+
+        const res = await UserAuth.verifyLoginOTP(userId, code.trim());
+        if (res.ok) {
+          _dismissLoginScreen();
+        } else {
+          _showLoginError(res.error || 'Invalid code. Please try again.');
+          if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+        }
+      };
+    }
+
+    // Resend button
+    const resendBtn = $('login-otp-resend');
+    if (resendBtn) {
+      resendBtn.onclick = async (ev) => {
+        ev.preventDefault();
+        if (resendBtn.style.pointerEvents === 'none') return;
+        await UserAuth.resendOTP(userId, 'login_otp');
+        _startOTPTimer('login-otp-timer', 'login-otp-resend');
+      };
+    }
+
+    // Back link
+    const backBtn = $('login-otp-back');
+    if (backBtn) {
+      backBtn.onclick = (ev) => {
+        ev.preventDefault();
+        otpStep.style.display  = 'none';
+        loginForm.style.display = '';
+        const codeInp = $('login-otp-code');
+        if (codeInp) codeInp.value = '';
+      };
+    }
   }
 
   // ═══ ADDICTIVE LOGIN ENGINES ═══════════════════════════════
@@ -2408,12 +2454,83 @@ const App = (() => {
       if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
+      } else if (result.requiresVerification) {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        _showRegisterOTPStep(email, result.userId);
+        return;
       } else {
         errBox.textContent = result.error;
         errBox.classList.add('visible');
       }
       if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
+  }
+
+  // ── Register OTP Step ───────────────────────────────────────
+  function _showRegisterOTPStep(email, userId) {
+    const regForm  = $('register-form');
+    const otpStep  = $('register-otp-step');
+    if (!regForm || !otpStep) return;
+
+    regForm.style.display  = 'none';
+    otpStep.style.display  = 'block';
+    const emailLabel = $('reg-otp-email');
+    if (emailLabel) emailLabel.textContent = email;
+
+    setTimeout(() => { const inp = $('register-otp-code'); if (inp) inp.focus(); }, 100);
+    _startOTPTimer('reg-otp-timer', 'reg-otp-resend');
+
+    // OTP form submit
+    const otpForm = $('register-otp-form');
+    if (otpForm) {
+      otpForm.onsubmit = async (ev) => {
+        ev.preventDefault();
+        const code = ($('register-otp-code') || {}).value || '';
+        const btn  = otpForm.querySelector('button[type="submit"]');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Verifying...'; btn.disabled = true; }
+
+        const res = await UserAuth.verifyEmailOTP(userId, code.trim());
+        if (res.ok) {
+          _dismissRegisterScreen();
+          _showRegistrationSuccess(res.user ? res.user.fullName : email);
+        } else {
+          const errBox = $('register-error');
+          if (errBox) { errBox.textContent = res.error || 'Invalid code. Please try again.'; errBox.classList.add('visible'); }
+          if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+        }
+      };
+    }
+
+    // Resend button
+    const resendBtn = $('reg-otp-resend');
+    if (resendBtn) {
+      resendBtn.onclick = async (ev) => {
+        ev.preventDefault();
+        if (resendBtn.style.pointerEvents === 'none') return;
+        await UserAuth.resendOTP(userId, 'email_verify');
+        _startOTPTimer('reg-otp-timer', 'reg-otp-resend');
+      };
+    }
+  }
+
+  // ── OTP Countdown Timer ─────────────────────────────────────
+  function _startOTPTimer(timerId, resendId) {
+    const timerEl  = $(timerId);
+    const resendEl = $(resendId);
+    if (resendEl) { resendEl.style.pointerEvents = 'none'; resendEl.style.opacity = '0.4'; }
+
+    let seconds = 60;
+    if (timerEl) timerEl.textContent = ` (${seconds}s)`;
+
+    const interval = setInterval(() => {
+      seconds--;
+      if (timerEl) timerEl.textContent = seconds > 0 ? ` (${seconds}s)` : '';
+      if (seconds <= 0) {
+        clearInterval(interval);
+        if (resendEl) { resendEl.style.pointerEvents = ''; resendEl.style.opacity = '1'; }
+      }
+    }, 1000);
   }
 
   function _dismissRegisterScreen() {

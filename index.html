@@ -765,6 +765,33 @@
           <div class="login-btn-sub">⚡ Takes 30 seconds · No credit card · See returns in 24 hours</div>
         </form>
 
+        <!-- ═══ LOGIN OTP STEP (shown after email+password validated) ═══ -->
+        <div id="login-otp-step" style="display:none">
+          <div class="otp-header">
+            <div class="otp-icon"><i class="fa fa-envelope-open-text"></i></div>
+            <h3>Check Your Email</h3>
+            <p class="otp-desc">We sent a 6-digit code to<br><strong id="login-otp-email"></strong></p>
+          </div>
+          <form id="login-otp-form">
+            <div class="form-group">
+              <label><i class="fa fa-key"></i> Verification Code</label>
+              <input type="text" id="login-otp-code" class="form-input otp-input"
+                maxlength="6" placeholder="000000" pattern="[0-9]{6}" inputmode="numeric"
+                autocomplete="one-time-code" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-login">
+              <span>Verify &amp; Sign In</span>
+              <i class="fa fa-shield-halved"></i>
+            </button>
+            <div class="otp-resend">
+              Didn't receive it?
+              <a href="#" id="login-otp-resend" onclick="return false;">Resend code</a>
+              <span id="login-otp-timer"></span>
+            </div>
+            <a href="#" class="otp-back-link" id="login-otp-back">← Back to sign in</a>
+          </form>
+        </div>
+
         <div class="login-divider"><span>or</span></div>
 
         <div class="login-alt-actions">
@@ -899,6 +926,34 @@
           <i class="fa fa-rocket"></i> Create Account & Start Earning
         </button>
       </form>
+
+      <!-- ═══ REGISTER OTP STEP (shown after registration, before account activation) ═══ -->
+      <div id="register-otp-step" style="display:none">
+        <div class="otp-header">
+          <div class="otp-icon" style="border-color:rgba(0,255,136,0.4);color:#00ff88">
+            <i class="fa fa-envelope-open-text"></i>
+          </div>
+          <h3>Verify Your Email</h3>
+          <p class="otp-desc">We sent a 6-digit activation code to<br><strong id="reg-otp-email"></strong></p>
+        </div>
+        <form id="register-otp-form">
+          <div class="form-group">
+            <label><i class="fa fa-key"></i> Verification Code</label>
+            <input type="text" id="register-otp-code" class="form-input otp-input"
+              maxlength="6" placeholder="000000" pattern="[0-9]{6}" inputmode="numeric"
+              autocomplete="one-time-code" required />
+          </div>
+          <button type="submit" class="btn-register">
+            <i class="fa fa-circle-check"></i> Verify &amp; Activate Account
+          </button>
+          <div class="otp-resend">
+            Didn't receive it?
+            <a href="#" id="reg-otp-resend" onclick="return false;">Resend code</a>
+            <span id="reg-otp-timer"></span>
+          </div>
+        </form>
+      </div>
+
       <div class="register-login-link">
         Already have an account? <a href="#" id="back-to-login-link" onclick="AuthManager.switchView('login'); return false;">Sign In →</a>
       </div>
