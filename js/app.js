@@ -2119,32 +2119,23 @@ const App = (() => {
     // Initialize auth system first
     if (typeof UserAuth !== 'undefined') UserAuth.init();
 
-    // Check session status
-    const isLogged = typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
-    console.log('📊 Session check - isLoggedIn:', isLogged);
-    
+    // ── AUTO-LOGIN DISABLED ──────────────────────────────────
+    // Always show login screen on every page load.
+    // Users must sign in manually every time.
+    // ────────────────────────────────────────────────────────
+
     // Get DOM elements
     const loginScreen = $('login-screen');
     const appDiv = $('app');
 
-    if (isLogged) {
-      // User IS logged in - show app
-      console.log('✅ User logged in - showing dashboard');
-      if (loginScreen) loginScreen.style.display = 'none';
-      if (appDiv) appDiv.classList.add('app-visible');
-      document.body.style.overflow = 'hidden'; // Lock scroll for app view
-      initRegisterScreen();
-      initModalHandlers();
-      proceedAfterLogin();
-      return;
-    }
+    // Force logout any existing session
+    if (typeof UserAuth !== 'undefined') UserAuth.forceLogoutSync();
 
-    // User is NOT logged in - show login screen
-    console.log('❌ User not logged in - showing login screen');
+    // Always show login screen
     if (loginScreen) loginScreen.style.display = 'block';
     if (appDiv) appDiv.classList.remove('app-visible');
     document.body.style.overflow = 'auto';
-    
+
     initLoginScreen();
     initRegisterScreen();
     initModalHandlers();

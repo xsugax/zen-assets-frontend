@@ -422,6 +422,14 @@ const UserAuth = (() => {
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
 
+  // ── Force logout synchronously (no API call) — used on page load ──
+  function forceLogoutSync() {
+    _saveToken(null);
+    _saveSession(null);
+    _saveWallet(null);
+    sessionStorage.clear();
+  }
+
   function getCurrentUser() {
     const s = _loadSession();
     if (!s) return null;
@@ -749,7 +757,7 @@ const UserAuth = (() => {
   }
 
   return {
-    init, register, login, logout,
+    init, register, login, logout, forceLogoutSync,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
