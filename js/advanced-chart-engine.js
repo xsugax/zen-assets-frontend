@@ -300,31 +300,90 @@ const AdvancedChartEngine = (() => {
     try { updateDataSourceIndicator(symbol, isReal, timeframe); } catch {}
   }
 
-  // ── Real-Time Updates — Binance Kline WebSocket ───────────
-  // Each chart gets its own dedicated kline stream.
-  // WebSockets bypass CORS — direct connection to Binance works fine.
-  // REST polling is NOT used — WebSocket handles all live updates.
-  const updateIntervals  = {};   // (kept for stopRealtimeUpdates cleanup only)
+  // ── Real-Time Updates ────────────────────────────────────
+  // TWO-LAYER system so the chart ALWAYS moves:
+  //   Layer 1 (baseline): MarketData price ticks → forming candle every ~600ms
+  //                       Always running, zero network dependency
+  //   Layer 2 (upgrade) : Binance kline WebSocket → overwrites forming candle
+  //                       with real prices whenever available
+  // Both write to the same candle time slot — WS data silently wins.
+
+  const updateIntervals    = {};
   const klineWsConnections = {};
+  const _simFeedHandlers   = {};  // per-container simulated feed cleanup
+  const _formingCandles    = {};  // per-container forming candle state
 
   const CRYPTO_SYMBOLS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','LINK','MATIC','UNI','AAVE']);
 
   function startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe) {
     stopRealtimeUpdates(containerId);
 
-    const tf      = TIMEFRAMES[timeframe];
+    const tf      = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
     const assetId = symbol.split('/')[0];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
 
-    console.log(`🚀 REALTIME: ${assetId} ${tf.binance} (Crypto: ${isCrypto})`);
+    // Layer 1: always start the simulated feed — instant, no network needed
+    _startSimulatedFeed(containerId, assetId, tf, candleSeries, volumeSeries);
 
+    // Layer 2: attempt real data on top
     if (isCrypto) {
-      // Primary: Binance kline WebSocket — tick-perfect live updates
       _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries);
     } else {
-      // Non-crypto: poll Yahoo every 10s (market hours only)
       _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 10000);
     }
+  }
+
+  // ── Layer 1: Simulated feed via MarketData ticks ─────────
+  // Fires every ~600ms (or 3s on mobile). Builds the forming candle
+  // by tracking O/H/L/C within the current timeframe window.
+  function _startSimulatedFeed(containerId, assetId, tf, candleSeries, volumeSeries) {
+    // Clean up any existing handler for this container
+    if (_simFeedHandlers[containerId]) {
+      const { event, handler } = _simFeedHandlers[containerId];
+      try { if (typeof MarketData !== 'undefined') MarketData.off(event, handler); } catch {}
+      delete _simFeedHandlers[containerId];
+    }
+    if (typeof MarketData === 'undefined') return;
+
+    const eventName = `price:${assetId}`;
+    _formingCandles[containerId] = null; // reset forming candle on new feed
+
+    const handler = (d) => {
+      if (!d || isNaN(d.price)) return;
+      const price = d.price;
+      const now = Date.now();
+      // Current candle boundary (floor to interval)
+      const candleTime = Math.floor(now / tf.interval) * tf.interval;
+      const t = Math.floor(candleTime / 1000); // LightweightCharts wants seconds
+
+      const fc = _formingCandles[containerId];
+      if (!fc || fc.candleTime !== candleTime) {
+        // New candle opened — start fresh
+        _formingCandles[containerId] = {
+          candleTime, t,
+          o: fc ? fc.c : price, // open at previous close (no gaps)
+          h: price, l: price, c: price, v: 0,
+        };
+      } else {
+        // Same candle — extend H/L, update close
+        if (price > fc.h) fc.h = price;
+        if (price < fc.l) fc.l = price;
+        fc.c = price;
+        fc.v += Math.abs(d.price - (d.prev || d.price)) * (Math.random() * 150 + 50);
+      }
+
+      const c = _formingCandles[containerId];
+      try {
+        candleSeries.update({ time: c.t, open: c.o, high: c.h, low: c.l, close: c.c });
+      } catch {}
+      try {
+        volumeSeries.update({ time: c.t, value: Math.max(c.v, 1),
+          color: c.c >= c.o ? THEME.volume.up : THEME.volume.down });
+      } catch {}
+    };
+
+    MarketData.on(eventName, handler);
+    _simFeedHandlers[containerId] = { event: eventName, handler };
   }
 
   function _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries) {
@@ -459,16 +518,25 @@ const AdvancedChartEngine = (() => {
   }
 
   function stopRealtimeUpdates(containerId) {
+    // Stop WebSocket
     const ws = klineWsConnections[containerId];
     if (ws) {
-      ws.onclose = null; // prevent auto-reconnect
+      ws.onclose = null;
       try { ws.close(); } catch {}
       delete klineWsConnections[containerId];
     }
+    // Stop REST poll
     if (updateIntervals[containerId]) {
       clearInterval(updateIntervals[containerId]);
       delete updateIntervals[containerId];
     }
+    // Stop simulated feed
+    if (_simFeedHandlers[containerId]) {
+      const { event, handler } = _simFeedHandlers[containerId];
+      try { if (typeof MarketData !== 'undefined') MarketData.off(event, handler); } catch {}
+      delete _simFeedHandlers[containerId];
+    }
+    delete _formingCandles[containerId];
   }
 
   // ── Data Source Indicator ────────────────────────────────
