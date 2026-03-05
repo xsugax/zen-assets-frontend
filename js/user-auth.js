@@ -107,7 +107,7 @@ const UserAuth = (() => {
         id, fullName, email: email.toLowerCase(),
         passwordHash: _simpleHash(password),
         tier: tier || 'bronze',
-        depositAmount: parseFloat(depositAmount) || 0,
+        depositAmount: 0,   // always $0 — only admin can fund via backend
         role: 'user', balance: 0, earnings: 0,
         status: 'active',
         createdAt: new Date().toISOString(),

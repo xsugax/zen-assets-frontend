@@ -2745,17 +2745,8 @@ const App = (() => {
       InvestmentReturns.loadForUser(); // catches up compounding from time away
     }
 
-    // If admin has funded this user, sync the deposit as wallet balance
-    if (typeof UserAuth !== 'undefined' && typeof InvestmentReturns !== 'undefined') {
-      const fullUser = UserAuth.getCurrentUser();
-      if (fullUser && fullUser.deposit > 0) {
-        const snap = InvestmentReturns.getSnapshot();
-        // Only deposit if wallet hasn't been funded yet (avoid re-depositing)
-        if (snap.walletBalance === 0 && snap.initialDeposit === 0) {
-          InvestmentReturns.deposit(fullUser.deposit);
-        }
-      }
-    }
+    // Balance is ONLY funded via explicit admin credit from the backend.
+    // Never auto-deposit from registration data or local cache.
 
     // Load per-user trade history
     if (typeof AutoTrader !== 'undefined') {
