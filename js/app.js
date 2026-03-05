@@ -2182,7 +2182,7 @@ const App = (() => {
       const origText = btn ? btn.textContent : '';
       if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
 
-      const result = await UserAuth.login(email, password);
+      const result = await UserAuth.login(email, password, ($('login-remember') || {}).checked === true);
       if (result.ok) {
         _dismissLoginScreen();
       } else if (result.requires_otp) {
