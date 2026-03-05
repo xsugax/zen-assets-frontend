@@ -429,11 +429,13 @@ const UserAuth = (() => {
     _saveSession(null);
     _saveWallet(null);
     sessionStorage.clear();
-    // Wipe every zen_* key that could carry a stale session or cached user data
+    // Wipe session/cache keys but PRESERVE zen_users_db (offline user registry)
     const keysToNuke = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.startsWith('zen_') || k.startsWith('autoTradeHistory'))) keysToNuke.push(k);
+      if (!k) continue;
+      if (k === 'zen_users_db') continue; // keep offline user registry intact
+      if (k.startsWith('zen_') || k.startsWith('autoTradeHistory')) keysToNuke.push(k);
     }
     keysToNuke.forEach(k => localStorage.removeItem(k));
   }
