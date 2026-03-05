@@ -22,6 +22,171 @@ const UserAuth = (() => {
   const STORAGE_TOKEN   = 'zen_token';
   const STORAGE_WALLET  = 'zen_wallet';
 
+  // ════════════════════════════════════════════════════════
+  //  LOCAL USER STORE — Fully functional offline auth
+  //  Stores registered users in localStorage so the site
+  //  works even when the backend API is unavailable.
+  // ════════════════════════════════════════════════════════
+
+  // Simple deterministic hash (for password obfuscation in localStorage)
+  function _simpleHash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) + h) ^ str.charCodeAt(i);
+      h = h >>> 0; // keep unsigned 32-bit
+    }
+    return h.toString(36) + '$' + str.length.toString(36);
+  }
+
+  // Generate a lightweight session token (base64 payload + random suffix)
+  function _makeToken(userId) {
+    const payload = { userId, iat: Date.now(), exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+    try { return btoa(JSON.stringify(payload)) + '.' + Math.random().toString(36).slice(2); }
+    catch { return 'local_' + userId + '_' + Date.now(); }
+  }
+
+  // Verify a locally-generated token and return userId or null
+  function _verifyLocalToken(token) {
+    try {
+      const part = token.split('.')[0];
+      const payload = JSON.parse(atob(part));
+      if (!payload || !payload.userId || payload.exp < Date.now()) return null;
+      return payload.userId;
+    } catch { return null; }
+  }
+
+  // ── Local User Store ─────────────────────────────────────
+  const _localStore = {
+    USERS_KEY: 'zen_users_db',
+
+    getAll() {
+      try { return JSON.parse(localStorage.getItem(this.USERS_KEY)) || []; }
+      catch { return []; }
+    },
+
+    save(users) {
+      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(users)); } catch {}
+    },
+
+    findByEmail(email) {
+      return this.getAll().find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+    },
+
+    findById(id) {
+      return this.getAll().find(u => u.id === id) || null;
+    },
+
+    // Seed built-in admin on first run
+    ensureAdmin() {
+      const existing = this.findByEmail('admin@zenassets.com');
+      if (existing) return;
+      const users = this.getAll();
+      users.unshift({
+        id: 'admin_builtin',
+        fullName: 'ZEN Admin',
+        email: 'admin@zenassets.com',
+        passwordHash: _simpleHash('ZenAdmin2026!'),
+        tier: 'diamond',
+        depositAmount: 0,
+        role: 'admin',
+        balance: 0,
+        earnings: 0,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      });
+      this.save(users);
+    },
+
+    // ── register ───────────────────────────────────────────
+    register({ fullName, email, password, tier, depositAmount }) {
+      if (this.findByEmail(email)) {
+        return { ok: false, error: 'An account with this email already exists.' };
+      }
+      const id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const user = {
+        id, fullName, email: email.toLowerCase(),
+        passwordHash: _simpleHash(password),
+        tier: tier || 'bronze',
+        depositAmount: parseFloat(depositAmount) || 0,
+        role: 'user', balance: 0, earnings: 0,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      const users = this.getAll();
+      users.push(user);
+      this.save(users);
+      const token = _makeToken(id);
+      const { passwordHash, ...safe } = user;
+      return {
+        ok: true, token,
+        user: safe,
+        wallet: {
+          totalDeposited: user.depositAmount,
+          balance: user.balance,
+          earnings: user.earnings,
+          currency: 'USD',
+        },
+      };
+    },
+
+    // ── login ──────────────────────────────────────────────
+    login(email, password) {
+      const user = this.findByEmail(email);
+      if (!user) return { ok: false, error: 'No account found with this email address.' };
+      if (user.passwordHash !== _simpleHash(password)) {
+        return { ok: false, error: 'Incorrect password. Please try again.' };
+      }
+      const token = _makeToken(user.id);
+      const { passwordHash, ...safe } = user;
+      return {
+        ok: true, token,
+        user: safe,
+        wallet: {
+          totalDeposited: user.depositAmount || 0,
+          balance: user.balance || 0,
+          earnings: user.earnings || 0,
+          currency: 'USD',
+        },
+      };
+    },
+
+    // ── get user by id ─────────────────────────────────────
+    getUser(id) {
+      const user = this.findById(id);
+      if (!user) return { ok: false, status: 401, error: 'User not found.' };
+      const { passwordHash, ...safe } = user;
+      return {
+        ok: true,
+        user: safe,
+        wallet: {
+          totalDeposited: user.depositAmount || 0,
+          balance: user.balance || 0,
+          earnings: user.earnings || 0,
+          currency: 'USD',
+        },
+      };
+    },
+
+    // ── update user fields ─────────────────────────────────
+    updateUser(id, updates) {
+      const users = this.getAll();
+      const idx = users.findIndex(u => u.id === id);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      users[idx] = { ...users[idx], ...updates };
+      this.save(users);
+      const { passwordHash, ...safe } = users[idx];
+      return { ok: true, user: safe };
+    },
+
+    // ── list all users (admin) ─────────────────────────────
+    listUsers() {
+      return this.getAll().map(({ passwordHash, ...u }) => u);
+    },
+  };
+
+  // Seed admin immediately
+  _localStore.ensureAdmin();
+
   const TIERS = {
     bronze:   { label: 'Bronze',   minDeposit: 5000,    apyRange: '15–22%',  color: '#cd7f32', icon: 'fa-medal'  },
     silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '22–32%',  color: '#c0c0c0', icon: 'fa-award'  },
@@ -38,7 +203,7 @@ const UserAuth = (() => {
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
   function _saveWallet(w)  { w ? localStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : localStorage.removeItem(STORAGE_WALLET); }
 
-  // ── API Helper ───────────────────────────────────────────
+  // ── API Helper — tries live API first, falls back to localStore ──
   async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
     const headers = { 'Content-Type': 'application/json' };
     const token = _loadToken();
@@ -47,14 +212,73 @@ const UserAuth = (() => {
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
 
+    // ── Attempt live API with 5 s timeout ──────────────────
+    let apiOk = false;
     try {
-      const resp = await fetch(`${API_BASE}${endpoint}`, opts);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
+      clearTimeout(timer);
       const data = await resp.json();
-      if (!resp.ok) return { ok: false, status: resp.status, error: data.error || 'Request failed' };
+      if (!resp.ok) {
+        // Rate-limit at backend? surface the message directly
+        return { ok: false, status: resp.status, error: data.error || 'Request failed' };
+      }
+      apiOk = true;
       return { ok: true, ...data };
     } catch (err) {
-      console.error('API error:', err);
-      return { ok: false, error: 'Server unreachable. Please check your connection.' };
+      // Network error or timeout — fall through to local store
+      console.warn(`⚡ LOCAL STORE: API unavailable (${endpoint}) — using offline fallback`);
+    }
+
+    // ── LOCAL STORE FALLBACK (register / login / me / logout) ─
+    if (!apiOk) {
+      // ── Register ──────────────────────────────────────────
+      if (endpoint === '/auth/register' && method === 'POST') {
+        return _localStore.register(body);
+      }
+
+      // ── Login ─────────────────────────────────────────────
+      if (endpoint === '/auth/login' && method === 'POST') {
+        return _localStore.login(body.email, body.password);
+      }
+
+      // ── Me / Session refresh ──────────────────────────────
+      if (endpoint === '/auth/me') {
+        const userId = _verifyLocalToken(token);
+        if (!userId) return { ok: false, status: 401, error: 'Session expired. Please log in again.' };
+        return _localStore.getUser(userId);
+      }
+
+      // ── Logout ────────────────────────────────────────────
+      if (endpoint === '/auth/logout') {
+        return { ok: true };
+      }
+
+      // ── Admin: list users ─────────────────────────────────
+      if (endpoint.startsWith('/admin/users') && method === 'GET') {
+        return { ok: true, users: _localStore.listUsers() };
+      }
+
+      // ── Admin: update user ────────────────────────────────
+      if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
+        const uid = endpoint.split('/').pop();
+        return _localStore.updateUser(uid, body);
+      }
+
+      // ── Admin: stats ──────────────────────────────────────
+      if (endpoint === '/admin/stats') {
+        const users = _localStore.listUsers();
+        return {
+          ok: true,
+          totalUsers: users.length,
+          activeUsers: users.filter(u => u.status === 'active').length,
+          totalDeposited: users.reduce((s, u) => s + (u.depositAmount || 0), 0),
+        };
+      }
+
+      // ── Wallet / trades / KYC — return graceful empty ─────
+      return { ok: true, transactions: [], trades: [], balance: 0, totalDeposited: 0, earnings: 0 };
     }
   }
 
