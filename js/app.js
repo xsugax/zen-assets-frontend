@@ -3,6 +3,132 @@
    OmniVest AI / ZEN ASSETS
 ════════════════════════════════════════════════════════════ */
 
+/* ════════════════════════════════════════════════════════════
+   AUTHMANAGER — Dedicated Authentication Flow Manager
+   Handles login/register view switching with strong logic
+════════════════════════════════════════════════════════════ */
+const AuthManager = (() => {
+  'use strict';
+
+  let currentView = 'login'; // Track which view is active
+
+  /**
+   * Switch between login and register views
+   * @param {string} viewName - 'login' or 'register'
+   */
+  function switchView(viewName) {
+    if (viewName === currentView) return; // Already on this view
+    
+    const loginForm = document.getElementById('login-form');
+    const registerOverlay = document.getElementById('register-overlay');
+    const registerCard = registerOverlay ? registerOverlay.querySelector('.register-card') : null;
+    const loginTabs = document.querySelectorAll('.auth-tab');
+    
+    if (viewName === 'register') {
+      // Switch to Register view
+      currentView = 'register';
+      
+      // Update tabs
+      loginTabs.forEach(tab => {
+        if (tab.dataset.authView === 'register') {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+      
+      // Show register, hide login
+      if (loginForm) loginForm.style.display = 'none';
+      if (registerOverlay) {
+        registerOverlay.classList.add('visible');
+        registerOverlay.style.position = 'static';
+        registerOverlay.style.background = 'none';
+        registerOverlay.style.backdropFilter = 'none';
+        registerOverlay.style.inset = 'auto';
+        registerOverlay.style.alignItems = 'stretch';
+        registerOverlay.style.justifyContent = 'stretch';
+        registerOverlay.style.margin = '0';
+        registerOverlay.style.padding = '0';
+        registerOverlay.style.zIndex = '1';
+      }
+      if (registerCard) {
+        registerCard.style.maxWidth = '100%';
+        registerCard.style.width = '100%';
+        registerCard.style.borderRadius = '8px';
+        registerCard.style.boxShadow = 'none';
+      }
+      
+      console.log('📝 AUTH: Switched to Register view');
+    } else {
+      // Switch to Login view (default)
+      currentView = 'login';
+      
+      // Update tabs
+      loginTabs.forEach(tab => {
+        if (tab.dataset.authView === 'login') {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+      
+      // Show login, hide register
+      if (loginForm) loginForm.style.display = 'flex';
+      if (registerOverlay) {
+        registerOverlay.classList.remove('visible');
+        registerOverlay.style.position = 'fixed';
+        registerOverlay.style.background = 'rgba(6,8,14,0.92)';
+        registerOverlay.style.backdropFilter = 'blur(24px)';
+        registerOverlay.style.inset = '0';
+      }
+      if (registerCard) {
+        registerCard.style.maxWidth = '560px';
+        registerCard.style.boxShadow = '0 24px 80px rgba(0,0,0,0.6), 0 0 60px rgba(212,165,116,0.06)';
+      }
+      
+      console.log('🔐 AUTH: Switched to Login view');
+    }
+  }
+
+  /**
+   * Get current active view
+   */
+  function getCurrentView() {
+    return currentView;
+  }
+
+  /**
+   * Initialize AuthManager on page load
+   */
+  function init() {
+    // Set up tab click handlers
+    const tabs = document.querySelectorAll('.auth-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        const view = tab.dataset.authView;
+        switchView(view);
+      });
+    });
+    
+    console.log('✅ AuthManager initialized with view switching');
+  }
+
+  // Public API
+  return {
+    switchView,
+    getCurrentView,
+    init,
+  };
+})();
+
+// Initialize AuthManager when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => AuthManager.init());
+} else {
+  AuthManager.init();
+}
+
 const App = (() => {
   'use strict';
 
@@ -1901,16 +2027,6 @@ const App = (() => {
       }
       if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
-
-    // "Create Account" link
-    const regLink = $('show-register-link');
-    if (regLink) {
-      regLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        const overlay = $('register-overlay');
-        if (overlay) overlay.classList.add('visible');
-      });
-    }
   }
 
   // ═══ ADDICTIVE LOGIN ENGINES ═══════════════════════════════
@@ -2120,20 +2236,10 @@ const App = (() => {
       }
       if (btn) { btn.textContent = origText; btn.disabled = false; }
     });
-
-    // "Back to Login" link
-    const backLink = $('back-to-login-link');
-    if (backLink) {
-      backLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        _dismissRegisterScreen();
-      });
-    }
   }
 
   function _dismissRegisterScreen() {
-    const overlay = $('register-overlay');
-    if (overlay) overlay.classList.remove('visible');
+    AuthManager.switchView('login');
   }
 
   function _showRegistrationSuccess(name) {
