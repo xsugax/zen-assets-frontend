@@ -32,65 +32,28 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Login container: stack vertically and become the scroll container */
+  /* Login container: full-viewport centering, no scroll */
   .login-container {
-    flex-direction: column !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: rgba(21, 26, 36, 0.95) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain !important;
+    overflow: hidden !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
-  /* Left brand section — natural height, flows into container scroll */
+  /* Left brand section — hidden on all screen sizes */
   .login-brand-section {
-    border-right: none !important;
-    border-bottom: 1px solid rgba(212,165,116,0.12) !important;
-    padding: 32px 24px !important;
-    gap: 24px !important;
-    overflow-y: visible !important;
-    min-height: auto !important;
-    flex-shrink: 0 !important;
+    display: none !important;
   }
 
-  /* Right form section — natural height, flows into container scroll */
+  /* Right form section — centered, scroll within card only if needed */
   .login-form-section {
-    padding: 32px 24px !important;
-    overflow-y: visible !important;
-    min-height: auto !important;
-    flex-shrink: 0 !important;
-    justify-content: flex-start !important;
+    max-height: 100% !important;
+    padding: 0 16px !important;
+    overflow-y: auto !important;
+    justify-content: center !important;
   }
 
   .login-form-card {
     max-width: 100% !important;
-  }
-
-  /* ── iOS Safari: prevent scroll bleed through modal overlays ────────── */
-  /* Lock container scroll when Sign In modal is open */
-  .login-screen.show-login-modal .login-container {
-    overflow-y: hidden !important;
-  }
-  /* Block touch-scroll pass-through on modal backdrops */
-  .login-screen.show-login-modal .login-form-section,
-  .register-overlay.visible {
-    touch-action: none !important;
-    overscroll-behavior: none !important;
-    -webkit-overflow-scrolling: auto !important;
-  }
-  /* Allow scroll ONLY inside the modal card — not the backdrop */
-  .login-screen.show-login-modal .login-form-card,
-  .register-overlay.visible .register-card {
-    touch-action: pan-y !important;
-    overscroll-behavior: contain !important;
-    -webkit-overflow-scrolling: touch !important;
   }
 
   /* Goals strip */
