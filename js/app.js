@@ -2371,82 +2371,144 @@ const App = (() => {
     const scroll = document.querySelector('.fomo-scroll');
     if (!banner || !scroll) return;
 
-    // Avoid duplicate timers when auth view is re-initialized.
     if (window.__fomoTicker) clearInterval(window.__fomoTicker);
 
-    const names = ['Michael K.', 'Sarah T.', 'David R.', 'James W.', 'Olivia M.', 'Ethan J.', 'Sophia L.', 'Daniel B.', 'Emma C.', 'Lucas H.'];
-    const tiers = ['Bronze Tier', 'Silver Tier', 'Gold Tier', 'Platinum Tier', 'Diamond Tier'];
-    const icons = ['fa-circle-check', 'fa-fire', 'fa-user-plus', 'fa-chart-line', 'fa-bolt'];
-    const minuteMarks = ['just now', '1 min ago', '2 min ago', '3 min ago', '5 min ago', '8 min ago', '12 min ago'];
+    // Institutional-grade personas
+    const names = ['M. Krause', 'S. Thornton', 'D. Rowe', 'J. Whitfield', 'O. Mercer', 'E. Jensen', 'C. Hadley', 'R. Ashford', 'L. Beaumont', 'T. Vance'];
 
-    let liveInvestors = 18427;
-    let hourlyFlow = 4200000;
-    let diamondSpots = 23;
+    // Live state — mutates across renders
+    let liveCount    = 18427;
+    let totalFlow    = 4812000;
+    let diamondLeft  = 11;
+    let platinumLeft = 34;
+    let cycleMin     = 14;
+    let harvestMin   = 9;
 
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    const money = (n) => '$' + Math.round(n).toLocaleString();
+    const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
+    const money = n   => '$' + Math.round(n).toLocaleString();
+    const flowStr = () => totalFlow >= 1e6
+      ? '$' + (totalFlow / 1e6).toFixed(2) + 'M'
+      : money(totalFlow);
 
-    function makeRandomEvent() {
-      const mode = Math.floor(Math.random() * 5);
-      const name = pick(names);
-      const tier = pick(tiers);
-      const timeAgo = pick(minuteMarks);
+    // HOOK 1 — LIFE MOMENTUM ("The activity effect")
+    // Every second, somewhere, money is moving. The platform never sleeps.
+    const momentumEvents = () => {
+      const deposit = 50000 + Math.random() * 950000;
+      const gain    = (2.8 + Math.random() * 9.4).toFixed(2);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-circle-check fomo-green"></i> ${pick(names)} entered position — <strong>${money(deposit)}</strong> deployed. Capital working <em>right now</em>.</span>`,
+        `<span class="fomo-item"><i class="fa fa-arrow-trend-up fomo-green"></i> ${pick(names)} portfolio up <strong>+${gain}%</strong> this week. Compounding in progress. No action taken.</span>`,
+        `<span class="fomo-item"><i class="fa fa-bolt fomo-gold"></i> ${pick(names)} reinvested <strong>${money(1200 + Math.random() * 48000)}</strong> in returns. Cycle extended. Clock restarted.</span>`,
+        `<span class="fomo-item"><i class="fa fa-signal fomo-green"></i> ${pick(names)} upgraded position. New tier locked. Compound rate adjusted upward — automatically.</span>`,
+      ]);
+    };
 
-      if (mode === 0) {
-        const deposit = 25000 + Math.random() * 575000;
-        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> ${name} just deposited <strong>${money(deposit)}</strong> · ${tier} · ${timeAgo}</span>`;
-      }
-      if (mode === 1) {
-        const claimed = 3200 + Math.random() * 52000;
-        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> ${name} claimed <strong>${money(claimed)}</strong> returns · ${timeAgo}</span>`;
-      }
-      if (mode === 2) {
-        const pnl = 4500 + Math.random() * 78000;
-        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> AI engine generated <strong>+${money(pnl)}</strong> profit this cycle</span>`;
-      }
-      if (mode === 3) {
-        liveInvestors += Math.floor(Math.random() * 5);
-        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> <strong>${liveInvestors.toLocaleString()}</strong> investors online right now</span>`;
-      }
-      return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> <strong>${diamondSpots}</strong> Diamond spots remaining this quarter</span>`;
-    }
+    // HOOK 2 — PRIVATE ACCESS ("The inner-circle effect")
+    // You are watching a room you are not yet inside.
+    const innerCircleEvents = () => {
+      const insiders = 3 + Math.floor(Math.random() * 9);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-crown fomo-gold"></i> <strong>Diamond Tier — ${diamondLeft} of 50</strong> quarterly positions unfilled. Not open to the public.</span>`,
+        `<span class="fomo-item"><i class="fa fa-lock fomo-gold"></i> Platinum inner-circle: <strong>${platinumLeft} slots active.</strong> Priority reserved for referred &amp; returning capital only.</span>`,
+        `<span class="fomo-item"><i class="fa fa-user-secret fomo-slate"></i> Private yield-lock session: <strong>${pick(names)} and ${insiders} others</strong> are inside right now. Closed to new entries.</span>`,
+        `<span class="fomo-item"><i class="fa fa-shield-halved fomo-gold"></i> <strong>Closed cycle in progress.</strong> Top-tier holders executing. Standard queue resumes Monday.</span>`,
+      ]);
+    };
 
+    // HOOK 3 — ANTICIPATION ("The next-move effect")
+    // Something is always about to happen. Miss it and you wait another full cycle.
+    const anticipationEvents = () => {
+      cycleMin   = Math.max(2, cycleMin   - (Math.random() > 0.55 ? 1 : 0));
+      harvestMin = Math.max(1, harvestMin - (Math.random() > 0.5  ? 1 : 0));
+      const closeHrs = 2 + Math.floor(Math.random() * 10);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-stopwatch fomo-amber"></i> Next AI execution cycle: <strong>${cycleMin} min.</strong> Accounts not yet funded will miss this window entirely.</span>`,
+        `<span class="fomo-item"><i class="fa fa-clock fomo-amber"></i> Yield-harvest window opens in <strong>${harvestMin} min.</strong> Active positions qualify automatically. Idle capital does not.</span>`,
+        `<span class="fomo-item"><i class="fa fa-calendar-check fomo-gold"></i> Weekly compound lock-in closes in <strong>${closeHrs} hours.</strong> Returns that miss this window roll to next cycle — not your pocket.</span>`,
+        `<span class="fomo-item"><i class="fa fa-rocket fomo-green"></i> Portfolio rebalance at next market bell. <strong>Diamond holders pre-queued.</strong> Everyone else waits.</span>`,
+      ]);
+    };
+
+    // HOOK 4 — STATUS &amp; CONTROL ("Sovereign capital" language)
+    // Your money obeys you. You own the outcome.
+    const statusEvents = () => {
+      const portfolio = money(180000 + Math.random() * 4600000);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-gem fomo-gold"></i> ${pick(names)} — Diamond Tier. <strong>${portfolio}</strong> under sovereign-grade AI management. Full liquidity retained.</span>`,
+        `<span class="fomo-item"><i class="fa fa-chess-king fomo-gold"></i> ${pick(names)}: elite position held. Capital compounds autonomously. Zero manual intervention required.</span>`,
+        `<span class="fomo-item"><i class="fa fa-infinity fomo-green"></i> ${pick(names)}: <strong>"The AI executed 47 trades while I slept. I woke up richer."</strong></span>`,
+        `<span class="fomo-item"><i class="fa fa-trophy fomo-gold"></i> Top 3% return this week — all Diamond holders. <strong>The gap between tiers widens every single cycle.</strong></span>`,
+      ]);
+    };
+
+    // HOOK 5 — MICRO SIGNALS ("The alive-page effect")
+    // Tiny, real-time numbers that signal constant motion.
+    const microEvents = () => {
+      liveCount += Math.floor(Math.random() * 4);
+      totalFlow += 14000 + Math.random() * 39000;
+      const signals = 820 + Math.floor(Math.random() * 80);
+      const secs    = 8  + Math.floor(Math.random() * 40);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-signal fomo-green"></i> <strong>${liveCount.toLocaleString()}</strong> investors online. Capital compounding in real time. No pause.</span>`,
+        `<span class="fomo-item"><i class="fa fa-chart-line fomo-green"></i> <strong>${flowStr()}</strong> deployed this hour. AI systems operating at full capacity.</span>`,
+        `<span class="fomo-item"><i class="fa fa-wifi fomo-green"></i> AI heartbeat: <strong>${signals} signals processed</strong> in the last 90 seconds. Zero downtime recorded.</span>`,
+        `<span class="fomo-item"><i class="fa fa-circle fomo-live"></i> <strong>${pick(names)}</strong> position updated <strong>${secs}s ago.</strong> Return logged. Balance adjusted.</span>`,
+      ]);
+    };
+
+    // HOOK 6 — DISCIPLINE · TIMING · MONEY LOGIC
+    // The cold arithmetic that makes inaction feel criminal.
+    const disciplineEvents = () => {
+      const claimed = money(3800 + Math.random() * 96000);
+      const days    = 60 + Math.floor(Math.random() * 120);
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-calculator fomo-slate"></i> <strong>Money logic:</strong> capital not deployed today is money gifted to inflation tomorrow. There are no neutral positions.</span>`,
+        `<span class="fomo-item"><i class="fa fa-hourglass-half fomo-amber"></i> ${pick(names)} collected <strong>${claimed}</strong> in scheduled returns. Entry date: <strong>${days} days ago.</strong> Discipline paid.</span>`,
+        `<span class="fomo-item"><i class="fa fa-coins fomo-gold"></i> Every <strong>24-hour delay</strong> on a $250K account costs <strong>$178.08</strong> in compound growth. Every. Single. Day.</span>`,
+        `<span class="fomo-item"><i class="fa fa-scale-balanced fomo-slate"></i> <strong>The math:</strong> $500K at Diamond tier (75% annual) = <strong>$875,000 Year 1.</strong> Your bank offers 0.5%. You decide.</span>`,
+      ]);
+    };
+
+    // HOOK 7 — TOP-TIER SCARCITY ("Minimum to remaining Diamond / Platinum")
+    // The gap between tiers is structural. So is the countdown.
+    const scarcityEvents = () => {
+      diamondLeft  = Math.max(4, diamondLeft  - (Math.random() > 0.78 ? 1 : 0));
+      platinumLeft = Math.max(9, platinumLeft - (Math.random() > 0.82 ? 1 : 0));
+      return pick([
+        `<span class="fomo-item"><i class="fa fa-fire fomo-amber"></i> <strong>Diamond Tier:</strong> ${diamondLeft} of 50 Q1 positions open. Min. entry <strong>$500,000.</strong> Acceptance not guaranteed.</span>`,
+        `<span class="fomo-item"><i class="fa fa-hourglass-end fomo-amber"></i> <strong>Platinum:</strong> ${platinumLeft} slots. Min. <strong>$150,000.</strong> Q1 allocation window closes <strong>March 31.</strong></span>`,
+        `<span class="fomo-item"><i class="fa fa-arrow-up-right-dots fomo-green"></i> Top-tier distribution: Diamond accounts generating <strong>6.2× more</strong> than Silver this quarter alone.</span>`,
+        `<span class="fomo-item"><i class="fa fa-triangle-exclamation fomo-amber"></i> <strong>Bronze &amp; Silver: FULL.</strong> Gold ($50K+) · Platinum ($150K+) · Diamond ($500K+) — only tiers accepting capital this cycle.</span>`,
+      ]);
+    };
+
+    // Build one full ticker line — all 7 hooks in sequence
     function buildFeedLine() {
-      hourlyFlow += 18000 + Math.random() * 32000;
-      diamondSpots = Math.max(7, diamondSpots - (Math.random() > 0.7 ? 1 : 0));
-
-      const hourlyFlowText = hourlyFlow >= 1000000
-        ? '$' + (hourlyFlow / 1000000).toFixed(1) + 'M'
-        : money(hourlyFlow);
-
-      const fixed = [
-        `<span class="fomo-item"><i class="fa fa-fire"></i> <strong>${hourlyFlowText}</strong> deployed in the last hour</span>`,
-        `<span class="fomo-item"><i class="fa fa-user-plus"></i> ${pick(names)} upgraded to <strong>${pick(tiers)}</strong> · ${pick(minuteMarks)}</span>`
+      const items = [
+        momentumEvents(),
+        innerCircleEvents(),
+        anticipationEvents(),
+        statusEvents(),
+        microEvents(),
+        disciplineEvents(),
+        scarcityEvents(),
+        momentumEvents(),  // repeat for seamless -50% CSS loop
       ];
-
-      const dynamic = [];
-      for (let i = 0; i < 8; i++) dynamic.push(makeRandomEvent());
-
-      const lineItems = [...dynamic.slice(0, 4), ...fixed, ...dynamic.slice(4)];
-      return lineItems.join('<span class="fomo-sep">⚡</span>');
+      return items.join('<span class="fomo-sep">  ⚡  </span>');
     }
 
     function renderFeed() {
       const line = buildFeedLine();
-      scroll.style.opacity = '0.25';
+      scroll.style.opacity = '0.2';
       setTimeout(() => {
-        // Duplicate full line for seamless -50% marquee loop.
-        scroll.innerHTML = line + '<span class="fomo-sep">⚡</span>' + line;
+        scroll.innerHTML = line + '<span class="fomo-sep">  ⚡  </span>' + line;
         scroll.style.opacity = '1';
-      }, 150);
+      }, 180);
     }
 
     renderFeed();
+    window.__fomoTicker = setInterval(renderFeed, 10000);
 
-    // Refresh urgency narrative periodically to keep it lively.
-    window.__fomoTicker = setInterval(renderFeed, 9000);
-
-    // Pause on hover so users can read details.
     banner.onmouseenter = () => { scroll.style.animationPlayState = 'paused'; };
     banner.onmouseleave = () => { scroll.style.animationPlayState = 'running'; };
   }

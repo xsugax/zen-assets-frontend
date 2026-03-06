@@ -344,13 +344,24 @@ small { font-size: .8em; opacity: .7; display: block; }
 .fomo-scroll {
   display: flex; align-items: center; gap: 32px;
   white-space: nowrap;
-  animation: fomoScroll 40s linear infinite;
+  animation: fomoScroll 55s linear infinite;
   font-size: 13px; color: #e2e8f0;
 }
 .fomo-item { display: flex; align-items: center; gap: 8px; }
 .fomo-item i { color: var(--gold); }
 .fomo-item strong { color: var(--gold); font-weight: 700; }
-.fomo-sep { color: var(--gold); font-size: 10px; opacity: 0.5; }
+.fomo-item em { color: #94a3b8; font-style: normal; font-size: 0.9em; }
+.fomo-sep { color: var(--gold); font-size: 10px; opacity: 0.4; margin: 0 8px; }
+/* Icon colour helpers */
+.fomo-green  { color: #00ff88 !important; }
+.fomo-gold   { color: var(--gold) !important; }
+.fomo-amber  { color: #f59e0b !important; }
+.fomo-slate  { color: #94a3b8 !important; }
+.fomo-live   { color: #00ff88 !important; animation: fomoLivePulse 1.4s ease-in-out infinite; }
+@keyframes fomoLivePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 @keyframes fomoScroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
