@@ -2137,7 +2137,10 @@ const App = (() => {
 
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) { proceedAfterLogin(); return; }
+    if (!loginForm) {
+      console.error('Login form not found; refusing to continue without explicit authentication.');
+      return;
+    }
     
     // ── Addictive Login Enhancements ──
     _initLoginParticles();
