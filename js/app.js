@@ -2155,6 +2155,7 @@ const App = (() => {
     _initMarketPulse();
     _initProofWall();
     _initSocialProofPopups();
+    _initSinceArrived();
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2685,11 +2686,13 @@ const App = (() => {
       { init:'MK', name:'Michael K.', action:'deposited <strong>$250,000</strong> — Gold Tier', time:'2 min ago' },
       { init:'ST', name:'Sarah T.', action:'withdrew <strong>$47,283</strong> in returns', time:'5 min ago' },
       { init:'JW', name:'James W.', action:'upgraded to <strong>Diamond Tier</strong>', time:'8 min ago' },
-      { init:'DR', name:'David R.', action:'just earned <strong>$12,847</strong> this week', time:'just now' },
+      { init:'DR', name:'David R.', action:'just earned <strong>$127,480</strong> this week', time:'just now' },
       { init:'OM', name:'Olivia M.', action:'started <strong>Platinum</strong> with $500K', time:'11 min ago' },
       { init:'RN', name:'Robert N.', action:'reinvested <strong>$84,200</strong> in profits', time:'3 min ago' },
       { init:'EJ', name:'Emily J.', action:'referred 3 friends — earned <strong>$8,400</strong>', time:'6 min ago' },
       { init:'TH', name:'Thomas H.', action:'portfolio up <strong>+63%</strong> in 14 months', time:'just now' },
+      { init:'J\u2588', name:'Celebrity member', action:'quietly added <strong>$2,500,000</strong> — Diamond', time:'1 min ago' },
+      { init:'A\u2588', name:'A-list investor', action:'withdrew <strong>$1,840,000</strong> in returns', time:'4 min ago' },
     ];
     let idx = Math.floor(Math.random() * events.length);
 
@@ -2710,6 +2713,38 @@ const App = (() => {
 
     setTimeout(showPopup, 4000);
     setInterval(showPopup, 22000);
+  }
+
+  // ── Since You Arrived Counter ────────────────────────────────
+  function _initSinceArrived() {
+    const earnedEl    = document.getElementById('sa-earned');
+    const tradesEl    = document.getElementById('sa-trades');
+    const membersEl   = document.getElementById('sa-new-members');
+    const barEl       = document.getElementById('sa-bar');
+    if (!earnedEl) return;
+
+    const pageLoadTime = Date.now();
+    // Platform earns ~$284M/day = ~$3,287/second across all investors
+    const earnPerSec   = 3287;
+    const tradesPerSec = 0.98; // ~1 trade/sec
+    const membersPerMin = 0.18; // ~11/hour
+
+    let maxBarSec = 300; // bar fills over 5 minutes
+
+    setInterval(() => {
+      const elapsed = (Date.now() - pageLoadTime) / 1000;
+      const earned  = Math.floor(elapsed * earnPerSec);
+      const trades  = Math.floor(elapsed * tradesPerSec);
+      const members = Math.floor(elapsed / 60 * membersPerMin * 60); // per minute calc
+
+      if (earnedEl) earnedEl.textContent = '$' + earned.toLocaleString();
+      if (tradesEl) tradesEl.textContent = trades.toLocaleString();
+      if (membersEl) membersEl.textContent = members.toLocaleString();
+      if (barEl) {
+        const pct = Math.min((elapsed / maxBarSec) * 100, 100);
+        barEl.style.width = pct + '%';
+      }
+    }, 1000);
   }
 
   // ── Registration ─────────────────────────────────────────

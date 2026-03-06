@@ -4312,11 +4312,152 @@ kbd { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
   color: var(--gold); border-color: rgba(212,165,116,0.4);
 }
 
+/* ══ SINCE YOU ARRIVED ═══════════════════════════════════════ */
+.since-arrived {
+  background: linear-gradient(135deg, rgba(10,14,22,0.98), rgba(20,10,10,0.98));
+  border: 1px solid rgba(255,80,80,0.3);
+  border-radius: 16px;
+  padding: 28px 24px 24px;
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.since-arrived::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #ff4444, #ff8800, #ff4444);
+  animation: saPulse 2s ease-in-out infinite;
+}
+@keyframes saPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.sa-intro {
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sa-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.sa-item { text-align: center; }
+.sa-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ff6b6b;
+  font-family: 'Courier New', monospace;
+  line-height: 1.1;
+}
+.sa-value.sa-trades { color: var(--gold); }
+.sa-value.sa-new { color: #00ff88; }
+.sa-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-top: 4px;
+}
+.sa-bar-wrap {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.sa-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ff4444, #ff8800);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+.sa-cta {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+}
+.sa-cta strong { color: #ff8800; }
+
+/* ══ CELEBRITY VAULT ═════════════════════════════════════════ */
+.celeb-vault {
+  background: linear-gradient(135deg, rgba(8,8,20,0.99), rgba(15,10,25,0.99));
+  border: 1px solid rgba(212,165,116,0.25);
+  border-radius: 16px;
+  padding: 28px 24px 24px;
+  margin-bottom: 32px;
+}
+.cv-header {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+.cv-header i { margin-right: 6px; color: var(--gold); }
+.cv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.cv-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,165,116,0.15);
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: border-color 0.3s, transform 0.2s;
+}
+.cv-card:hover { border-color: rgba(212,165,116,0.45); transform: translateY(-2px); }
+.cv-card-blur .cv-initial {
+  filter: blur(4px);
+  user-select: none;
+  color: rgba(212,165,116,0.6);
+}
+.cv-initial {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.cv-category {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.cv-return {
+  font-size: 18px;
+  font-weight: 800;
+  color: #00ff88;
+  margin-bottom: 6px;
+}
+.cv-period { font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 400; }
+.cv-tier { font-size: 11px; color: var(--gold); }
+.cv-note {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 16px;
+}
+.cv-note strong { color: var(--gold); }
+
 @media (max-width: 768px) {
   .pw-grid { grid-template-columns: repeat(2, 1fr); }
   .mp-grid { grid-template-columns: repeat(2, 1fr); }
   .atf-row { grid-template-columns: 80px 90px 1fr; }
   .atf-time { display: none; }
+  .sa-grid { grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .sa-value { font-size: 18px; }
+  .cv-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
   .pw-grid { grid-template-columns: 1fr 1fr; }

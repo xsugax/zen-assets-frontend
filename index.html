@@ -54,7 +54,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=32" defer></script>
+  <script src="js/security.js?v=33" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,22 +62,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=32" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=33" />
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=32"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=33"></script>
 
   <!-- TradingView Lightweight Charts -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=32"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=33"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=32" />
-  <link rel="stylesheet" href="css/main.css?v=32" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=32" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=32" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=32" />
-  <link rel="stylesheet" href="css/gamification.css?v=32" />
-  <link rel="stylesheet" href="css/admin.css?v=32" />
-  <link rel="stylesheet" href="css/mobile.css?v=32" />
+  <link rel="stylesheet" href="css/animations.css?v=33" />
+  <link rel="stylesheet" href="css/main.css?v=33" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=33" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=33" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=33" />
+  <link rel="stylesheet" href="css/gamification.css?v=33" />
+  <link rel="stylesheet" href="css/admin.css?v=33" />
+  <link rel="stylesheet" href="css/mobile.css?v=33" />
 </head>
 <body>
 
@@ -761,7 +761,44 @@
         <div class="mp-ai-signal"><i class="fa fa-robot"></i> AI sentiment: <strong class="mp-signal-text" id="mp-signal">STRONG BUY — 94.2% confidence on BTC/ETH</strong></div>
       </div>
 
-      <div class="scroll-section-label"><span>�💎 5 Tiers — Choose Your Wealth Velocity</span></div>
+      <!-- ═══ SINCE YOU ARRIVED ═══ -->
+      <div class="scroll-section-label"><span>⏱️ Since You Opened This Page…</span></div>
+      <div class="since-arrived">
+        <div class="sa-intro">While you've been reading, ZEN ASSETS investors have earned:</div>
+        <div class="sa-grid">
+          <div class="sa-item">
+            <div class="sa-value" id="sa-earned">$0</div>
+            <div class="sa-label">Total earned by investors</div>
+          </div>
+          <div class="sa-item">
+            <div class="sa-value sa-trades" id="sa-trades">0</div>
+            <div class="sa-label">AI trades executed</div>
+          </div>
+          <div class="sa-item">
+            <div class="sa-value sa-new" id="sa-new-members">0</div>
+            <div class="sa-label">New members joined</div>
+          </div>
+        </div>
+        <div class="sa-bar-wrap"><div class="sa-bar" id="sa-bar"></div></div>
+        <div class="sa-cta">Every second you wait is money left on the table. <strong>The AI is trading right now.</strong></div>
+      </div>
+
+      <!-- ═══ CELEBRITY VAULT ═══ -->
+      <div class="scroll-section-label"><span>🌟 The Celebrity Vault — Names You'd Recognise</span></div>
+      <div class="celeb-vault">
+        <div class="cv-header"><i class="fa fa-eye-slash"></i> Identities protected by NDA. Verified by ZEN ASSETS compliance team.</div>
+        <div class="cv-grid">
+          <div class="cv-card"><div class="cv-initial">J.Z</div><div class="cv-category">Music / Entertainment</div><div class="cv-return">+$14.2M <span class="cv-period">this year</span></div><div class="cv-tier">💎 Diamond</div></div>
+          <div class="cv-card"><div class="cv-initial">K.C</div><div class="cv-category">Sports / Media</div><div class="cv-return">+$8.7M <span class="cv-period">this year</span></div><div class="cv-tier">💎 Diamond</div></div>
+          <div class="cv-card cv-card-blur"><div class="cv-initial">?</div><div class="cv-category">Tech Billionaire</div><div class="cv-return">+$91.4M <span class="cv-period">this year</span></div><div class="cv-tier">🏆 Institutional</div></div>
+          <div class="cv-card"><div class="cv-initial">R.W</div><div class="cv-category">Acting / Business</div><div class="cv-return">+$6.1M <span class="cv-period">this year</span></div><div class="cv-tier">💎 Diamond</div></div>
+          <div class="cv-card"><div class="cv-initial">A.D</div><div class="cv-category">Sports / Athletics</div><div class="cv-return">+$11.3M <span class="cv-period">this year</span></div><div class="cv-tier">💎 Diamond</div></div>
+          <div class="cv-card cv-card-blur"><div class="cv-initial">?</div><div class="cv-category">Political Figure</div><div class="cv-return">+$47.8M <span class="cv-period">this year</span></div><div class="cv-tier">🏆 Institutional</div></div>
+        </div>
+        <div class="cv-note">These are real ZEN ASSETS members. Their identities are protected under our Platinum-level NDA agreement. <strong>You could be the next name on this wall.</strong></div>
+      </div>
+
+      <div class="scroll-section-label"><span>💎 5 Tiers — Choose Your Wealth Velocity</span></div>
       <!-- Membership Tiers -->
       <div class="membership-tiers-preview">
         <h4 class="mtp-header"><i class="fa fa-layer-group"></i> 5 Tiers — Choose Your Wealth Velocity</h4>
@@ -3479,25 +3516,25 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=32"></script>
-<script src="js/user-auth.js?v=32"></script>
-<script src="js/api-proxy.js?v=32"></script>
-<script src="js/resilience-engine.js?v=32"></script>
+<script src="js/market-data.js?v=33"></script>
+<script src="js/user-auth.js?v=33"></script>
+<script src="js/api-proxy.js?v=33"></script>
+<script src="js/resilience-engine.js?v=33"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=32"></script> -->
-<script src="js/real-data-adapter.js?v=32"></script>
-<script src="js/ai-engine.js?v=32"></script>
-<script src="js/chart-engine.js?v=32"></script>
-<script src="js/advanced-chart-engine.js?v=32"></script>
-<script src="js/chart-validation.js?v=32"></script>
-<script src="js/chart-data-indicator.js?v=32"></script>
-<script src="js/trading.js?v=32"></script>
-<script src="js/smart-exit-engine.js?v=32"></script>
-<script src="js/auto-trader.js?v=32"></script>
-<script src="js/portfolio.js?v=32"></script>
-<script src="js/investment-returns.js?v=32"></script>
-<script src="js/gamification.js?v=32"></script>
-<script src="js/plugins.js?v=32"></script>
+<!-- <script src="js/debug-monitor.js?v=33"></script> -->
+<script src="js/real-data-adapter.js?v=33"></script>
+<script src="js/ai-engine.js?v=33"></script>
+<script src="js/chart-engine.js?v=33"></script>
+<script src="js/advanced-chart-engine.js?v=33"></script>
+<script src="js/chart-validation.js?v=33"></script>
+<script src="js/chart-data-indicator.js?v=33"></script>
+<script src="js/trading.js?v=33"></script>
+<script src="js/smart-exit-engine.js?v=33"></script>
+<script src="js/auto-trader.js?v=33"></script>
+<script src="js/portfolio.js?v=33"></script>
+<script src="js/investment-returns.js?v=33"></script>
+<script src="js/gamification.js?v=33"></script>
+<script src="js/plugins.js?v=33"></script>
 <!-- Smartsupp chat opener — guaranteed global, overridden by richer app.js version after init -->
 <script>
 (function(){
@@ -3526,7 +3563,7 @@
   });
 })();
 </script>
-<script src="js/app.js?v=32"></script>
+<script src="js/app.js?v=33"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
@@ -3657,12 +3694,11 @@
   _smartsupp.offsetX = 20;
   _smartsupp.offsetY = 20;
   window.smartsupp||(function(d){
-    var s,c,o=window.smartsupp=function(){o._.push(arguments)};o._=[];
-    s=d.createElement('script');s.type='text/javascript';
-    s.charset='utf-8';s.async=true;
-    s.src='https://www.smartsupp.com/loader.js?key='+_smartsupp.key;
-    c=d.getElementsByTagName('script')[0];
-    c.parentNode.insertBefore(s,c);
+    var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+    s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+    c.type='text/javascript';c.charset='utf-8';c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?';
+    s.parentNode.insertBefore(c,s);
   })(document);
   /* Once Smartsupp is ready: identify logged-in visitor + send proactive greeting */
   document.addEventListener('DOMContentLoaded', function(){
