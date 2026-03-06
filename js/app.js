@@ -185,10 +185,7 @@ const App = (() => {
     const loading = $('loading-screen');
     if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
     const app = $('app');
-    if (app) {
-      app.style.display = 'block';
-      app.classList.add('app-visible');
-    }
+    if (app) app.classList.add('app-visible');
     // startCursorTrail(); // Removed — clean professional UI
     startClock();
     initData();
@@ -2118,86 +2115,31 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
+    
+    // Initialize auth system first
+    if (typeof UserAuth !== 'undefined') UserAuth.init();
+    
+    // Get DOM elements
+    const loginScreen = $('login-screen');
+    const appDiv = $('app');
 
-    try {
-      // Initialize auth system first
-      if (typeof UserAuth !== 'undefined') UserAuth.init();
-
-      // Get DOM elements
-      const loginScreen = $('login-screen');
-      const appDiv = $('app');
-      const loadingScreen = $('loading-screen');
-
-      // Always require fresh credentials on page load.
-      console.log('🔒 Fresh login required - showing login screen');
-
-      // Hard-stop any stale loader overlay that can create a blank screen.
-      if (loadingScreen) {
-        loadingScreen.style.display = 'none';
-        loadingScreen.style.opacity = '0';
-      }
-
-      // Ensure app shell is hidden until explicit successful login.
-      if (appDiv) {
-        appDiv.classList.remove('app-visible');
-        appDiv.style.display = 'none';
-      }
-
-      // Force login shell visible and interactive.
-      if (loginScreen) {
-        loginScreen.style.display = 'flex';
-        loginScreen.style.opacity = '1';
-        loginScreen.style.visibility = 'visible';
-        loginScreen.classList.add('show-login-modal');
-      }
-
-      document.body.style.overflow = 'auto';
-      if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
-
-      initLoginScreen();
-      initRegisterScreen();
-      initModalHandlers();
-
-      // Cold-boot guard: if UI somehow ends up hidden after async startup,
-      // force the login shell back on screen instead of leaving a blank page.
-      setTimeout(() => {
-        const ls = $('login-screen');
-        const app = $('app');
-        const loading = $('loading-screen');
-        const appVisible = !!(app && app.classList.contains('app-visible'));
-        if (!appVisible) {
-          if (loading) {
-            loading.style.display = 'none';
-            loading.style.opacity = '0';
-          }
-          if (app) app.style.display = 'none';
-          if (ls) {
-            ls.style.display = 'flex';
-            ls.style.opacity = '1';
-            ls.style.visibility = 'visible';
-            ls.classList.add('show-login-modal');
-          }
-          document.body.style.overflow = 'auto';
-          if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
-        }
-      }, 1200);
-    } catch (e) {
-      console.error('App init failed, forcing login fallback UI:', e);
-      const loginScreen = $('login-screen');
-      if (loginScreen) {
-        loginScreen.style.display = 'flex';
-        loginScreen.style.opacity = '1';
-        loginScreen.classList.add('show-login-modal');
-      }
-    }
+    // Always require fresh credentials on page load.
+    console.log('🔒 Fresh login required - showing login screen');
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appDiv) appDiv.classList.remove('app-visible');
+    document.body.style.overflow = 'auto';
+    // Keep the full login screen layout visible (including FOMO banner).
+    // Do not force modal mode on load.
+    if (typeof AuthManager !== 'undefined' && AuthManager.closeAllModals) AuthManager.closeAllModals();
+    
+    initLoginScreen();
+    initRegisterScreen();
+    initModalHandlers();
   }
 
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) {
-      console.error('Login form not found; refusing to continue without explicit authentication.');
-      return;
-    }
+    if (!loginForm) { proceedAfterLogin(); return; }
     
     // ── Addictive Login Enhancements ──
     _initLoginParticles();
