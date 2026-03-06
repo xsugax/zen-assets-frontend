@@ -6,18 +6,18 @@
 /* ── Global Mobile Fixes ────────────────────────────────── */
 @media (max-width: 1024px) {
 
-  /* Prevent body scroll — login-screen is always position:fixed */
+  /* Allow vertical scroll on login page */
   body {
-    overflow: hidden !important;
     overflow-x: hidden !important;
   }
 
-  /* Keep login screen locked to viewport — inner container scrolls instead */
+  /* Login screen scrolls vertically */
   .login-screen {
     position: fixed !important;
     inset: 0 !important;
     height: 100vh !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
   /* Remove all backdrop-filter on mobile — massive GPU saver */
@@ -32,23 +32,29 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Login container: full-viewport, stretches to fill height */
+  /* Login container: single scrollable column */
   .login-container {
-    overflow: hidden !important;
-    align-items: stretch !important;
-    justify-content: center !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 0 16px 100px !important;
   }
 
-  /* Left brand section — hidden on all screen sizes */
+  /* Brand section — visible below the form on all screen sizes */
   .login-brand-section {
-    display: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 28px !important;
+    width: 100% !important;
+    padding: 0 0 40px !important;
   }
 
-  /* Right form section — starts from top so full card is reachable via scroll */
+  /* Login form — full width, auto height, no scroll constraints */
   .login-form-section {
-    height: 100% !important;
-    padding: 20px 16px 40px !important;
-    overflow-y: auto !important;
+    width: 100% !important;
+    max-width: 560px !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    padding: 28px 0 32px !important;
     justify-content: flex-start !important;
   }
 
@@ -91,9 +97,8 @@
   html { font-size: 13px !important; }
 
   /* ── Login Layout ───────────────────────────────────── */
-  /* brand section is display:none — no padding needed */
   .login-form-section {
-    padding: 0 16px !important;
+    padding: 20px 0 !important;
   }
 
   /* Logo */
