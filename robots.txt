@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /admin.html
+Disallow: /diagnostics.html
+Disallow: /health-monitor.html
+Disallow: /test_login.json
+
+# Rate limiting for crawlers
+Crawl-delay: 2
 
 Sitemap: https://zenassets.tech/sitemap.xml

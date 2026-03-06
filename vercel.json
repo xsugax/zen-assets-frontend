@@ -1,0 +1,65 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.zenassets.tech" }],
+      "destination": "https://zenassets.tech/:path*",
+      "permanent": true
+    }
+  ],
+
+  "rewrites": [
+    { "source": "/app",        "destination": "/200.html" },
+    { "source": "/dashboard",  "destination": "/200.html" },
+    { "source": "/dashboard/:path*", "destination": "/200.html" }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options",        "value": "nosniff" },
+        { "key": "X-Frame-Options",               "value": "DENY" },
+        { "key": "X-XSS-Protection",              "value": "1; mode=block" },
+        { "key": "Referrer-Policy",               "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy",            "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security",     "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "X-Robots-Tag",                  "value": "index, follow, max-snippet:-1, max-image-preview:large" }
+      ]
+    },
+    {
+      "source": "/css/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/sitemap.xml",
+      "headers": [
+        { "key": "Cache-Control",  "value": "public, max-age=86400" },
+        { "key": "Content-Type",   "value": "application/xml; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ]
+}
