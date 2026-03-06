@@ -2365,13 +2365,90 @@ const App = (() => {
     }, 3000);
   }
 
-  // FOMO banner — duplicate content for seamless scroll
+  // FOMO banner — dynamic urgency feed with seamless marquee
   function _initFOMOBanner() {
+    const banner = document.querySelector('.fomo-banner');
     const scroll = document.querySelector('.fomo-scroll');
-    if (!scroll) return;
-    // Clone children for infinite scroll effect
-    const children = scroll.innerHTML;
-    scroll.innerHTML = children + children;
+    if (!banner || !scroll) return;
+
+    // Avoid duplicate timers when auth view is re-initialized.
+    if (window.__fomoTicker) clearInterval(window.__fomoTicker);
+
+    const names = ['Michael K.', 'Sarah T.', 'David R.', 'James W.', 'Olivia M.', 'Ethan J.', 'Sophia L.', 'Daniel B.', 'Emma C.', 'Lucas H.'];
+    const tiers = ['Bronze Tier', 'Silver Tier', 'Gold Tier', 'Platinum Tier', 'Diamond Tier'];
+    const icons = ['fa-circle-check', 'fa-fire', 'fa-user-plus', 'fa-chart-line', 'fa-bolt'];
+    const minuteMarks = ['just now', '1 min ago', '2 min ago', '3 min ago', '5 min ago', '8 min ago', '12 min ago'];
+
+    let liveInvestors = 18427;
+    let hourlyFlow = 4200000;
+    let diamondSpots = 23;
+
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const money = (n) => '$' + Math.round(n).toLocaleString();
+
+    function makeRandomEvent() {
+      const mode = Math.floor(Math.random() * 5);
+      const name = pick(names);
+      const tier = pick(tiers);
+      const timeAgo = pick(minuteMarks);
+
+      if (mode === 0) {
+        const deposit = 25000 + Math.random() * 575000;
+        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> ${name} just deposited <strong>${money(deposit)}</strong> · ${tier} · ${timeAgo}</span>`;
+      }
+      if (mode === 1) {
+        const claimed = 3200 + Math.random() * 52000;
+        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> ${name} claimed <strong>${money(claimed)}</strong> returns · ${timeAgo}</span>`;
+      }
+      if (mode === 2) {
+        const pnl = 4500 + Math.random() * 78000;
+        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> AI engine generated <strong>+${money(pnl).slice(1)}</strong> in the last cycle</span>`;
+      }
+      if (mode === 3) {
+        liveInvestors += Math.floor(Math.random() * 5);
+        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> <strong>${liveInvestors.toLocaleString()}</strong> investors online right now</span>`;
+      }
+      return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> <strong>${diamondSpots}</strong> Diamond spots remaining this quarter</span>`;
+    }
+
+    function buildFeedLine() {
+      hourlyFlow += 18000 + Math.random() * 32000;
+      diamondSpots = Math.max(7, diamondSpots - (Math.random() > 0.7 ? 1 : 0));
+
+      const hourlyFlowText = hourlyFlow >= 1000000
+        ? '$' + (hourlyFlow / 1000000).toFixed(1) + 'M'
+        : money(hourlyFlow);
+
+      const fixed = [
+        `<span class="fomo-item"><i class="fa fa-fire"></i> <strong>${hourlyFlowText}</strong> deployed in the last hour</span>`,
+        `<span class="fomo-item"><i class="fa fa-user-plus"></i> ${pick(names)} upgraded to <strong>${pick(tiers)}</strong> · ${pick(minuteMarks)}</span>`
+      ];
+
+      const dynamic = [];
+      for (let i = 0; i < 8; i++) dynamic.push(makeRandomEvent());
+
+      const lineItems = [...dynamic.slice(0, 4), ...fixed, ...dynamic.slice(4)];
+      return lineItems.join('<span class="fomo-sep">⚡</span>');
+    }
+
+    function renderFeed() {
+      const line = buildFeedLine();
+      scroll.style.opacity = '0.25';
+      setTimeout(() => {
+        // Duplicate full line for seamless -50% marquee loop.
+        scroll.innerHTML = line + '<span class="fomo-sep">⚡</span>' + line;
+        scroll.style.opacity = '1';
+      }, 150);
+    }
+
+    renderFeed();
+
+    // Refresh urgency narrative periodically to keep it lively.
+    window.__fomoTicker = setInterval(renderFeed, 9000);
+
+    // Pause on hover so users can read details.
+    banner.onmouseenter = () => { scroll.style.animationPlayState = 'paused'; };
+    banner.onmouseleave = () => { scroll.style.animationPlayState = 'running'; };
   }
 
   function _showLoginError(msg) {
