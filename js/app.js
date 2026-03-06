@@ -2912,11 +2912,10 @@ const App = (() => {
       alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
     };
 
-    //  Tawk.to Live Chat Integration 
-    // Opens the Tawk.to chat widget and pre-identifies the visitor.
+    // ── Tawk.to Live Chat Integration ──
+    // Opens the Tawk.to chat widget; uses window._tawkReady flag set by onLoad callback.
     window.openSmartsuppChat = () => {
       const _doOpen = () => {
-        // Tag visitor with identity if logged in
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
           const session = UserAuth.getSession();
           if (session) {
@@ -2928,43 +2927,22 @@ const App = (() => {
             } catch(e) {}
           }
         }
-        // Open the chat widget
         try { Tawk_API.maximize(); } catch(e) {}
       };
 
-      if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) {
+      if (window._tawkReady || (typeof Tawk_API !== 'undefined' && Tawk_API.maximize)) {
         _doOpen();
       } else {
-        // Tawk.to loader may still be fetching  wait up to 4s
-        showToast('Connecting to live chat', 'info');
+        showToast('Connecting to live chat…', 'info');
         let attempts = 0;
         const poll = setInterval(() => {
           attempts++;
-          if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) {
+          if (window._tawkReady || (typeof Tawk_API !== 'undefined' && Tawk_API.maximize)) {
             clearInterval(poll);
             _doOpen();
-          } else if (attempts >= 8) {
+          } else if (attempts >= 16) {
             clearInterval(poll);
-            showToast('Chat unavailable  please email support@zenassets.com', 'error');
-          }
-        }, 500);
-      }
-    };
-
-      if (typeof smartsupp !== 'undefined') {
-        _doOpen();
-      } else {
-        // Smartsupp loader may still be fetching — wait up to 4s
-        showToast('Connecting to live chat\u2026', 'info');
-        let attempts = 0;
-        const poll = setInterval(() => {
-          attempts++;
-          if (typeof smartsupp !== 'undefined') {
-            clearInterval(poll);
-            _doOpen();
-          } else if (attempts >= 8) {
-            clearInterval(poll);
-            showToast('Chat unavailable \u2014 please email support@zenassets.com', 'error');
+            showToast('Chat unavailable — please email support@zenassets.com', 'error');
           }
         }, 500);
       }

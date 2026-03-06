@@ -481,17 +481,16 @@
 
   /* Force GPU layers for smooth scrolling */
   .login-screen {
-    will-change: scroll-position;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
 
-  /* Optimize scrolling containers */
+  /* Scrolling containers — momentum on iOS */
   .login-brand-section,
   .login-form-section,
   .tier-modal-content,
   .register-card {
-    will-change: scroll-position;
+    will-change: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -636,6 +635,49 @@
 .login-screen.auth-mode .login-form-section,
 .login-screen.show-login-modal .login-form-section {
   display: flex !important;
+}
+
+/* ═══ AUTH-MODE MOBILE — smooth scroll, safe area, no lag ═════════════ */
+@media (max-width: 768px) {
+  .login-screen.auth-mode .login-form-section,
+  .login-screen.show-login-modal .login-form-section {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 80px) !important;
+    align-items: flex-start !important;
+  }
+  .login-screen.auth-mode .login-form-card,
+  .login-screen.show-login-modal .login-form-card {
+    margin: 16px auto 0 !important;
+    padding: 28px 18px 24px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-screen.auth-mode .login-form-section,
+  .login-screen.show-login-modal .login-form-section {
+    padding: 0 10px calc(env(safe-area-inset-bottom, 0px) + 60px) !important;
+  }
+  .login-screen.auth-mode .login-form-card,
+  .login-screen.show-login-modal .login-form-card {
+    margin: 6px auto 0 !important;
+    padding: 20px 14px 18px !important;
+    border-radius: 14px !important;
+  }
+  /* 2 columns on iPhone — 5 tiers in 3 cols is too cramped */
+  .login-screen.auth-mode .tier-options,
+  .login-screen.show-login-modal .tier-options {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  /* Hide minimum investment amount on tiny cards to save space */
+  .login-screen.auth-mode .tier-opt .tier-min,
+  .login-screen.show-login-modal .tier-opt .tier-min {
+    display: none !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════

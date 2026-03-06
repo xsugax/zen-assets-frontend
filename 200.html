@@ -3180,18 +3180,20 @@
 <script src="js/investment-returns.js?v=33"></script>
 <script src="js/gamification.js?v=33"></script>
 <script src="js/plugins.js?v=33"></script>
-<!-- Tawk.to chat opener — guaranteed global -->
+<!-- Tawk.to chat — onLoad flag set BEFORE embed so verification works -->
 <script>
+var Tawk_API = Tawk_API || {};
+Tawk_API.onLoad = function() { window._tawkReady = true; };
 (function(){
   function _tawkOpen() {
-    if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) {
-      Tawk_API.maximize();
+    if (window._tawkReady) {
+      try { Tawk_API.maximize(); } catch(e) {}
     } else {
       var tries = 0;
       var t = setInterval(function() {
         tries++;
-        if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) { clearInterval(t); Tawk_API.maximize(); }
-        else if (tries >= 12) { clearInterval(t); alert('Live chat is loading — please try in a moment.'); }
+        if (window._tawkReady) { clearInterval(t); try { Tawk_API.maximize(); } catch(e) {} }
+        else if (tries >= 20) { clearInterval(t); }
       }, 400);
     }
   }
@@ -3201,7 +3203,7 @@
   });
 })();
 </script>
-<script src="js/app.js?v=34"></script>
+<script src="js/app.js?v=35"></script>
 
 <!-- Surge Badge Killer — removes any injected branding on ALL devices -->
 <script>
