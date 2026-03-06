@@ -2157,6 +2157,30 @@ const App = (() => {
       initLoginScreen();
       initRegisterScreen();
       initModalHandlers();
+
+      // Cold-boot guard: if UI somehow ends up hidden after async startup,
+      // force the login shell back on screen instead of leaving a blank page.
+      setTimeout(() => {
+        const ls = $('login-screen');
+        const app = $('app');
+        const loading = $('loading-screen');
+        const appVisible = !!(app && app.classList.contains('app-visible'));
+        if (!appVisible) {
+          if (loading) {
+            loading.style.display = 'none';
+            loading.style.opacity = '0';
+          }
+          if (app) app.style.display = 'none';
+          if (ls) {
+            ls.style.display = 'flex';
+            ls.style.opacity = '1';
+            ls.style.visibility = 'visible';
+            ls.classList.add('show-login-modal');
+          }
+          document.body.style.overflow = 'auto';
+          if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
+        }
+      }, 1200);
     } catch (e) {
       console.error('App init failed, forcing login fallback UI:', e);
       const loginScreen = $('login-screen');
