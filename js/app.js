@@ -2356,15 +2356,15 @@ const App = (() => {
     const investorsEl = document.getElementById('llc-users');
     if (!aumEl) return;
 
-    let aum = 847293412;
-    let profit = 2847291;
+    let aum = 97293847412;
+    let profit = 284729100;
     let investors = 18427;
 
     setInterval(() => {
       if (!document.getElementById('llc-aum')) return;
-      // Small random increments
-      aum += Math.floor(Math.random() * 25000 + 3000);
-      profit += Math.floor(Math.random() * 8000 + 1000);
+      // Small random increments — scaled to $97B platform
+      aum += Math.floor(Math.random() * 250000 + 50000);
+      profit += Math.floor(Math.random() * 80000 + 20000);
       investors += Math.floor(Math.random() * 3);
 
       aumEl.textContent = '$' + aum.toLocaleString();
@@ -2572,7 +2572,7 @@ const App = (() => {
     const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD'];
     const dirs = [['▲ LONG','up'],['▲ BUY','up'],['▼ SHORT','dn'],['▲ BUY','up'],['▲ BUY','up'],['▲ LONG','up']];
     let tradeCount = 847;
-    let dailyProfit = 2847291;
+    let dailyProfit = 284729100;
 
     function addTrade() {
       if (!document.getElementById('atf-list')) return;

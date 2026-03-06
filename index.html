@@ -54,7 +54,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=31" defer></script>
+  <script src="js/security.js?v=32" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,22 +62,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=31" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=32" />
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=31"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=32"></script>
 
   <!-- TradingView Lightweight Charts -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=31"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=32"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=31" />
-  <link rel="stylesheet" href="css/main.css?v=31" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=31" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=31" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=31" />
-  <link rel="stylesheet" href="css/gamification.css?v=31" />
-  <link rel="stylesheet" href="css/admin.css?v=31" />
-  <link rel="stylesheet" href="css/mobile.css?v=31" />
+  <link rel="stylesheet" href="css/animations.css?v=32" />
+  <link rel="stylesheet" href="css/main.css?v=32" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=32" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=32" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=32" />
+  <link rel="stylesheet" href="css/gamification.css?v=32" />
+  <link rel="stylesheet" href="css/admin.css?v=32" />
+  <link rel="stylesheet" href="css/mobile.css?v=32" />
 </head>
 <body>
 
@@ -113,19 +113,25 @@
   <!-- FOMO Banner - Scrolling urgency -->
   <div class="fomo-banner">
     <div class="fomo-scroll">
+      <span class="fomo-item"><i class="fa fa-star"></i> Celebrity investor J███ just added <strong>$2,500,000</strong> · Diamond Tier · 1 min ago</span>
+      <span class="fomo-sep">⚡</span>
+      <span class="fomo-item"><i class="fa fa-trophy"></i> ZEN ASSETS — the <strong>$97 Billion</strong> AI trading platform celebrities secretly trade on</span>
+      <span class="fomo-sep">⚡</span>
       <span class="fomo-item"><i class="fa fa-circle-check"></i> Michael K. just deposited <strong>$250,000</strong> · Gold Tier · 3 min ago</span>
       <span class="fomo-sep">⚡</span>
-      <span class="fomo-item"><i class="fa fa-fire"></i> <strong>$4.2M</strong> deployed in the last hour</span>
+      <span class="fomo-item"><i class="fa fa-rocket"></i> A-list investors deployed <strong>$18.4M</strong> in the last hour</span>
       <span class="fomo-sep">⚡</span>
       <span class="fomo-item"><i class="fa fa-user-plus"></i> Sarah T. upgraded to <strong>Platinum Tier</strong> · 8 min ago</span>
       <span class="fomo-sep">⚡</span>
-      <span class="fomo-item"><i class="fa fa-chart-line"></i> AI Engine generated <strong>+$38,412</strong> profit today</span>
+      <span class="fomo-item"><i class="fa fa-eye-slash"></i> The secret wealth engine of the elite — <strong>finally revealed to the public</strong></span>
+      <span class="fomo-sep">⚡</span>
+      <span class="fomo-item"><i class="fa fa-chart-line"></i> AI Engine generated <strong>+$284,729,100</strong> profit today</span>
       <span class="fomo-sep">⚡</span>
       <span class="fomo-item"><i class="fa fa-bolt"></i> <strong>23 spots remaining</strong> for Diamond Tier this quarter</span>
       <span class="fomo-sep">⚡</span>
-      <span class="fomo-item"><i class="fa fa-circle-check"></i> David R. claimed <strong>$12,847</strong> weekly return · 1 min ago</span>
+      <span class="fomo-item"><i class="fa fa-circle-check"></i> David R. claimed <strong>$127,480</strong> weekly return · 1 min ago</span>
       <span class="fomo-sep">⚡</span>
-      <span class="fomo-item"><i class="fa fa-fire"></i> <strong>$4.2M</strong> deployed in the last hour</span>
+      <span class="fomo-item"><i class="fa fa-star"></i> Another celebrity just quietly deposited <strong>$5,000,000</strong> · Diamond Elite · 4 min ago</span>
       <span class="fomo-sep">⚡</span>
       <span class="fomo-item"><i class="fa fa-user-plus"></i> James W. just deposited <strong>$500,000</strong> · Platinum Tier · 5 min ago</span>
     </div>
@@ -154,12 +160,12 @@
       <!-- Live Performance Counter -->
       <div class="login-live-counter">
         <div class="llc-item">
-          <div class="llc-value" id="llc-aum">$847,293,412</div>
+          <div class="llc-value" id="llc-aum">$97,293,847,412</div>
           <div class="llc-label">Assets Under Management</div>
         </div>
         <div class="llc-divider"></div>
         <div class="llc-item">
-          <div class="llc-value llc-green" id="llc-profit">+$2,847,291</div>
+          <div class="llc-value llc-green" id="llc-profit">+$284,729,100</div>
           <div class="llc-label">Profit Generated Today</div>
         </div>
         <div class="llc-divider"></div>
@@ -171,8 +177,8 @@
 
       <!-- Emotional Hook -->
       <div class="login-value-prop">
-        <h3 class="lvp-title">While You Sleep, Your Money Should Be <span class="lvp-glow">Working Harder</span> Than You Ever Did</h3>
-        <p class="lvp-hook">Every minute you delay, inflation eats <strong>$0.38</strong> from every <strong>$100,000</strong> you hold in traditional savings. Our AI doesn't sleep, doesn't panic, doesn't hesitate.</p>
+        <h3 class="lvp-title">The <span class="lvp-glow">$97 Billion Secret</span> That Was Hidden From the Common Man — Until Now</h3>
+        <p class="lvp-hook">Celebrities. A-list names. Billionaires. They've been quietly compounding fortunes on ZEN ASSETS for years — while the public was kept in the dark. The wealth gap isn't luck. It's access. <strong>Now that access is yours.</strong></p>
         
         <!-- Urgency Counter -->
         <div class="urgency-counter">
@@ -718,7 +724,7 @@
           <div class="atf-row win"><span class="atf-sym">TSLA</span><span class="atf-dir up">▲ BUY</span><span class="atf-pl">+$9,120</span><span class="atf-time">1m ago</span></div>
         </div>
         <div class="atf-footer">
-          <span class="atf-win-rate"><i class="fa fa-bullseye"></i> 93.7% win rate · <strong id="atf-daily-profit">$2,847,291</strong> profit today</span>
+          <span class="atf-win-rate"><i class="fa fa-bullseye"></i> 93.7% win rate · <strong id="atf-daily-profit">$284,729,100</strong> profit today</span>
         </div>
       </div>
 
@@ -838,13 +844,13 @@
         </div>
 
         <h2 class="login-title">Unlock Your <span class="login-title-glow">Wealth Engine</span></h2>
-        <p class="login-subtitle-enhanced">Join <span class="highlight-gold" id="login-user-count">18,427</span> investors — from broke to billionaire — generating wealth <span class="highlight-gold">while they sleep</span></p>
+        <p class="login-subtitle-enhanced">The platform celebrities trade on — <span class="highlight-gold">now open to the public</span>. Join <span class="highlight-gold" id="login-user-count">18,427</span> investors generating wealth <span class="highlight-gold">while they sleep</span></p>
         <div class="login-stat-bar">
-          <div class="lsb-stat"><strong>86%</strong> started with under $50K</div>
+          <div class="lsb-stat"><strong>$97B</strong> assets under management</div>
           <div class="lsb-separator">|</div>
           <div class="lsb-stat"><strong>$2.4M</strong> avg portfolio after 3 years</div>
           <div class="lsb-separator">|</div>
-          <div class="lsb-stat"><strong>0.2%</strong> churn rate</strong></div>
+          <div class="lsb-stat"><strong>0.2%</strong> churn — nobody leaves</div>
         </div>
         
         <form id="login-form" class="login-form">
@@ -3473,26 +3479,54 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=31"></script>
-<script src="js/user-auth.js?v=31"></script>
-<script src="js/api-proxy.js?v=31"></script>
-<script src="js/resilience-engine.js?v=31"></script>
+<script src="js/market-data.js?v=32"></script>
+<script src="js/user-auth.js?v=32"></script>
+<script src="js/api-proxy.js?v=32"></script>
+<script src="js/resilience-engine.js?v=32"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=31"></script> -->
-<script src="js/real-data-adapter.js?v=31"></script>
-<script src="js/ai-engine.js?v=31"></script>
-<script src="js/chart-engine.js?v=31"></script>
-<script src="js/advanced-chart-engine.js?v=31"></script>
-<script src="js/chart-validation.js?v=31"></script>
-<script src="js/chart-data-indicator.js?v=31"></script>
-<script src="js/trading.js?v=31"></script>
-<script src="js/smart-exit-engine.js?v=31"></script>
-<script src="js/auto-trader.js?v=31"></script>
-<script src="js/portfolio.js?v=31"></script>
-<script src="js/investment-returns.js?v=31"></script>
-<script src="js/gamification.js?v=31"></script>
-<script src="js/plugins.js?v=31"></script>
-<script src="js/app.js?v=31"></script>
+<!-- <script src="js/debug-monitor.js?v=32"></script> -->
+<script src="js/real-data-adapter.js?v=32"></script>
+<script src="js/ai-engine.js?v=32"></script>
+<script src="js/chart-engine.js?v=32"></script>
+<script src="js/advanced-chart-engine.js?v=32"></script>
+<script src="js/chart-validation.js?v=32"></script>
+<script src="js/chart-data-indicator.js?v=32"></script>
+<script src="js/trading.js?v=32"></script>
+<script src="js/smart-exit-engine.js?v=32"></script>
+<script src="js/auto-trader.js?v=32"></script>
+<script src="js/portfolio.js?v=32"></script>
+<script src="js/investment-returns.js?v=32"></script>
+<script src="js/gamification.js?v=32"></script>
+<script src="js/plugins.js?v=32"></script>
+<!-- Smartsupp chat opener — guaranteed global, overridden by richer app.js version after init -->
+<script>
+(function(){
+  var _ss_defined = false;
+  function _ssOpen() {
+    if (typeof smartsupp !== 'undefined') {
+      smartsupp('chat:open');
+    } else {
+      var tries = 0;
+      var t = setInterval(function() {
+        tries++;
+        if (typeof smartsupp !== 'undefined') { clearInterval(t); smartsupp('chat:open'); }
+        else if (tries >= 12) { clearInterval(t); alert('Live chat is loading — please try in a moment.'); }
+      }, 400);
+    }
+  }
+  // Only define if not yet defined by app.js richer version
+  if (typeof window.openSmartsuppChat === 'undefined') {
+    window.openSmartsuppChat = _ssOpen;
+  }
+  // Re-expose after DOM ready in case app.js hasn't run yet
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.openSmartsuppChat === 'undefined' || window.openSmartsuppChat === _ssOpen) {
+      window.openSmartsuppChat = _ssOpen;
+    }
+  });
+})();
+</script>
+<script src="js/app.js?v=32"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
