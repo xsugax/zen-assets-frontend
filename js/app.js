@@ -2912,35 +2912,44 @@ const App = (() => {
       alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
     };
 
-    // ── Smartsupp Live Chat Integration ──
-    // Opens the Smartsupp chat window, pre-identifies the visitor,
-    // and sends a greeting message so the Manager knows the context.
+    //  Tawk.to Live Chat Integration 
+    // Opens the Tawk.to chat widget and pre-identifies the visitor.
     window.openSmartsuppChat = () => {
       const _doOpen = () => {
         // Tag visitor with identity if logged in
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
           const session = UserAuth.getSession();
           if (session) {
-            smartsupp('name',  session.fullName || session.name || 'Investor');
-            smartsupp('email', session.email);
-            smartsupp('variables', [
-              { label: 'Membership Tier',  value: (session.tier || 'Bronze').toUpperCase() },
-              { label: 'Account Type',     value: 'Investment Client' },
-              { label: 'Platform',         value: 'ZEN ASSETS' }
-            ]);
+            try {
+              Tawk_API.setAttributes({
+                'name':  session.fullName || session.name || 'Investor',
+                'email': session.email
+              }, function(error){});
+            } catch(e) {}
           }
         }
         // Open the chat widget
-        smartsupp('chat:open');
-        // Send a pre-filled starter message so the Manager sees context immediately
-        setTimeout(() => {
-          try {
-            smartsupp('chat:message:send', {
-              text: 'Hi, I have questions about getting started and how to begin investing with ZEN ASSETS. Can the Manager help me?'
-            });
-          } catch(e) { /* API may not support this — silently ignore */ }
-        }, 600);
+        try { Tawk_API.maximize(); } catch(e) {}
       };
+
+      if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) {
+        _doOpen();
+      } else {
+        // Tawk.to loader may still be fetching  wait up to 4s
+        showToast('Connecting to live chat', 'info');
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          if (typeof Tawk_API !== 'undefined' && Tawk_API.maximize) {
+            clearInterval(poll);
+            _doOpen();
+          } else if (attempts >= 8) {
+            clearInterval(poll);
+            showToast('Chat unavailable  please email support@zenassets.com', 'error');
+          }
+        }, 500);
+      }
+    };
 
       if (typeof smartsupp !== 'undefined') {
         _doOpen();
