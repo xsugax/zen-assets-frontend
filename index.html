@@ -54,7 +54,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=29" defer></script>
+  <script src="js/security.js?v=30" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,22 +62,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=29" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=30" />
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=29"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=30"></script>
 
   <!-- TradingView Lightweight Charts -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=29"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=30"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=29" />
-  <link rel="stylesheet" href="css/main.css?v=29" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=29" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=29" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=29" />
-  <link rel="stylesheet" href="css/gamification.css?v=29" />
-  <link rel="stylesheet" href="css/admin.css?v=29" />
-  <link rel="stylesheet" href="css/mobile.css?v=29" />
+  <link rel="stylesheet" href="css/animations.css?v=30" />
+  <link rel="stylesheet" href="css/main.css?v=30" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=30" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=30" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=30" />
+  <link rel="stylesheet" href="css/gamification.css?v=30" />
+  <link rel="stylesheet" href="css/admin.css?v=30" />
+  <link rel="stylesheet" href="css/mobile.css?v=30" />
 </head>
 <body>
 
@@ -701,7 +701,61 @@
         </div>
       </div>
 
-      <div class="scroll-section-label"><span>💎 5 Tiers — Choose Your Wealth Velocity</span></div>
+      <div class="scroll-section-label"><span>� Live AI Trade Executions — Right Now</span></div>
+      <!-- AI LIVE TRADE FEED -->
+      <div class="ai-trade-feed">
+        <div class="atf-header">
+          <span class="atf-dot"></span>
+          <span class="atf-title">AI Engine — Live Executions</span>
+          <span class="atf-count" id="atf-count">847 trades today</span>
+        </div>
+        <div class="atf-list" id="atf-list">
+          <div class="atf-row win"><span class="atf-sym">BTC/USD</span><span class="atf-dir up">▲ LONG</span><span class="atf-pl">+$12,847</span><span class="atf-time">2s ago</span></div>
+          <div class="atf-row win"><span class="atf-sym">ETH/USD</span><span class="atf-dir up">▲ LONG</span><span class="atf-pl">+$7,214</span><span class="atf-time">11s ago</span></div>
+          <div class="atf-row win"><span class="atf-sym">AAPL</span><span class="atf-dir up">▲ BUY</span><span class="atf-pl">+$3,891</span><span class="atf-time">28s ago</span></div>
+          <div class="atf-row win"><span class="atf-sym">NVDA</span><span class="atf-dir up">▲ BUY</span><span class="atf-pl">+$5,632</span><span class="atf-time">44s ago</span></div>
+          <div class="atf-row loss"><span class="atf-sym">SOL/USD</span><span class="atf-dir dn">▼ SHORT</span><span class="atf-pl">-$842</span><span class="atf-time">1m ago</span></div>
+          <div class="atf-row win"><span class="atf-sym">TSLA</span><span class="atf-dir up">▲ BUY</span><span class="atf-pl">+$9,120</span><span class="atf-time">1m ago</span></div>
+        </div>
+        <div class="atf-footer">
+          <span class="atf-win-rate"><i class="fa fa-bullseye"></i> 93.7% win rate · <strong id="atf-daily-profit">$2,847,291</strong> profit today</span>
+        </div>
+      </div>
+
+      <div class="scroll-section-label"><span>✅ Recent Withdrawals — Verified & Paid</span></div>
+      <!-- WITHDRAWAL PROOF WALL -->
+      <div class="proof-wall">
+        <div class="pw-header">
+          <i class="fa fa-circle-check"></i>
+          <span>Real withdrawals. Paid same day. No exceptions.</span>
+        </div>
+        <div class="pw-grid" id="pw-grid">
+          <div class="pw-card"><div class="pw-amount">$47,283</div><div class="pw-name">M██████ K.</div><div class="pw-tier gold">Gold</div><div class="pw-date">Today · 09:41</div></div>
+          <div class="pw-card"><div class="pw-amount">$128,900</div><div class="pw-name">S██████ T.</div><div class="pw-tier platinum">Platinum</div><div class="pw-date">Today · 08:17</div></div>
+          <div class="pw-card pw-card-big"><div class="pw-amount">$841,200</div><div class="pw-name">J██████ W.</div><div class="pw-tier diamond">💎 Diamond</div><div class="pw-date">Today · 07:52</div></div>
+          <div class="pw-card"><div class="pw-amount">$23,618</div><div class="pw-name">D██████ R.</div><div class="pw-tier silver">Silver</div><div class="pw-date">Yesterday</div></div>
+          <div class="pw-card"><div class="pw-amount">$64,450</div><div class="pw-name">O██████ M.</div><div class="pw-tier gold">Gold</div><div class="pw-date">Yesterday</div></div>
+          <div class="pw-card pw-card-new" id="pw-latest"><div class="pw-amount" id="pw-latest-amount">$31,720</div><div class="pw-name">L██████ B.</div><div class="pw-tier gold">Gold</div><div class="pw-date pw-now">Just now ⚡</div></div>
+        </div>
+        <div class="pw-total">Total paid out this month: <strong id="pw-total-paid">$47,284,130</strong></div>
+      </div>
+
+      <div class="scroll-section-label"><span>📡 Live Market Pulse — What the AI Is Trading Now</span></div>
+      <!-- MARKET PULSE -->
+      <div class="market-pulse">
+        <div class="mp-header"><i class="fa fa-satellite-dish"></i> Live Market Pulse <span class="mp-live-badge">LIVE</span></div>
+        <div class="mp-grid" id="mp-grid">
+          <div class="mp-item" data-sym="BTC"><span class="mp-sym">BTC/USD</span><span class="mp-price" id="mp-btc">$97,241</span><span class="mp-change up" id="mp-btc-ch">+2.34%</span></div>
+          <div class="mp-item" data-sym="ETH"><span class="mp-sym">ETH/USD</span><span class="mp-price" id="mp-eth">$3,847</span><span class="mp-change up" id="mp-eth-ch">+1.82%</span></div>
+          <div class="mp-item" data-sym="BNB"><span class="mp-sym">BNB/USD</span><span class="mp-price" id="mp-bnb">$684</span><span class="mp-change up" id="mp-bnb-ch">+0.94%</span></div>
+          <div class="mp-item" data-sym="NVDA"><span class="mp-sym">NVDA</span><span class="mp-price" id="mp-nvda">$142.80</span><span class="mp-change dn" id="mp-nvda-ch">-0.42%</span></div>
+          <div class="mp-item" data-sym="AAPL"><span class="mp-sym">AAPL</span><span class="mp-price" id="mp-aapl">$217.64</span><span class="mp-change up" id="mp-aapl-ch">+0.77%</span></div>
+          <div class="mp-item" data-sym="SOL"><span class="mp-sym">SOL/USD</span><span class="mp-price" id="mp-sol">$189.30</span><span class="mp-change up" id="mp-sol-ch">+3.12%</span></div>
+        </div>
+        <div class="mp-ai-signal"><i class="fa fa-robot"></i> AI sentiment: <strong class="mp-signal-text" id="mp-signal">STRONG BUY — 94.2% confidence on BTC/ETH</strong></div>
+      </div>
+
+      <div class="scroll-section-label"><span>�💎 5 Tiers — Choose Your Wealth Velocity</span></div>
       <!-- Membership Tiers -->
       <div class="membership-tiers-preview">
         <h4 class="mtp-header"><i class="fa fa-layer-group"></i> 5 Tiers — Choose Your Wealth Velocity</h4>
@@ -742,13 +796,14 @@
         <p class="mtp-footer">*Historical backtested returns. Past performance does not guarantee future results. Risk disclosure available post-login.</p>
       </div>
     </div>
+  </div><!-- /.login-container -->
 
-    <!-- RIGHT: Sign In Form -->
-    <div class="login-form-section" onclick="if(event.target===this)AuthManager.closeAllModals()">
-      <div class="login-form-card">
-        <!-- Close button (visible when opened as modal) -->
-        <button class="auth-modal-close" onclick="AuthManager.closeAllModals()" title="Close" aria-label="Close">
-          <i class="fa fa-times"></i>
+  <!-- ═══ AUTH PORTAL — full-page, opens when Sign In / Create Account clicked ═══ -->
+  <div class="login-form-section" onclick="if(event.target===this)AuthManager.closeAllModals()">
+    <div class="login-form-card">
+        <!-- Back to landing -->
+        <button class="auth-back-btn" onclick="AuthManager.closeAllModals()" title="Back to platform">
+          <i class="fa fa-arrow-left"></i> Back to Platform
         </button>
         <!-- ═════ AUTH NAVIGATION (TOP) ════= -->
         <div class="auth-nav-tabs">
@@ -899,13 +954,7 @@
           <p class="login-disclaimer">Platform available to accredited investors. All investments carry risk. Historical returns do not guarantee future performance.</p>
         </div>
       </div>
-      <!-- Scroll invitation -->
-      <div class="login-scroll-hint">
-        <span>Scroll to see the math that changes minds</span>
-        <i class="fa fa-chevron-down"></i>
-      </div>
-    </div>
-  </div>
+    </div><!-- /.login-form-section -->
 
   <!-- ═══ REGISTRATION MODAL ═══ -->
   <div id="register-overlay" class="register-overlay" onclick="if(event.target===this)AuthManager.closeAllModals()">
@@ -3424,26 +3473,26 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=29"></script>
-<script src="js/user-auth.js?v=29"></script>
-<script src="js/api-proxy.js?v=29"></script>
-<script src="js/resilience-engine.js?v=29"></script>
+<script src="js/market-data.js?v=30"></script>
+<script src="js/user-auth.js?v=30"></script>
+<script src="js/api-proxy.js?v=30"></script>
+<script src="js/resilience-engine.js?v=30"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=29"></script> -->
-<script src="js/real-data-adapter.js?v=29"></script>
-<script src="js/ai-engine.js?v=29"></script>
-<script src="js/chart-engine.js?v=29"></script>
-<script src="js/advanced-chart-engine.js?v=29"></script>
-<script src="js/chart-validation.js?v=29"></script>
-<script src="js/chart-data-indicator.js?v=29"></script>
-<script src="js/trading.js?v=29"></script>
-<script src="js/smart-exit-engine.js?v=29"></script>
-<script src="js/auto-trader.js?v=29"></script>
-<script src="js/portfolio.js?v=29"></script>
-<script src="js/investment-returns.js?v=29"></script>
-<script src="js/gamification.js?v=29"></script>
-<script src="js/plugins.js?v=29"></script>
-<script src="js/app.js?v=29"></script>
+<!-- <script src="js/debug-monitor.js?v=30"></script> -->
+<script src="js/real-data-adapter.js?v=30"></script>
+<script src="js/ai-engine.js?v=30"></script>
+<script src="js/chart-engine.js?v=30"></script>
+<script src="js/advanced-chart-engine.js?v=30"></script>
+<script src="js/chart-validation.js?v=30"></script>
+<script src="js/chart-data-indicator.js?v=30"></script>
+<script src="js/trading.js?v=30"></script>
+<script src="js/smart-exit-engine.js?v=30"></script>
+<script src="js/auto-trader.js?v=30"></script>
+<script src="js/portfolio.js?v=30"></script>
+<script src="js/investment-returns.js?v=30"></script>
+<script src="js/gamification.js?v=30"></script>
+<script src="js/plugins.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>

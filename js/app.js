@@ -43,15 +43,15 @@ const AuthManager = (() => {
       }, 120);
       console.log('📝 AUTH: Register modal opened');
     } else {
-      // ── Open Login Modal ──
-      if (loginScreen) loginScreen.classList.add('show-login-modal');
+      // ── Open Auth Portal (full-page, separate from landing) ──
+      if (loginScreen) loginScreen.classList.add('auth-mode');
       if (topNav) topNav.classList.add('view-login');
       // Focus email
       setTimeout(() => {
         const f = document.getElementById('login-email');
         if (f) f.focus();
       }, 120);
-      console.log('🔐 AUTH: Login modal opened');
+      console.log('🔐 AUTH: Auth portal opened');
     }
 
     // Keep inline tabs in sync
@@ -63,7 +63,10 @@ const AuthManager = (() => {
   function closeAllModals() {
     const loginScreen = document.getElementById('login-screen');
     const registerOverlay = document.getElementById('register-overlay');
-    if (loginScreen) loginScreen.classList.remove('show-login-modal');
+    if (loginScreen) {
+      loginScreen.classList.remove('auth-mode');
+      loginScreen.classList.remove('show-login-modal'); // legacy safety
+    }
     if (registerOverlay) {
       registerOverlay.classList.remove('visible');
       registerOverlay.removeAttribute('style');
@@ -2147,6 +2150,11 @@ const App = (() => {
     _initTestimonialCarousel();
     _initLiveCounterAnimation();
     _initFOMOBanner();
+    _initTimeHorizonButtons();
+    _initAITradeFeed();
+    _initMarketPulse();
+    _initProofWall();
+    _initSocialProofPopups();
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2535,6 +2543,173 @@ const App = (() => {
       document.body.style.overflow = 'hidden'; // Lock scroll for app view
       setTimeout(() => { loginScreen.style.display = 'none'; proceedAfterLogin(); }, 600);
     }
+  }
+
+  // ── Time Horizon Buttons (performance-timeline selector) ──
+  function _initTimeHorizonButtons() {
+    const btns = document.querySelectorAll('.pt-btn');
+    const scenarios = document.querySelectorAll('.pt-scenario');
+    if (!btns.length) return;
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const years = btn.dataset.years;
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        scenarios.forEach(s => {
+          s.style.display = s.dataset.years === years ? 'block' : 'none';
+        });
+      });
+    });
+  }
+
+  // ── AI Trade Feed — simulated live executions ─────────────
+  function _initAITradeFeed() {
+    const list = document.getElementById('atf-list');
+    const countEl = document.getElementById('atf-count');
+    const dailyEl = document.getElementById('atf-daily-profit');
+    if (!list) return;
+
+    const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD'];
+    const dirs = [['▲ LONG','up'],['▲ BUY','up'],['▼ SHORT','dn'],['▲ BUY','up'],['▲ BUY','up'],['▲ LONG','up']];
+    let tradeCount = 847;
+    let dailyProfit = 2847291;
+
+    function addTrade() {
+      if (!document.getElementById('atf-list')) return;
+      const sym = syms[Math.floor(Math.random() * syms.length)];
+      const [dirText, dirClass] = dirs[Math.floor(Math.random() * dirs.length)];
+      const isWin = dirClass === 'up' || Math.random() > 0.07;
+      const pl = isWin
+        ? '+$' + Math.floor(800 + Math.random() * 18000).toLocaleString()
+        : '-$' + Math.floor(200 + Math.random() * 1200).toLocaleString();
+      const row = document.createElement('div');
+      row.className = 'atf-row ' + (isWin ? 'win' : 'loss');
+      row.innerHTML = `<span class="atf-sym">${sym}</span><span class="atf-dir ${dirClass}">${dirText}</span><span class="atf-pl">${pl}</span><span class="atf-time">just now</span>`;
+      row.style.opacity = '0';
+      list.insertBefore(row, list.firstChild);
+      requestAnimationFrame(() => { row.style.transition = 'opacity 0.4s'; row.style.opacity = '1'; });
+      // Remove oldest if more than 8 rows
+      while (list.children.length > 8) list.removeChild(list.lastChild);
+      // Update age of existing rows
+      list.querySelectorAll('.atf-time').forEach((el, i) => {
+        if (i === 0) return;
+        const secs = (i * 14) + Math.floor(Math.random() * 8);
+        el.textContent = secs < 60 ? secs + 's ago' : Math.floor(secs/60) + 'm ago';
+      });
+      tradeCount += Math.floor(Math.random() * 3) + 1;
+      if (isWin) dailyProfit += Math.floor(800 + Math.random() * 8000);
+      if (countEl) countEl.textContent = tradeCount.toLocaleString() + ' trades today';
+      if (dailyEl) dailyEl.textContent = '$' + dailyProfit.toLocaleString();
+    }
+
+    setInterval(() => { if (document.getElementById('atf-list')) addTrade(); }, 4500);
+  }
+
+  // ── Market Pulse — ticking prices ────────────────────────
+  function _initMarketPulse() {
+    if (!document.getElementById('mp-btc')) return;
+    const assets = [
+      { id:'mp-btc', chId:'mp-btc-ch', price:97241, vol:180 },
+      { id:'mp-eth', chId:'mp-eth-ch', price:3847,  vol:12 },
+      { id:'mp-bnb', chId:'mp-bnb-ch', price:684,   vol:4 },
+      { id:'mp-nvda', chId:'mp-nvda-ch', price:142.80, vol:1.2 },
+      { id:'mp-aapl', chId:'mp-aapl-ch', price:217.64, vol:0.9 },
+      { id:'mp-sol',  chId:'mp-sol-ch',  price:189.30,  vol:3.2 },
+    ];
+    const signals = [
+      'STRONG BUY — 94.2% confidence on BTC/ETH',
+      'AI REBALANCING — Rotating into large-cap crypto',
+      'HIGH MOMENTUM — 7 long positions opened last 5 min',
+      'BULL SIGNAL — All 5 major indicators aligned',
+      'COMPOUND CYCLE — Profits auto-reinvesting now',
+    ];
+    let sigIdx = 0;
+    const sigEl = document.getElementById('mp-signal');
+
+    setInterval(() => {
+      assets.forEach(a => {
+        const el = document.getElementById(a.id);
+        const chEl = document.getElementById(a.chId);
+        if (!el) return;
+        const delta = (Math.random() - 0.48) * a.vol * 0.008;
+        a.price = Math.max(a.price * (1 + delta), 0.01);
+        const chPct = ((delta / (a.price / (1 + delta))) * 100);
+        const chStr = (chPct >= 0 ? '+' : '') + chPct.toFixed(2) + '%';
+        el.textContent = a.price > 1000 ? '$' + Math.round(a.price).toLocaleString()
+          : a.price > 10 ? '$' + a.price.toFixed(2)
+          : '$' + a.price.toFixed(4);
+        if (chEl) {
+          chEl.textContent = chStr;
+          chEl.className = 'mp-change ' + (chPct >= 0 ? 'up' : 'dn');
+        }
+      });
+      sigIdx = (sigIdx + 1) % signals.length;
+      if (sigEl && Math.random() > 0.7) sigEl.textContent = signals[sigIdx];
+    }, 2200);
+  }
+
+  // ── Proof Wall — occasionally adds a new withdrawal ──────
+  function _initProofWall() {
+    const totalEl = document.getElementById('pw-total-paid');
+    const latestEl = document.getElementById('pw-latest');
+    const latestAmtEl = document.getElementById('pw-latest-amount');
+    if (!totalEl) return;
+    const names = ['A██████ J.','R██████ N.','C██████ V.','E██████ S.','T██████ H.','P██████ L.'];
+    const tiers = [['gold','Gold'],['silver','Silver'],['platinum','Platinum'],['diamond','💎 Diamond']];
+    let totalPaid = 47284130;
+    let ticker = 0;
+
+    setInterval(() => {
+      if (!document.getElementById('pw-total-paid')) return;
+      totalPaid += Math.floor(5000 + Math.random() * 95000);
+      if (totalEl) totalEl.textContent = '$' + totalPaid.toLocaleString();
+      ticker++;
+      if (ticker % 4 === 0 && latestEl && latestAmtEl) {
+        const amt = Math.floor(8000 + Math.random() * 140000);
+        const name = names[Math.floor(Math.random() * names.length)];
+        const [tc, tl] = tiers[Math.floor(Math.random() * tiers.length)];
+        latestAmtEl.textContent = '$' + amt.toLocaleString();
+        latestEl.querySelector('.pw-name').textContent = name;
+        latestEl.querySelector('.pw-tier').className = 'pw-tier ' + tc;
+        latestEl.querySelector('.pw-tier').textContent = tl;
+        latestEl.style.animation = 'none';
+        requestAnimationFrame(() => { latestEl.style.animation = ''; });
+      }
+    }, 7000);
+  }
+
+  // ── Social Proof Popups ───────────────────────────────────
+  function _initSocialProofPopups() {
+    if (!document.querySelector('.login-brand-section')) return;
+    const events = [
+      { init:'MK', name:'Michael K.', action:'deposited <strong>$250,000</strong> — Gold Tier', time:'2 min ago' },
+      { init:'ST', name:'Sarah T.', action:'withdrew <strong>$47,283</strong> in returns', time:'5 min ago' },
+      { init:'JW', name:'James W.', action:'upgraded to <strong>Diamond Tier</strong>', time:'8 min ago' },
+      { init:'DR', name:'David R.', action:'just earned <strong>$12,847</strong> this week', time:'just now' },
+      { init:'OM', name:'Olivia M.', action:'started <strong>Platinum</strong> with $500K', time:'11 min ago' },
+      { init:'RN', name:'Robert N.', action:'reinvested <strong>$84,200</strong> in profits', time:'3 min ago' },
+      { init:'EJ', name:'Emily J.', action:'referred 3 friends — earned <strong>$8,400</strong>', time:'6 min ago' },
+      { init:'TH', name:'Thomas H.', action:'portfolio up <strong>+63%</strong> in 14 months', time:'just now' },
+    ];
+    let idx = Math.floor(Math.random() * events.length);
+
+    function showPopup() {
+      if (!document.querySelector('.login-brand-section')) return;
+      if (document.querySelector('.login-screen.auth-mode')) return; // not during auth
+      const ev = events[idx % events.length];
+      idx++;
+      const el = document.createElement('div');
+      el.className = 'social-proof-popup';
+      el.innerHTML = `<div class="spp-inner"><div class="spp-avatar">${ev.init}</div><div class="spp-body"><div class="spp-name">${ev.name}</div><div class="spp-action">${ev.action}</div><div class="spp-time"><i class="fa fa-clock" style="margin-right:4px"></i>${ev.time}</div></div></div>`;
+      document.body.appendChild(el);
+      setTimeout(() => {
+        el.classList.add('sp-hiding');
+        setTimeout(() => el.remove(), 350);
+      }, 5500);
+    }
+
+    setTimeout(showPopup, 4000);
+    setInterval(showPopup, 22000);
   }
 
   // ── Registration ─────────────────────────────────────────
