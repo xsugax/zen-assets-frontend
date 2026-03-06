@@ -25,14 +25,14 @@
   <!-- TradingView Lightweight Charts -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=23" />
-  <link rel="stylesheet" href="css/main.css?v=23" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=23" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=23" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=23" />
-  <link rel="stylesheet" href="css/gamification.css?v=23" />
-  <link rel="stylesheet" href="css/admin.css?v=23" />
-  <link rel="stylesheet" href="css/mobile.css?v=23" />
+  <link rel="stylesheet" href="css/animations.css?v=22" />
+  <link rel="stylesheet" href="css/main.css?v=22" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=22" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=22" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=22" />
+  <link rel="stylesheet" href="css/gamification.css?v=22" />
+  <link rel="stylesheet" href="css/admin.css?v=22" />
+  <link rel="stylesheet" href="css/mobile.css?v=22" />
 </head>
 <body>
 
@@ -790,6 +790,25 @@
     </div>
   </div>
 </div>
+
+<!-- Smartsupp Live Chat Widget -->
+<script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = '70cebe69fb2caed111b19f82477bc2cfb8b6bdc9';
+  _smartsupp.cookieDomain = window.location.hostname;
+  // Hide default Smartsupp button (we use our own gold button)
+  _smartsupp.hideWidget = true;
+  // Force dark mode always
+  _smartsupp.theme = 'dark';
+  _smartsupp.color = '#d4a574';
+  window.smartsupp||(function(d) {
+    var s,c,o=smartsupp=function(){ o._.push(arguments)}; o._=[];
+    s=d.getElementsByTagName('script')[0]; c=d.createElement('script');
+    c.type='text/javascript'; c.charset='utf-8'; c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?'; s.parentNode.insertBefore(c,s);
+  })(document);
+</script>
+<noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 
 <!-- ═══════ QUANTUM BOOT SCREEN ═══════ -->
 <div id="loading-screen" style="display:none">
@@ -2735,7 +2754,7 @@
               </div>
               <div class="ff-support">
                 <i class="fa fa-headset"></i>
-                <span>Need help? Contact <a href="mailto:support@zenassets.com" style="color:#d4a574">support@zenassets.com</a> or <a href="#" onclick="openSmartsuppChat(); return false;" style="color:#d4a574">start live chat now</a></span>
+                <span>Need help? Contact <a href="mailto:support@zenassets.com" style="color:#d4a574">support@zenassets.com</a> or use live chat 24/7</span>
               </div>
             </div>
           </div>
@@ -3064,21 +3083,21 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=23"></script>
-<script src="js/user-auth.js?v=23"></script>
-<script src="js/real-data-adapter.js?v=23"></script>
-<script src="js/ai-engine.js?v=23"></script>
-<script src="js/chart-engine.js?v=23"></script>
-<script src="js/advanced-chart-engine.js?v=23"></script>
-<script src="js/chart-data-indicator.js?v=23"></script>
-<script src="js/trading.js?v=23"></script>
-<script src="js/smart-exit-engine.js?v=23"></script>
-<script src="js/auto-trader.js?v=23"></script>
-<script src="js/portfolio.js?v=23"></script>
-<script src="js/investment-returns.js?v=23"></script>
-<script src="js/gamification.js?v=23"></script>
-<script src="js/plugins.js?v=23"></script>
-<script src="js/app.js?v=23"></script>
+<script src="js/market-data.js?v=22"></script>
+<script src="js/user-auth.js?v=22"></script>
+<script src="js/real-data-adapter.js?v=22"></script>
+<script src="js/ai-engine.js?v=22"></script>
+<script src="js/chart-engine.js?v=22"></script>
+<script src="js/advanced-chart-engine.js?v=22"></script>
+<script src="js/chart-data-indicator.js?v=22"></script>
+<script src="js/trading.js?v=22"></script>
+<script src="js/smart-exit-engine.js?v=22"></script>
+<script src="js/auto-trader.js?v=22"></script>
+<script src="js/portfolio.js?v=22"></script>
+<script src="js/investment-returns.js?v=22"></script>
+<script src="js/gamification.js?v=22"></script>
+<script src="js/plugins.js?v=22"></script>
+<script src="js/app.js?v=22"></script>
 
 <!-- Surge Badge Killer — removes any injected branding on ALL devices -->
 <script>
@@ -3130,41 +3149,6 @@
     }).observe(document.body||document.documentElement,{childList:true,subtree:true});
   }
 })();
-</script>
-
-<!-- ═══ SMARTSUPP LIVE CHAT ═══════════════════════════════════
-     1. Sign up / log in at https://www.smartsupp.com
-     2. Go to Settings → Chat box → Installation
-     3. Copy your unique KEY and replace YOUR_SMARTSUPP_KEY below
-════════════════════════════════════════════════════════════ -->
-<script type="text/javascript">
-  var _smartsupp = _smartsupp || {};
-  _smartsupp.key = '3f606a572686c369eabd5afcd21046e7b6af6239';
-  _smartsupp.name  = 'ZEN ASSETS Support';
-  _smartsupp.hideWidget = true;
-  _smartsupp.color = '#d4a574';
-  _smartsupp.alignX  = 'right';
-  _smartsupp.alignY  = 'bottom';
-  _smartsupp.offsetX = 20;
-  _smartsupp.offsetY = 20;
-  window.smartsupp||(function(d){
-    var s,c,o=window.smartsupp=function(){o._.push(arguments)};o._=[];
-    s=d.createElement('script');s.type='text/javascript';
-    s.charset='utf-8';s.async=true;
-    s.src='https://www.smartsupp.com/loader.js?key='+_smartsupp.key;
-    c=d.getElementsByTagName('script')[0];
-    c.parentNode.insertBefore(s,c);
-  })(document);
-  document.addEventListener('DOMContentLoaded', function(){
-    var session = null;
-    try {
-      session = JSON.parse(localStorage.getItem('zen_session') || sessionStorage.getItem('zen_session') || 'null');
-    } catch(e){}
-    if (session && session.email) {
-      smartsupp('name',  session.fullName || session.name || 'Investor');
-      smartsupp('email', session.email);
-    }
-  });
 </script>
 </body>
 </html>
