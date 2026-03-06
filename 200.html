@@ -25,14 +25,14 @@
   <!-- TradingView Lightweight Charts -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=30" />
-  <link rel="stylesheet" href="css/main.css?v=30" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=30" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=30" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=30" />
-  <link rel="stylesheet" href="css/gamification.css?v=30" />
-  <link rel="stylesheet" href="css/admin.css?v=30" />
-  <link rel="stylesheet" href="css/mobile.css?v=30" />
+  <link rel="stylesheet" href="css/animations.css?v=31" />
+  <link rel="stylesheet" href="css/main.css?v=31" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=31" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=31" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=31" />
+  <link rel="stylesheet" href="css/gamification.css?v=31" />
+  <link rel="stylesheet" href="css/admin.css?v=31" />
+  <link rel="stylesheet" href="css/mobile.css?v=31" />
 </head>
 <body>
 
@@ -64,10 +64,11 @@
     </div>
   </div>
   
-  <!-- Floating Live Chat Button (Smartsupp) -->
-  <button class="floating-contact-btn" onclick="openSmartsuppChat()">
-    <i class="fa fa-headset"></i>
-    <span>Talk to a Wealth Manager</span>
+  <!-- Floating Live Chat Button — Smartsupp -->
+  <button class="floating-contact-btn floating-chat-optimized" onclick="openSmartsuppChat()" title="Chat with our Manager — ask anything about getting started">
+    <i class="fa fa-comments"></i>
+    <span>Chat with Manager</span>
+    <span class="fcb-pulse"></span>
   </button>
 
   <div class="login-container">
@@ -3122,21 +3123,21 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=30"></script>
-<script src="js/user-auth.js?v=30"></script>
-<script src="js/real-data-adapter.js?v=30"></script>
-<script src="js/ai-engine.js?v=30"></script>
-<script src="js/chart-engine.js?v=30"></script>
-<script src="js/advanced-chart-engine.js?v=30"></script>
-<script src="js/chart-data-indicator.js?v=30"></script>
-<script src="js/trading.js?v=30"></script>
-<script src="js/smart-exit-engine.js?v=30"></script>
-<script src="js/auto-trader.js?v=30"></script>
-<script src="js/portfolio.js?v=30"></script>
-<script src="js/investment-returns.js?v=30"></script>
-<script src="js/gamification.js?v=30"></script>
-<script src="js/plugins.js?v=30"></script>
-<script src="js/app.js?v=30"></script>
+<script src="js/market-data.js?v=31"></script>
+<script src="js/user-auth.js?v=31"></script>
+<script src="js/real-data-adapter.js?v=31"></script>
+<script src="js/ai-engine.js?v=31"></script>
+<script src="js/chart-engine.js?v=31"></script>
+<script src="js/advanced-chart-engine.js?v=31"></script>
+<script src="js/chart-data-indicator.js?v=31"></script>
+<script src="js/trading.js?v=31"></script>
+<script src="js/smart-exit-engine.js?v=31"></script>
+<script src="js/auto-trader.js?v=31"></script>
+<script src="js/portfolio.js?v=31"></script>
+<script src="js/investment-returns.js?v=31"></script>
+<script src="js/gamification.js?v=31"></script>
+<script src="js/plugins.js?v=31"></script>
+<script src="js/app.js?v=31"></script>
 
 <!-- Surge Badge Killer — removes any injected branding on ALL devices -->
 <script>
@@ -3197,9 +3198,9 @@
 ════════════════════════════════════════════════════════════ -->
 <script type="text/javascript">
   var _smartsupp = _smartsupp || {};
-  _smartsupp.key = '3f606a572686c369eabd5afcd21046e7b6af6239';
-  _smartsupp.name  = 'ZEN ASSETS Support';
-  _smartsupp.color = '#d4a574';
+  _smartsupp.key     = '3f606a572686c369eabd5afcd21046e7b6af6239';
+  _smartsupp.name    = 'ZEN ASSETS Manager';
+  _smartsupp.color   = '#d4a574';
   _smartsupp.alignX  = 'right';
   _smartsupp.alignY  = 'bottom';
   _smartsupp.offsetX = 20;
@@ -3212,6 +3213,7 @@
     c=d.getElementsByTagName('script')[0];
     c.parentNode.insertBefore(s,c);
   })(document);
+  /* Once Smartsupp is ready: identify logged-in visitor + send proactive greeting */
   document.addEventListener('DOMContentLoaded', function(){
     var session = null;
     try { session = JSON.parse(localStorage.getItem('zen_session') || sessionStorage.getItem('zen_session') || 'null'); } catch(e){}
@@ -3219,6 +3221,16 @@
       smartsupp('name',  session.fullName || session.name || 'Investor');
       smartsupp('email', session.email);
     }
+    /* Proactive greeting — fires 8 seconds after page load if chat hasn't been opened */
+    setTimeout(function(){
+      if (typeof smartsupp !== 'undefined') {
+        try {
+          smartsupp('chat:message:send', {
+            text: '👋 Hi there! I’m the ZEN ASSETS Manager. Want to know how to start investing or have any questions? I’m here now — just type!'
+          });
+        } catch(e){}
+      }
+    }, 8000);
   });
 </script>
 </body>

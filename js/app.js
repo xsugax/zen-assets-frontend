@@ -2878,28 +2878,51 @@ const App = (() => {
     };
 
     // ── Smartsupp Live Chat Integration ──
-    // Smartsupp automatically stores conversation history per visitor
-    // so clients can see their full chat history when they return.
+    // Opens the Smartsupp chat window, pre-identifies the visitor,
+    // and sends a greeting message so the Manager knows the context.
     window.openSmartsuppChat = () => {
-      if (typeof smartsupp !== 'undefined') {
-        // Pass user identity so Smartsupp links history to this user
+      const _doOpen = () => {
+        // Tag visitor with identity if logged in
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
           const session = UserAuth.getSession();
           if (session) {
-            smartsupp('name', session.fullName || 'Trader');
+            smartsupp('name',  session.fullName || session.name || 'Investor');
             smartsupp('email', session.email);
             smartsupp('variables', [
-              { key: 'tier', label: 'Membership Tier', value: (session.tier || 'bronze').toUpperCase() },
-              { key: 'account_type', label: 'Account Type', value: 'Investment Client' }
+              { label: 'Membership Tier',  value: (session.tier || 'Bronze').toUpperCase() },
+              { label: 'Account Type',     value: 'Investment Client' },
+              { label: 'Platform',         value: 'ZEN ASSETS' }
             ]);
           }
         }
+        // Open the chat widget
         smartsupp('chat:open');
-      } else {
-        showToast('Live chat is connecting... Please try again in a moment.', 'info');
+        // Send a pre-filled starter message so the Manager sees context immediately
         setTimeout(() => {
-          if (typeof smartsupp !== 'undefined') smartsupp('chat:open');
-        }, 2000);
+          try {
+            smartsupp('chat:message:send', {
+              text: 'Hi, I have questions about getting started and how to begin investing with ZEN ASSETS. Can the Manager help me?'
+            });
+          } catch(e) { /* API may not support this — silently ignore */ }
+        }, 600);
+      };
+
+      if (typeof smartsupp !== 'undefined') {
+        _doOpen();
+      } else {
+        // Smartsupp loader may still be fetching — wait up to 4s
+        showToast('Connecting to live chat\u2026', 'info');
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          if (typeof smartsupp !== 'undefined') {
+            clearInterval(poll);
+            _doOpen();
+          } else if (attempts >= 8) {
+            clearInterval(poll);
+            showToast('Chat unavailable \u2014 please email support@zenassets.com', 'error');
+          }
+        }, 500);
       }
     };
 
