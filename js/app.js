@@ -185,7 +185,10 @@ const App = (() => {
     const loading = $('loading-screen');
     if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
     const app = $('app');
-    if (app) app.classList.add('app-visible');
+    if (app) {
+      app.style.display = 'block';
+      app.classList.add('app-visible');
+    }
     // startCursorTrail(); // Removed — clean professional UI
     startClock();
     initData();
@@ -2115,24 +2118,54 @@ const App = (() => {
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
-    
-    // Initialize auth system first
-    if (typeof UserAuth !== 'undefined') UserAuth.init();
-    
-    // Get DOM elements
-    const loginScreen = $('login-screen');
-    const appDiv = $('app');
 
-    // Always require fresh credentials on page load.
-    console.log('🔒 Fresh login required - showing login screen');
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (appDiv) appDiv.classList.remove('app-visible');
-    document.body.style.overflow = 'auto';
-    if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
-    
-    initLoginScreen();
-    initRegisterScreen();
-    initModalHandlers();
+    try {
+      // Initialize auth system first
+      if (typeof UserAuth !== 'undefined') UserAuth.init();
+
+      // Get DOM elements
+      const loginScreen = $('login-screen');
+      const appDiv = $('app');
+      const loadingScreen = $('loading-screen');
+
+      // Always require fresh credentials on page load.
+      console.log('🔒 Fresh login required - showing login screen');
+
+      // Hard-stop any stale loader overlay that can create a blank screen.
+      if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+        loadingScreen.style.opacity = '0';
+      }
+
+      // Ensure app shell is hidden until explicit successful login.
+      if (appDiv) {
+        appDiv.classList.remove('app-visible');
+        appDiv.style.display = 'none';
+      }
+
+      // Force login shell visible and interactive.
+      if (loginScreen) {
+        loginScreen.style.display = 'flex';
+        loginScreen.style.opacity = '1';
+        loginScreen.style.visibility = 'visible';
+        loginScreen.classList.add('show-login-modal');
+      }
+
+      document.body.style.overflow = 'auto';
+      if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
+
+      initLoginScreen();
+      initRegisterScreen();
+      initModalHandlers();
+    } catch (e) {
+      console.error('App init failed, forcing login fallback UI:', e);
+      const loginScreen = $('login-screen');
+      if (loginScreen) {
+        loginScreen.style.display = 'flex';
+        loginScreen.style.opacity = '1';
+        loginScreen.classList.add('show-login-modal');
+      }
+    }
   }
 
   function initLoginScreen() {
