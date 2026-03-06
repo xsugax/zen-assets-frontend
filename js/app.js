@@ -2402,7 +2402,7 @@ const App = (() => {
       }
       if (mode === 2) {
         const pnl = 4500 + Math.random() * 78000;
-        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> AI engine generated <strong>+${money(pnl).slice(1)}</strong> in the last cycle</span>`;
+        return `<span class="fomo-item"><i class="fa ${pick(icons)}"></i> AI engine generated <strong>+${money(pnl)}</strong> profit this cycle</span>`;
       }
       if (mode === 3) {
         liveInvestors += Math.floor(Math.random() * 5);

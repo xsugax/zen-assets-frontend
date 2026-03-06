@@ -32,10 +32,10 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Login container: full-viewport centering, no scroll */
+  /* Login container: full-viewport, stretches to fill height */
   .login-container {
     overflow: hidden !important;
-    align-items: center !important;
+    align-items: stretch !important;
     justify-content: center !important;
   }
 
@@ -44,12 +44,12 @@
     display: none !important;
   }
 
-  /* Right form section — centered, scroll within card only if needed */
+  /* Right form section — starts from top so full card is reachable via scroll */
   .login-form-section {
-    max-height: 100% !important;
-    padding: 0 16px !important;
+    height: 100% !important;
+    padding: 20px 16px 40px !important;
     overflow-y: auto !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
   }
 
   .login-form-card {
