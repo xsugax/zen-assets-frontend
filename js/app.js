@@ -1,12 +1,12 @@
-﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   app.js â€” Main Application Controller
+﻿/* ════════════════════════════════════════════════════════════
+   app.js — Main Application Controller
    OmniVest AI / ZEN ASSETS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+════════════════════════════════════════════════════════════ */
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   AUTHMANAGER â€” Dedicated Authentication Flow Manager
+/* ════════════════════════════════════════════════════════════
+   AUTHMANAGER — Dedicated Authentication Flow Manager
    Handles login/register view switching with strong logic
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+════════════════════════════════════════════════════════════ */
 const AuthManager = (() => {
   'use strict';
 
@@ -21,7 +21,7 @@ const AuthManager = (() => {
     const registerOverlay = document.getElementById('register-overlay');
     const topNav         = document.querySelector('.login-top-nav');
 
-    // â”€â”€ Reset both modals â”€â”€
+    // ── Reset both modals ──
     if (loginScreen)     loginScreen.classList.remove('show-login-modal');
     if (registerOverlay) {
       registerOverlay.classList.remove('visible');
@@ -33,7 +33,7 @@ const AuthManager = (() => {
     currentView = viewName;
 
     if (viewName === 'register') {
-      // â”€â”€ Open Register Modal â”€â”€
+      // ── Open Register Modal ──
       if (registerOverlay) registerOverlay.classList.add('visible');
       if (topNav) topNav.classList.add('view-register');
       // Focus first field
@@ -41,9 +41,9 @@ const AuthManager = (() => {
         const f = document.getElementById('reg-name');
         if (f) f.focus();
       }, 120);
-      console.log('ðŸ“ AUTH: Register modal opened');
+      console.log('📝 AUTH: Register modal opened');
     } else {
-      // â”€â”€ Open Login Modal â”€â”€
+      // ── Open Login Modal ──
       if (loginScreen) loginScreen.classList.add('show-login-modal');
       if (topNav) topNav.classList.add('view-login');
       // Focus email
@@ -51,7 +51,7 @@ const AuthManager = (() => {
         const f = document.getElementById('login-email');
         if (f) f.focus();
       }, 120);
-      console.log('ðŸ” AUTH: Login modal opened');
+      console.log('🔐 AUTH: Login modal opened');
     }
 
     // Keep inline tabs in sync
@@ -94,7 +94,7 @@ const AuthManager = (() => {
       });
     });
     
-    console.log('âœ… AuthManager initialized with view switching');
+    console.log('✅ AuthManager initialized with view switching');
   }
 
   // Public API
@@ -116,16 +116,16 @@ if (document.readyState === 'loading') {
 const App = (() => {
   'use strict';
 
-  // â”€â”€ Utils â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Utils ─────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   const $$ = sel => document.querySelectorAll(sel);
-  const fmt = (n, decimals = 2) => n === undefined || n === null ? 'â€”' : parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const fmt = (n, decimals = 2) => n === undefined || n === null ? '—' : parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const fmtPx = px => px > 1000 ? fmt(px, 2) : px > 1 ? fmt(px, 4) : fmt(px, 6);
   const clsPnl = v => v >= 0 ? 'up' : 'down';
   const signPnl = v => v >= 0 ? '+' : '';
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-  // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── State ─────────────────────────────────────────────────
   let _sym     = 'BTC';
   let _section = 'dashboard';
   let _termSym = 'BTC';
@@ -135,7 +135,7 @@ const App = (() => {
   let _confThreshold = 75;
   let _activeOrderType = 'market';
 
-  // â”€â”€ Boot Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Boot Screen ───────────────────────────────────────────
   function runBoot() {
     const progress = $('loader-fill');
     const status   = $('loader-label');
@@ -148,7 +148,7 @@ const App = (() => {
       'CALIBRATING AI MODELS...',
       'ESTABLISHING SECURE TUNNEL...',
       'MOUNTING ASSET UNIVERSE...',
-      'SYSTEM READY â€” WELCOME TO ZEN',
+      'SYSTEM READY — WELCOME TO ZEN',
     ];
 
     animBootCounter('bm-nodes',  0, 2048,   1800);
@@ -186,7 +186,7 @@ const App = (() => {
     if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
     const app = $('app');
     if (app) app.classList.add('app-visible');
-    // startCursorTrail(); // Removed â€” clean professional UI
+    // startCursorTrail(); // Removed — clean professional UI
     startClock();
     initData();
     initCharts();
@@ -195,10 +195,10 @@ const App = (() => {
     startLiveNotifications();
   }
 
-  // â”€â”€ Boot Canvas Particles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Boot Canvas Particles ─────────────────────────────────
   const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
   function initBootCanvas() {
-    // Skip particles entirely on mobile â€” saves GPU during boot
+    // Skip particles entirely on mobile — saves GPU during boot
     if (_isMobile) return;
     const c = $('boot-canvas'); if (!c) return;
     const ctx = c.getContext('2d');
@@ -222,10 +222,10 @@ const App = (() => {
     setTimeout(stopBoot, 3000);
   }
 
-  // â”€â”€ Cursor Trail â€” DISABLED (clean professional UI) â”€â”€â”€
+  // ── Cursor Trail — DISABLED (clean professional UI) ───
   // function startCursorTrail() { /* removed */ }
 
-  // â”€â”€ Clock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Clock ─────────────────────────────────────────────────
   function startClock() {
     const updateClock = () => {
       const now = new Date();
@@ -237,20 +237,20 @@ const App = (() => {
     setInterval(updateClock, 1000);
   }
 
-  // â”€â”€ Init Data Engines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Init Data Engines ─────────────────────────────────────
   function initData() {
     MarketData.init();
     
     // Initialize real data integration (WebSocket + REST)
     if (typeof RealDataAdapter !== 'undefined') {
       RealDataAdapter.init();
-      console.log('ðŸ”¥ Real market data integration ACTIVE');
+      console.log('🔥 Real market data integration ACTIVE');
     }
     
     // Initialize smart exit engine
     if (typeof SmartExitEngine !== 'undefined') {
       SmartExitEngine.init();
-      console.log('ðŸŽ¯ Smart profit-taking engine ACTIVE');
+      console.log('🎯 Smart profit-taking engine ACTIVE');
     }
     
     // Initialize auto-trader (autonomous trading system)
@@ -258,17 +258,17 @@ const App = (() => {
       AutoTrader.init();
       // Immediately render trade history (don't wait for interval)
       AutoTrader.updateTradeHistoryDisplay();
-      console.log('ðŸ¤– Autonomous trading system ACTIVE');
+      console.log('🤖 Autonomous trading system ACTIVE');
       // Gamification: track auto-trader activation
       if (typeof Gamification !== 'undefined') Gamification.trackAutoTrader();
       
-      // Auto-trader already has its own 2s interval â€” no duplicate needed
+      // Auto-trader already has its own 2s interval — no duplicate needed
     }
     
     // Initialize investment returns engine (wallet + tier compounding)
     if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.init();
-      console.log('ðŸ’° Investment returns engine ACTIVE');
+      console.log('💰 Investment returns engine ACTIVE');
       
       // Update returns UI every 5 seconds
       setInterval(() => {
@@ -280,7 +280,7 @@ const App = (() => {
     // Initialize gamification engine (streaks, XP, achievements)
     if (typeof Gamification !== 'undefined') {
       Gamification.init();
-      console.log('ðŸŽ® Gamification engine ACTIVE');
+      console.log('🎮 Gamification engine ACTIVE');
 
       // Listen for level-ups
       Gamification.on('levelUp', (data) => {
@@ -294,16 +294,16 @@ const App = (() => {
       // Listen for achievements
       Gamification.on('achievement', (a) => {
         Gamification.launchConfetti({ count: 50, duration: 1800, colors: ['#ffd700', '#ff4081', '#00e676'] });
-        Gamification.showCelebration('Achievement Unlocked!', `${a.title} â€” ${a.desc}`, a.icon, '#ffd700');
+        Gamification.showCelebration('Achievement Unlocked!', `${a.title} — ${a.desc}`, a.icon, '#ffd700');
         if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('fa-trophy', 'ai', 'Achievement:', ` ${a.icon} ${a.title} â€” +${a.xp} XP`);
+          App.addNotification('fa-trophy', 'ai', 'Achievement:', ` ${a.icon} ${a.title} — +${a.xp} XP`);
         }
       });
 
       // Listen for daily bonus
       Gamification.on('dailyBonus', (data) => {
         Gamification.launchConfetti({ count: 60, duration: 2000 });
-        Gamification.showCelebration('Daily Bonus!', `You earned ${data.reward.label}!`, 'ðŸŽ', data.reward.color);
+        Gamification.showCelebration('Daily Bonus!', `You earned ${data.reward.label}!`, '🎁', data.reward.color);
       });
 
       // Update gamification UI every 3 seconds
@@ -317,7 +317,7 @@ const App = (() => {
     updateFearGreed();
   }
 
-  // â”€â”€ Ticker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Ticker ────────────────────────────────────────────────
   function buildTicker() {
     const track = $('ticker-track'); if (!track) return;
     const snap = MarketData.getTickerSnapshot();
@@ -328,7 +328,7 @@ const App = (() => {
     track.innerHTML = html + html; // duplicate for seamless scroll
   }
 
-  // â”€â”€ Market Pulse Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Market Pulse Bar ──────────────────────────────────────
   function updateMarketPulseBar() {
     const IDS = { BTC: 'mpb-btc', ETH: 'mpb-eth', SPX: 'mpb-spx', GOLD: 'mpb-gold' };
     Object.entries(IDS).forEach(([id, elId]) => {
@@ -342,7 +342,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Fear & Greed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fear & Greed ──────────────────────────────────────────
   function updateFearGreed() {
     const el = $('fg-val'); if (!el) return;
     const fg = MarketData.getFearGreed();
@@ -350,7 +350,7 @@ const App = (() => {
     el.className = fg.value > 60 ? 'up' : fg.value < 40 ? 'down' : '';
   }
 
-  // â”€â”€ Sidebar Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sidebar Nav ───────────────────────────────────────────
   function initNav() {
     $$('.nav-item[data-section]').forEach(item => {
       item.addEventListener('click', () => navigate(item.dataset.section));
@@ -387,7 +387,7 @@ const App = (() => {
     _updateMobileNavActive(name);
   }
 
-  // â”€â”€ Mobile Bottom Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mobile Bottom Navigation ─────────────────────────────
   function initMobileNav() {
     // Bottom nav items
     $$('.mbn-item[data-section]').forEach(item => {
@@ -417,7 +417,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Buy Crypto Hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Buy Crypto Hub ───────────────────────────────────────
   function initBuyCryptoAnimations() {
     // Stagger card entrance
     const cards = document.querySelectorAll('.bch-card');
@@ -440,21 +440,21 @@ const App = (() => {
     });
   };
 
-  // â”€â”€ Current active timeframe tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Current active timeframe tracker ─────────────────────
   let _activeTimeframe = '5m';
 
-  // â”€â”€ Init Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Init Charts ───────────────────────────────────────────
   async function initCharts() {
     const symbol = _sym;
 
-    // â”€â”€ Destroy any stale chart instance first â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Like unplugging and plugging back in â€” ensures a clean slate
+    // ── Destroy any stale chart instance first ──────────────
+    // Like unplugging and plugging back in — ensures a clean slate
     // before the container's real dimensions are measured.
     if (typeof AdvancedChartEngine !== 'undefined') {
       try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
     }
 
-    // â”€â”€ Wait for two animation frames â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Wait for two animation frames ──────────────────────
     // The container needs at least one paint cycle to have its real
     // clientWidth/clientHeight. Without this the chart can be 0px tall.
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -464,7 +464,7 @@ const App = (() => {
       ChartDataIndicator.showLoading('main-price-chart');
     }
 
-    // â”€â”€ Create chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Create chart ────────────────────────────────────────
     if (typeof AdvancedChartEngine !== 'undefined') {
       await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
     } else {
@@ -495,7 +495,7 @@ const App = (() => {
     updateChartStats(_sym);
   }
 
-  // â”€â”€ All Sections Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── All Sections Init ────────────────────────────────────
   function initAllSections() {
     initNav();
     initMobileNav();
@@ -510,7 +510,7 @@ const App = (() => {
     updateAIOrb();
   }
 
-  // â”€â”€ Dashboard KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Dashboard KPIs ────────────────────────────────────────
   function updateDashKPIs(m) {
     // Portfolio value & PnL now wallet-anchored from computeMetrics()
     let dailyPnL = m.todayPnL || m.totalPnL * 0.03;
@@ -519,11 +519,11 @@ const App = (() => {
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
       dailyPnL = snap.todayPnL;
-      dailySub = `${snap.tierIcon} ${snap.tierLabel} Â· ${snap.tierAPY} APY`;
+      dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${snap.tierAPY} APY`;
       
       // Wallet balance KPI (claimed funds only)
       setText('kpi-wallet-balance', `$${fmt(snap.walletBalance, 2)}`);
-      setText('kpi-wallet-tier', `${snap.tierIcon} ${snap.tierLabel} Tier Â· ${snap.tierAPY}`);
+      setText('kpi-wallet-tier', `${snap.tierIcon} ${snap.tierLabel} Tier · ${snap.tierAPY}`);
     }
     
     setText('kpi-port-value', `$${fmt(m.totalValue, 0)}`);
@@ -575,7 +575,7 @@ const App = (() => {
     setText('port-alloc-total', `$${fmt(totalValue, 0)}`);
   }
 
-  // â”€â”€ Investment Returns UI Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Investment Returns UI Update ─────────────────────────
   let _lastWalletBal = 0;
   function updateReturnsUI() {
     if (typeof InvestmentReturns === 'undefined') return;
@@ -622,7 +622,7 @@ const App = (() => {
       feed.innerHTML = s.recentHistory.slice(0, 8).map(e => {
         const time = new Date(e.ts).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
         const isProfit = e.amount >= 0;
-        const icon = e.type === 'trading_profit' ? 'ðŸ“ˆ' : e.type === 'trading_loss' ? 'ðŸ“‰' : e.type === 'deposit' ? 'ðŸ’³' : 'ðŸ’°';
+        const icon = e.type === 'trading_profit' ? '📈' : e.type === 'trading_loss' ? '📉' : e.type === 'deposit' ? '💳' : '💰';
         const label = e.type === 'trading_profit' ? `Trade ${e.symbol}` : e.type === 'trading_loss' ? `Trade ${e.symbol}` : e.type === 'deposit' ? 'Deposit' : 'Tier Return';
         return `<div class="ret-feed-item">
           <span class="rfi-icon">${icon}</span>
@@ -635,7 +635,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Fund Manager UI Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fund Manager UI Update ─────────────────────────────
   function updateFundManagerUI() {
     if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.getFundManagerSnapshot) return;
     const fm = InvestmentReturns.getFundManagerSnapshot();
@@ -672,12 +672,12 @@ const App = (() => {
       logList.innerHTML = fm.transferLog.map(entry => {
         const time = new Date(entry.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const icons = { daily: 'fa-gift', weekly: 'fa-trophy', trading: 'fa-chart-line', interest: 'fa-coins' };
-        const balInfo = entry.balanceBefore != null ? ` ($${fmt(entry.balanceBefore, 2)} â†’ $${fmt(entry.balanceAfter, 2)})` : '';
+        const balInfo = entry.balanceBefore != null ? ` ($${fmt(entry.balanceBefore, 2)} → $${fmt(entry.balanceAfter, 2)})` : '';
         return `<div class="fm-log-item">
           <i class="fa ${icons[entry.type] || 'fa-arrow-right'}"></i>
           <span class="fm-log-label">${entry.label}</span>
           <span class="fm-log-amount">+$${fmt(entry.amount, 2)}</span>
-          <span class="fm-log-arrow">â†’ Wallet${balInfo}</span>
+          <span class="fm-log-arrow">→ Wallet${balInfo}</span>
           <span class="fm-log-time">${time}</span>
         </div>`;
       }).join('');
@@ -686,7 +686,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Fund Claim Processing Animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fund Claim Processing Animation ─────────────────────
   function _showClaimProcessing(amount, label, callback) {
     const overlay = $('fm-claim-overlay');
     if (!overlay) { callback(); return; }
@@ -737,7 +737,7 @@ const App = (() => {
     runStep();
   }
 
-  // â”€â”€ Fund Manager: Claim Pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fund Manager: Claim Pool ─────────────────────────────
   function claimFundPool(pool) {
     if (typeof InvestmentReturns === 'undefined') return;
     // Pre-check if there's anything to claim
@@ -760,16 +760,16 @@ const App = (() => {
           setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 1500);
         }
 
-        showToast(`âœ… ${result.label}: +$${fmt(result.amount, 2)} transferred to wallet!`, 'success');
+        showToast(`✅ ${result.label}: +$${fmt(result.amount, 2)} transferred to wallet!`, 'success');
         if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('ðŸ’° Fund Transfer', `${result.label}: $${fmt(result.amount, 2)} â†’ Main Wallet (Balance: $${fmt(result.balanceAfter, 2)})`, 'success');
+          App.addNotification('💰 Fund Transfer', `${result.label}: $${fmt(result.amount, 2)} → Main Wallet (Balance: $${fmt(result.balanceAfter, 2)})`, 'success');
         }
         // Flash the pool card
         const card = document.querySelector(`.fm-pool-card[data-pool="${pool}"]`);
         if (card) { card.classList.add('fm-claimed-flash'); setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200); }
         // Streak notification
         if (result.streak > 1) {
-          setTimeout(() => showToast(`ðŸ”¥ ${result.streak}-day claim streak! Keep it up!`, 'info'), 1800);
+          setTimeout(() => showToast(`🔥 ${result.streak}-day claim streak! Keep it up!`, 'info'), 1800);
         }
         if (typeof Gamification !== 'undefined') Gamification.trackClaim();
         updateFundManagerUI();
@@ -798,9 +798,9 @@ const App = (() => {
           setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 2000);
         }
 
-        showToast(`âœ… All earnings claimed: +$${fmt(result.totalClaimed, 2)} â†’ Wallet!`, 'success');
+        showToast(`✅ All earnings claimed: +$${fmt(result.totalClaimed, 2)} → Wallet!`, 'success');
         if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('ðŸ’° Bulk Transfer', `$${fmt(result.totalClaimed, 2)} from ${result.claimed.length} pools â†’ Main Wallet`, 'success');
+          App.addNotification('💰 Bulk Transfer', `$${fmt(result.totalClaimed, 2)} from ${result.claimed.length} pools → Main Wallet`, 'success');
         }
         // Flash all pool cards
         document.querySelectorAll('.fm-pool-card').forEach(card => {
@@ -823,13 +823,13 @@ const App = (() => {
     setText('cs-high',   `$${fmtPx(a.high24h)}`);
     setText('cs-low',    `$${fmtPx(a.low24h)}`);
     setText('cs-vol',    fmtVolume(a.vol24h));
-    setText('cs-mktcap', a.mc ? fmtVolume(a.mc) : 'â€”');
+    setText('cs-mktcap', a.mc ? fmtVolume(a.mc) : '—');
     setText('main-price-display', `$${fmtPx(a.price)}`);
     const chgEl = $('main-change-display');
     if (chgEl) { chgEl.textContent = `${signPnl(a.pct24h)}${a.pct24h.toFixed(2)}%`; chgEl.className = `main-change-hdr ${clsPnl(a.pct24h)}`; }
   }
 
-  // â”€â”€ Gamification UI Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Gamification UI Update ────────────────────────────────
   function updateGamificationUI() {
     if (typeof Gamification === 'undefined') return;
     const g = Gamification.getSnapshot();
@@ -852,8 +852,8 @@ const App = (() => {
       setText('gm-xp-text', `${fmtNum(g.xpInLevel)} / ${fmtNum(g.xpForNext)} XP`);
       setText('gm-xp-sub', `Next: ${g.nextLevel.title} ${g.nextLevel.icon}`);
     } else {
-      setText('gm-xp-text', `${fmtNum(g.xp)} XP â€” MAX LEVEL`);
-      setText('gm-xp-sub', 'ðŸ‘‘ Legendary status achieved');
+      setText('gm-xp-text', `${fmtNum(g.xp)} XP — MAX LEVEL`);
+      setText('gm-xp-sub', '👑 Legendary status achieved');
     }
 
     // Streak
@@ -876,7 +876,7 @@ const App = (() => {
       } else {
         dailyBtn.classList.remove('gm-daily-available');
         dailyBtn.classList.add('gm-daily-claimed');
-        dailyStatus.textContent = 'CLAIMED âœ“';
+        dailyStatus.textContent = 'CLAIMED ✓';
       }
     }
 
@@ -893,7 +893,7 @@ const App = (() => {
       grid.innerHTML = allAch.map(a => {
         const unlocked = g.achievements.some(ua => ua.id === a.id);
         return `<div class="gm-badge-item ${unlocked ? 'gm-badge-unlocked' : 'gm-badge-locked'}" title="${a.title}: ${a.desc}">
-          <span class="gm-badge-icon">${unlocked ? a.icon : 'ðŸ”’'}</span>
+          <span class="gm-badge-icon">${unlocked ? a.icon : '🔒'}</span>
           <span class="gm-badge-name">${a.title}</span>
         </div>`;
       }).join('');
@@ -912,27 +912,27 @@ const App = (() => {
     return n.toString();
   }
 
-  // â”€â”€ Daily Bonus Claim Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Daily Bonus Claim Handler ─────────────────────────────
   function claimDailyBonus() {
     if (typeof Gamification === 'undefined') return;
     const result = Gamification.claimDailyBonus();
     if (result.success) {
-      showToast(`ðŸŽ Daily Bonus: ${result.reward.label}!`, 'success');
+      showToast(`🎁 Daily Bonus: ${result.reward.label}!`, 'success');
       updateGamificationUI();
     } else {
-      showToast('Already claimed today â€” come back tomorrow!', 'info');
+      showToast('Already claimed today — come back tomorrow!', 'info');
     }
   }
 
   function fmtVolume(n) {
-    if (!n) return 'â€”';
+    if (!n) return '—';
     if (n >= 1e12) return `$${(n/1e12).toFixed(2)}T`;
     if (n >= 1e9)  return `$${(n/1e9).toFixed(2)}B`;
     if (n >= 1e6)  return `$${(n/1e6).toFixed(2)}M`;
     return `$${fmt(n, 0)}`;
   }
 
-  // â”€â”€ Whale Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Whale Alerts ──────────────────────────────────────────
   function renderWhaleAlerts() {
     const feed = $('whale-feed'); if (!feed) return;
     const WHALE_DATA = [
@@ -944,13 +944,13 @@ const App = (() => {
     ];
     feed.innerHTML = WHALE_DATA.map(w => {
       const min = Math.floor((Date.now() - w.ts) / 60000);
-      const sign = w.side === 'buy' ? 'â–²' : 'â–¼';
+      const sign = w.side === 'buy' ? '▲' : '▼';
       const cls  = w.side === 'buy' ? 'buy' : 'sell';
       return `<div class="whale-item"><div class="whale-icon ${cls}">${sign}</div><div class="whale-info"><b class="whale-symbol">${w.symbol}</b><span class="whale-detail">${w.side.toUpperCase()} $${(w.sizeUSD/1e6).toFixed(1)}M on ${w.exchange}</span></div><span class="whale-time">${min}m ago</span></div>`;
     }).join('');
     MarketData.on('whale', w => {
       const min = 0;
-      const sign = w.side === 'buy' ? 'â–²' : 'â–¼';
+      const sign = w.side === 'buy' ? '▲' : '▼';
       const div = document.createElement('div');
       div.className = `whale-item`; div.style.animation = 'whale-slide-in .4s ease';
       div.innerHTML = `<div class="whale-icon ${w.side}">${sign}</div><div class="whale-info"><b class="whale-symbol">${w.symbol}</b><span class="whale-detail">${w.side.toUpperCase()} $${(w.sizeUSD/1e6).toFixed(1)}M on ${w.exchange}</span></div><span class="whale-time">just now</span>`;
@@ -959,13 +959,13 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Signals Mini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Signals Mini ──────────────────────────────────────────
   function renderSignalsMini(sigs) {
     const list = $('dash-signals-list'); if (!list) return;
     list.innerHTML = sigs.map(s => `<div class="signal-row"><span class="sig-symbol">${s.symbol.replace('/USD','')}</span><span class="sig-dir-badge ${s.dir}">${s.dir.toUpperCase()}</span><span class="sig-pattern">${s.pattern}</span><span class="sig-conf">${s.conf}%</span></div>`).join('');
   }
 
-  // â”€â”€ Asset Class Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Asset Class Grid ──────────────────────────────────────
   function renderAssetClassGrid() {
     const grid = $('asset-class-grid'); if (!grid) return;
     const cats = [
@@ -984,7 +984,7 @@ const App = (() => {
     }).join('');
   }
 
-  // â”€â”€ AI Orb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AI Orb ────────────────────────────────────────────────
   function updateAIOrb(conf) {
     const val = conf || AIEngine.getConfidence();
     setText('ai-confidence-value', `${Math.round(val)}%`);
@@ -995,7 +995,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Markets Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Markets Section ───────────────────────────────────────
   function renderMarketsTable() {
     const tbody = $('market-table-body'); if (!tbody) return;
     const q     = ($('market-search-input') || {}).value || '';
@@ -1005,9 +1005,9 @@ const App = (() => {
     tbody.innerHTML = assets.map((a, idx) => {
       const pctCls = a.pct24h >= 0 ? 'up' : 'down';
       const sig = AIEngine.getSignals().find(s => s.assetId === a.id);
-      const sigBadge = sig ? `<span class="sig-dir-badge ${sig.dir}" style="font-size:9px">${sig.dir.toUpperCase()} ${sig.conf}%</span>` : '<span style="color:#2a3a52;font-size:10px;font-family:monospace">â€”</span>';
+      const sigBadge = sig ? `<span class="sig-dir-badge ${sig.dir}" style="font-size:9px">${sig.dir.toUpperCase()} ${sig.conf}%</span>` : '<span style="color:#2a3a52;font-size:10px;font-family:monospace">—</span>';
       const spark = `<canvas id="spark-${a.id}" width="60" height="24" style="display:block"></canvas>`;
-      const mcStr = a.mc ? fmtVolume(a.mc) : 'â€”';
+      const mcStr = a.mc ? fmtVolume(a.mc) : '—';
       return `<tr>
         <td class="mono" style="color:#64748b">${idx + 1}</td>
         <td style="cursor:pointer" onclick="App.quickTrade('${a.id}')"><b>${a.sym}</b><small>${a.name}</small></td>
@@ -1082,18 +1082,18 @@ const App = (() => {
     if (searchInput) searchInput.addEventListener('input', renderMarketsTable);
   }
 
-  // â”€â”€ AI Engine Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AI Engine Section ─────────────────────────────────────
   function renderAIEngine() {
     const id = ($('ai-asset-filter') || {}).value || 'BTC';
     renderAILayers(id);
     renderAISetups();
     updateCrisisBanner();
     setText('setup-count-badge', AIEngine.getSignals().length);
-    // AI Charts â€” LSTM Forecast Â· Monte Carlo Â· Volatility Cone
+    // AI Charts — LSTM Forecast · Monte Carlo · Volatility Cone
     const hist = MarketData.getPriceHistory(id, 80);
     const lstmPred = AIEngine.computeLSTMPrediction(id);
 
-    // LSTM Forecast â€” historical prices extended with predicted trajectory
+    // LSTM Forecast — historical prices extended with predicted trajectory
     const forecastTail = Array.from({ length: 20 }, (_, i) => {
       const last = hist[hist.length - 1];
       const drift = lstmPred.nextBar * 0.01 * (i + 1) / 20;
@@ -1101,7 +1101,7 @@ const App = (() => {
     });
     ChartEngine.createEquityCurve('lstm-forecast-chart', [...hist, ...forecastTail]);
 
-    // Monte Carlo â€” randomised price simulation paths averaged into one series
+    // Monte Carlo — randomised price simulation paths averaged into one series
     const mcBase = hist[hist.length - 1];
     const mcSim = Array.from({ length: 50 }, (_, i) => {
       let p = mcBase;
@@ -1110,7 +1110,7 @@ const App = (() => {
     });
     ChartEngine.createMainChart('monte-carlo-chart', mcSim);
 
-    // Volatility Cone â€” rolling realised volatility profile
+    // Volatility Cone — rolling realised volatility profile
     const volCone = Array.from({ length: 50 }, (_, i) =>
       Math.max(5, Math.min(80, 20 + Math.sin(i * 0.25) * 14 + (Math.random() - 0.5) * 6)));
     ChartEngine.createRSIChart('vol-cone-chart', volCone);
@@ -1130,7 +1130,7 @@ const App = (() => {
       (sig ? `<span class="ind-signal ${sigCls}">${sig}</span>` : '') +
       `</div>`;
 
-    // L1 â€” Technical Analysis
+    // L1 — Technical Analysis
     const techEl = $('tech-indicators');
     if (techEl) techEl.innerHTML =
       row('RSI',        quant.rsi,        quant.rsi > 70 ? 'OVB' : quant.rsi < 30 ? 'OVS' : '', quant.rsi > 70 ? 'down' : 'up') +
@@ -1138,23 +1138,23 @@ const App = (() => {
       row('BB Pos',     quant.bbPos + '%', quant.bbPos > 75 ? 'UB' : quant.bbPos < 25 ? 'LB' : '', quant.bbPos > 75 ? 'up' : 'down') +
       row('Volatility', quant.volatility);
 
-    // L2 â€” Quantitative Models
+    // L2 — Quantitative Models
     const quantEl = $('quant-models');
     if (quantEl) quantEl.innerHTML =
-      row('Prediction',  (lstm.nextBar >= 0 ? '+' : '') + lstm.nextBar.toFixed(2) + '%', lstm.nextBar >= 0 ? 'â–²' : 'â–¼', lstm.nextBar >= 0 ? 'up' : 'down') +
+      row('Prediction',  (lstm.nextBar >= 0 ? '+' : '') + lstm.nextBar.toFixed(2) + '%', lstm.nextBar >= 0 ? '▲' : '▼', lstm.nextBar >= 0 ? 'up' : 'down') +
       row('Confidence',  lstm.confidence.toFixed(1) + '%') +
       row('Bull Prob',   lstm.regimeProb.Bull + '%', lstm.regimeProb.Bull > 55 ? 'BULL' : 'BEAR', lstm.regimeProb.Bull > 55 ? 'up' : 'down') +
       row('Attention',   lstm.attention.toFixed(3));
 
-    // L3 â€” Behavioral Finance
+    // L3 — Behavioral Finance
     const bhvEl = $('behavioral-analytics');
     if (bhvEl) bhvEl.innerHTML =
-      row('Fear/Greed',   `${fg.value} â€” ${fg.label}`, fg.value > 60 ? 'GREED' : fg.value < 40 ? 'FEAR' : 'NEUT', fg.value > 60 ? 'up' : fg.value < 40 ? 'down' : '') +
+      row('Fear/Greed',   `${fg.value} — ${fg.label}`, fg.value > 60 ? 'GREED' : fg.value < 40 ? 'FEAR' : 'NEUT', fg.value > 60 ? 'up' : fg.value < 40 ? 'down' : '') +
       row('Whale Ratio',  (bhv.whaleRatio * 100).toFixed(0) + '%') +
       row('Funding Rate', bhv.fundingRate) +
       row('OI Change',    bhv.openInterestChg);
 
-    // L4 â€” Macro / LSTM Summary
+    // L4 — Macro / LSTM Summary
     const lstmEl = $('lstm-summary');
     if (lstmEl) lstmEl.innerHTML =
       row('VIX',          macro.vix.toFixed(2),       macro.vix > 25 ? 'HIGH' : 'LOW', macro.vix > 25 ? 'down' : 'up') +
@@ -1193,11 +1193,11 @@ const App = (() => {
     banner.classList.toggle('hidden', !isCrisis);
   }
 
-  // â”€â”€ Portfolio Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Portfolio Section ──────────────────────────────────────
   function renderPortfolio() {
     const m = Portfolio.computeMetrics();
     
-    // KPI row â€” totalValue now comes wallet-anchored from computeMetrics
+    // KPI row — totalValue now comes wallet-anchored from computeMetrics
     setText('port-total-value', `$${fmt(m.totalValue, 0)}`);
     setText('port-total-pnl',   `${signPnl(m.totalPnL)}$${fmt(Math.abs(m.totalPnL), 0)} (${signPnl(m.totalPct)}${m.totalPct}%)`);
     setClassOnEl($('port-total-pnl'), clsPnl(m.totalPnL));
@@ -1246,7 +1246,7 @@ const App = (() => {
 
     setText('holdings-count', m.enriched.length);
 
-    // â”€â”€ Portfolio Health Score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Portfolio Health Score ────────────────────────────
     const health = Portfolio.getHealthScore(m);
     const healthEl = $('port-health-score');
     if (healthEl) {
@@ -1260,7 +1260,7 @@ const App = (() => {
         <div class="health-label" style="color:${health.color}">${health.label}</div>`;
     }
 
-    // â”€â”€ Performance Attribution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Performance Attribution ──────────────────────────
     const attr = Portfolio.getPerformanceAttribution(m);
     const attrEl = $('port-attribution');
     if (attrEl) {
@@ -1276,7 +1276,7 @@ const App = (() => {
       }).join('');
     }
 
-    // â”€â”€ AI Portfolio Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── AI Portfolio Insights ────────────────────────────
     const insights = Portfolio.getInsights(m);
     const insEl = $('port-insights');
     if (insEl) {
@@ -1287,7 +1287,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Trading Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Trading Section ───────────────────────────────────────
   async function renderTrading() {
     // Positions
     renderPositions();
@@ -1295,7 +1295,7 @@ const App = (() => {
     renderCopyTraders();
     // Strategies
     renderStrategies();
-    // Terminal chart â€” candlesticks with real data + proper timeframe
+    // Terminal chart — candlesticks with real data + proper timeframe
     const termSymbol = _termSym.split('/')[0];
     const termTF = _chartTF.toLowerCase() || '5m';
     if (typeof AdvancedChartEngine !== 'undefined') {
@@ -1339,16 +1339,16 @@ const App = (() => {
   function renderCopyTraders() {
     const list = $('copy-trade-list'); if (!list) return;
     list.innerHTML = Trading.getCopyTraders().map(t => {
-      const btnTxt = t.active ? 'â¹ Stop' : 'â–¶ Copy';
+      const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
       const btnCls = t.active ? 'btn-danger' : 'btn-primary';
       const pnlClass = t.copiedBal >= 0 ? 'up' : 'down';
-      const liveTag = t.active ? '<span class="ct-live-badge">â— LIVE</span>' : '';
-      const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades Â· ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
+      const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
       return `<div class="ct-card ${t.active ? 'ct-active' : ''}">
         <div class="ct-avatar">${t.avatar}</div>
         <div class="ct-info">
           <b>${t.name}</b> ${liveTag}
-          <span>${t.subscribers.toLocaleString()} followers Â· WR ${t.winRate} Â· ${t.strategy}</span>
+          <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
           ${tradesInfo}
         </div>
         <div class="ct-stats">
@@ -1436,7 +1436,7 @@ const App = (() => {
       });
     }
 
-    // Chart TF buttons (terminal only â€” scoped to #terminal-tf-btns)
+    // Chart TF buttons (terminal only — scoped to #terminal-tf-btns)
     $$('#terminal-tf-btns .tf-btn[data-tf]').forEach(btn => {
       btn.addEventListener('click', async () => {
         $$('#terminal-tf-btns .tf-btn').forEach(b => b.classList.remove('active'));
@@ -1478,19 +1478,19 @@ const App = (() => {
     const arpText = $('arp-text');
     if (arpText) {
       const rr = ((tp || price * 1.04) - price) / (price - (sl || price * 0.97));
-      arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} â€” Position value: $${value} â€” AI-suggested SL/TP applied â€” Risk managed.`;
+      arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} — Position value: $${value} — AI-suggested SL/TP applied — Risk managed.`;
       const rrEl = $('rr-display');
       if (rrEl) rrEl.textContent = Math.abs(rr).toFixed(1) + ':1';
     }
 
-    showToast(`âœ… ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} ($${value}) â€” FILLED`, 'success');
+    showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} ($${value}) — FILLED`, 'success');
     addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
     // Gamification: track trade
     if (typeof Gamification !== 'undefined') Gamification.trackTrade();
     renderPositions();
   }
 
-  // â”€â”€ Analytics Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Analytics Section ──────────────────────────────────────
   function renderAnalytics() {
     const id = _anlSym;
     const hist = MarketData.getPriceHistory(id, 80);
@@ -1516,13 +1516,13 @@ const App = (() => {
     // Equity for analytics
     ChartEngine.createEquityCurve('analytics-dd-chart', Portfolio.getEquityHistory().slice(-60));
 
-    // Bollinger Bands â€” midline history with band context
+    // Bollinger Bands — midline history with band context
     const bb = MarketData.computeBB(id);
     const bbHistory = Array.from({ length: 40 }, (_, i) =>
       bb.middle * (1 + Math.sin(i * 0.22) * 0.008 + (Math.random() - 0.5) * 0.006));
     ChartEngine.createEquityCurve('bb-chart', bbHistory);
 
-    // Market Regime â€” bars showing regime strength over time
+    // Market Regime — bars showing regime strength over time
     const regimeData = Array.from({ length: 30 }, (_, i) => ({
       vol: Math.max(5, 40 + Math.sin(i * 0.28) * 22 + (Math.random() - 0.5) * 10),
       up: i % 5 !== 0,
@@ -1556,7 +1556,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Signals Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Signals Section ───────────────────────────────────────
   function renderSignals() {
     const grid  = $('signals-full-grid'); if (!grid) return;
     const cnt   = $('signals-live-count');
@@ -1601,7 +1601,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Plugins Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Plugins Section ────────────────────────────────────────
   function renderPlugins() {
     const activeGrid = $('active-plugins-grid');
     const storeGrid  = $('store-plugins-grid');
@@ -1611,14 +1611,14 @@ const App = (() => {
       activeGrid.innerHTML = Plugins.getActive().map(p => `<div class="plugin-card ${p.enabled ? 'active' : 'inactive'}">
         <div class="plg-header">
           <div class="plg-icon" style="background:${p.iconBg};color:${p.iconColor};font-size:18px">${p.icon}</div>
-          <div class="plg-title"><b>${p.name}</b><small>${p.category} Â· v${p.version}</small></div>
+          <div class="plg-title"><b>${p.name}</b><small>${p.category} · v${p.version}</small></div>
           <label class="toggle-switch" title="${p.enabled ? 'Disable' : 'Enable'}">
             <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="App.togglePlugin('${p.id}')">
             <span class="ts-slider"></span>
           </label>
         </div>
         <div class="plg-desc">${p.desc}</div>
-        <div class="plg-stats"><span>â˜… <b>${p.rating}</b></span><span><b>${p.users}</b> users</span><span>Plan: <b>${p.plan}</b></span></div>
+        <div class="plg-stats"><span>★ <b>${p.rating}</b></span><span><b>${p.users}</b> users</span><span>Plan: <b>${p.plan}</b></span></div>
         <div class="plg-footer"><button class="btn btn-danger btn-xs" onclick="App.uninstallPlugin('${p.id}')">Remove</button></div>
       </div>`).join('');
     }
@@ -1626,16 +1626,16 @@ const App = (() => {
       storeGrid.innerHTML = Plugins.getStore().map(p => `<div class="plugin-card store">
         <div class="plg-header">
           <div class="plg-icon" style="background:${p.iconBg};color:${p.iconColor};font-size:18px">${p.icon}</div>
-          <div class="plg-title"><b>${p.name}</b><small>${p.category} Â· v${p.version}</small></div>
+          <div class="plg-title"><b>${p.name}</b><small>${p.category} · v${p.version}</small></div>
         </div>
         <div class="plg-desc">${p.desc}</div>
-        <div class="plg-stats"><span>â˜… <b>${p.rating}</b></span><span><b>${p.users}</b> users</span></div>
-        <div class="plg-footer"><span class="plg-price">${p.price}</span><button class="btn btn-primary btn-xs" onclick="App.installPlugin('${p.id}')">${p.installed ? 'Installed âœ“' : 'Install'}</button></div>
+        <div class="plg-stats"><span>★ <b>${p.rating}</b></span><span><b>${p.users}</b> users</span></div>
+        <div class="plg-footer"><span class="plg-price">${p.price}</span><button class="btn btn-primary btn-xs" onclick="App.installPlugin('${p.id}')">${p.installed ? 'Installed ✓' : 'Install'}</button></div>
       </div>`).join('');
     }
   }
 
-  // â”€â”€ Transparency Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Transparency Section ───────────────────────────────────
   function renderTransparency() {
     // Realtime PnL Chart
     const pnlHist = Portfolio.getEquityHistory().slice(-100);
@@ -1657,7 +1657,7 @@ const App = (() => {
         <td class="mono ${action==='BUY'?'up':'down'}">${amt}</td>
         <td class="mono hash-short" style="font-size:10px;color:#00d4ff">${l.hash}</td>
         <td class="mono" style="font-size:10px;color:#4a6070">${block.toLocaleString()}</td>
-        <td><span class="badge-verified" style="color:#00ff88;font-size:10px">âœ“ CONF</span></td>
+        <td><span class="badge-verified" style="color:#00ff88;font-size:10px">✓ CONF</span></td>
       </tr>`;
     }).join('');
 
@@ -1667,7 +1667,7 @@ const App = (() => {
       porGrid.innerHTML = assets.map(id => {
         const a = MarketData.getAsset(id);
         const bal = (Math.random() * 500 + 100).toFixed(4);
-        const val = a ? `$${fmt(parseFloat(bal) * a.price, 0)}` : '$â€”';
+        const val = a ? `$${fmt(parseFloat(bal) * a.price, 0)}` : '$—';
         return `<div class="por-item"><span>${id}</span><div><b class="mono">${bal}</b> <span style="color:#4a6080;font-size:10px">(${val})</span></div></div>`;
       }).join('');
     }
@@ -1685,7 +1685,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Security Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Security Section ──────────────────────────────────────
   let _keyStreamTimer = null;
   function renderSecurity() {
     const keyStream = $('key-stream');
@@ -1707,17 +1707,17 @@ const App = (() => {
     const sessionsList = $('sessions-list');
     if (sessionsList) {
       const sessions = [
-        { icon: 'fa-desktop',    device: 'Windows Â· Chrome 120',    ip: '192.168.x.x',   location: 'Current Device',  time: 'Active now', current: true  },
-        { icon: 'fa-mobile-alt', device: 'iPhone Â· Safari 17',      ip: '31.xxx.xx.x',   location: 'London, UK',      time: '2h ago',     current: false },
-        { icon: 'fa-laptop',     device: 'MacBook Â· Firefox 121',   ip: '82.xxx.xx.x',   location: 'New York, US',    time: '1d ago',     current: false },
-        { icon: 'fa-tablet-alt', device: 'iPad Â· Chrome Mobile',    ip: '5.xx.xxx.xx',   location: 'Berlin, DE',      time: '3d ago',     current: false },
+        { icon: 'fa-desktop',    device: 'Windows · Chrome 120',    ip: '192.168.x.x',   location: 'Current Device',  time: 'Active now', current: true  },
+        { icon: 'fa-mobile-alt', device: 'iPhone · Safari 17',      ip: '31.xxx.xx.x',   location: 'London, UK',      time: '2h ago',     current: false },
+        { icon: 'fa-laptop',     device: 'MacBook · Firefox 121',   ip: '82.xxx.xx.x',   location: 'New York, US',    time: '1d ago',     current: false },
+        { icon: 'fa-tablet-alt', device: 'iPad · Chrome Mobile',    ip: '5.xx.xxx.xx',   location: 'Berlin, DE',      time: '3d ago',     current: false },
       ];
       sessionsList.innerHTML = sessions.map(s => `
         <div class="session-row${s.current ? ' current' : ''}">
           <i class="fa ${s.icon}"></i>
           <div class="sess-info">
             <b>${s.device}</b>
-            <span>${s.ip} Â· ${s.location}</span>
+            <span>${s.ip} · ${s.location}</span>
           </div>
           <span class="sess-time">${s.time}</span>
           ${s.current
@@ -1727,7 +1727,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Live Feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Live Feed ─────────────────────────────────────────────
   let _lastAllocData = null;
   function startLiveFeed() {
     MarketData.on('tick', () => {
@@ -1755,7 +1755,7 @@ const App = (() => {
         renderAILayers($('ai-asset-filter')?.value || 'BTC');
       }
 
-      // â”€â”€ Sentiment panel (dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Sentiment panel (dashboard) ───────────────────────
       if (_section === 'dashboard') {
         const fg2 = MarketData.getFearGreed();
         const sentLabelEl = $('sent-label');
@@ -1781,7 +1781,7 @@ const App = (() => {
         }
       }
 
-      // â”€â”€ Execution speed (topbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Execution speed (topbar) ─────────────────────────
       const execEl = $('exec-speed');
       if (execEl) execEl.textContent = (0.2 + Math.random() * 1.3).toFixed(1) + 'ms';
 
@@ -1793,7 +1793,7 @@ const App = (() => {
       if (_section === 'signals') renderSignals();
       if (_section === 'ai-engine') renderAISetups();
 
-      // â”€â”€ AI Alert Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── AI Alert Panel ───────────────────────────────────
       const alertList = $('alert-list');
       if (alertList) {
         const top = sigs.slice(0, 10);
@@ -1803,11 +1803,11 @@ const App = (() => {
               const icon = s.dir === 'buy' ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down';
               return `<div class="np-item unread">` +
                 `<div class="np-icon" style="background:${clr}1a;color:${clr}"><i class="fa ${icon}"></i></div>` +
-                `<div><b>${s.symbol} ${s.dir.toUpperCase()}</b> â€” ${s.pattern}` +
-                `<small>${s.conf}% confidence Â· ${s.timeframe} Â· R:R ${s.rr}</small></div></div>`;
+                `<div><b>${s.symbol} ${s.dir.toUpperCase()}</b> — ${s.pattern}` +
+                `<small>${s.conf}% confidence · ${s.timeframe} · R:R ${s.rr}</small></div></div>`;
             }).join('')
           : `<div class="np-item"><div class="np-icon ai"><i class="fa fa-circle-notch fa-spin"></i></div>` +
-            `<div><b>Scanning marketsâ€¦</b><small>AI is analysing ${MarketData.getAllAssets().length} assets</small></div></div>`;
+            `<div><b>Scanning markets…</b><small>AI is analysing ${MarketData.getAllAssets().length} assets</small></div></div>`;
       }
     });
 
@@ -1816,7 +1816,7 @@ const App = (() => {
       if (el) el.textContent = r;
     });
 
-    // Price flash on main chart header â€” tracks active symbol, not just BTC
+    // Price flash on main chart header — tracks active symbol, not just BTC
     let _flashHandler = null;
     let _flashSymbol  = null;
     function _attachPriceFlash(sym) {
@@ -1841,7 +1841,7 @@ const App = (() => {
     // Expose so symbol-switch handler can call it
   }
 
-  // â”€â”€ Symbol Selector (Dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Symbol Selector (Dashboard) ──────────────────────────
   function initHeader() {
     $$('.sym-btn[data-sym]').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -1895,7 +1895,7 @@ const App = (() => {
     if (aiFilter) aiFilter.addEventListener('change', () => renderAIEngine());
   }
 
-  // â”€â”€ Notification Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Notification Panel ─────────────────────────────────────
   function initNotifPanel() {
     const notifBtn  = $('notif-btn');
     const notifPanel = $('notif-panel');
@@ -1922,7 +1922,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Search Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Search Overlay ────────────────────────────────────────
   function initSearchOverlay() {
     const searchBtn = $('search-btn');
     const overlay   = $('search-overlay');
@@ -1952,7 +1952,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Order Form Order Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Order Form Order Type ────────────────────────────────
   function initOrderForm() {
     $$('.order-type-tabs .ot-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1962,7 +1962,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Toast System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Toast System ─────────────────────────────────────────
   function showToast(msg, type = 'info', duration = 4000) {
     const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
     const container = $('toast-container');
@@ -1978,7 +1978,7 @@ const App = (() => {
     }, duration);
   }
 
-  // â”€â”€ Live Notification Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Live Notification Engine ──────────────────────────────
   const _notifications = [];
   const _maxNotifs = 25;
   let _notifTimer = null;
@@ -2030,7 +2030,7 @@ const App = (() => {
         if (!asset) return;
         const dir = asset.pct24h >= 0 ? 'bullish' : 'bearish';
         const conf = (70 + Math.random() * 25).toFixed(0);
-        addNotification('fa-brain', 'ai', 'AI Signal:', ` ${a} ${dir} setup detected â€” ${conf}% confidence`);
+        addNotification('fa-brain', 'ai', 'AI Signal:', ` ${a} ${dir} setup detected — ${conf}% confidence`);
       },
       () => {
         const amounts = ['1,200', '3,400', '5,800', '2,100', '8,500', '12,000'];
@@ -2043,11 +2043,11 @@ const App = (() => {
         if (typeof AutoTrader === 'undefined') return;
         const stats = AutoTrader.getStatistics();
         if (stats.totalTrades > 0) {
-          addNotification('fa-chart-line', 'ai', 'Auto Trader:', ` ${stats.totalTrades} trades â€” WR ${stats.winRate.toFixed(1)}% â€” Net ${stats.totalPnL >= 0 ? '+' : ''}$${Math.abs(stats.totalPnL).toFixed(2)}`);
+          addNotification('fa-chart-line', 'ai', 'Auto Trader:', ` ${stats.totalTrades} trades — WR ${stats.winRate.toFixed(1)}% — Net ${stats.totalPnL >= 0 ? '+' : ''}$${Math.abs(stats.totalPnL).toFixed(2)}`);
         }
       },
       () => {
-        const regimes = ['Trending Bullish ðŸ“ˆ', 'High Volatility âš¡', 'Accumulation Phase ðŸ”„', 'Momentum Building ðŸš€', 'Range-Bound ðŸ“Š'];
+        const regimes = ['Trending Bullish 📈', 'High Volatility ⚡', 'Accumulation Phase 🔄', 'Momentum Building 🚀', 'Range-Bound 📊'];
         const r = regimes[Math.floor(Math.random() * regimes.length)];
         addNotification('fa-globe', 'sec', 'Market Regime:', ` ${r}`);
       },
@@ -2075,12 +2075,12 @@ const App = (() => {
   // expose globally for onclick
   window.clearNotifications = clearNotifications;
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Helpers ──────────────────────────────────────────────
   function setText(id, val) { const el = $(id); if (el) el.textContent = val; }
   function setClass(id, cls) { const el = $(id); if (el) { el.classList.remove('up','down'); if (cls) el.classList.add(cls); } }
   function setClassOnEl(el, cls) { if (!el) return; el.classList.remove('up','down'); if (cls) el.classList.add(cls); }
 
-  // â”€â”€ Public Proxy Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Public Proxy Actions ──────────────────────────────────
   function quickTrade(assetId) {
     // Switch main chart to this asset then navigate to dashboard
     _sym = assetId;
@@ -2103,7 +2103,7 @@ const App = (() => {
     renderPositions();
     if (pos) {
       const pnlStr = `${pos.pnl >= 0 ? '+' : ''}$${Math.abs(pos.pnl).toFixed(2)}`;
-      showToast(`Position closed: ${pos.sym} ${pos.side.toUpperCase()} â†’ P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
+      showToast(`Position closed: ${pos.sym} ${pos.side.toUpperCase()} → P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
       addNotification(pos.pnl >= 0 ? 'fa-arrow-up' : 'fa-arrow-down', pos.pnl >= 0 ? 'ai' : 'whale', 'Position Closed:', ` ${pos.sym} ${pnlStr}`);
       // Gamification: track profit
       if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
@@ -2112,21 +2112,24 @@ const App = (() => {
   function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); }
   function navigatePublic(s)  { navigate(s); }
 
-  // -- Entry Point ---------------------------------------------------------
+  // ── Entry Point ───────────────────────────────────────────
   function init() {
-    console.log('App init starting...');
-
-    // Initialize auth system -- wipes all stored tokens, no auto-login
+    console.log('🔄 App init starting...');
+    
+    // Initialize auth system first
     if (typeof UserAuth !== 'undefined') UserAuth.init();
-
-    // Always show login screen -- never auto-redirect from a stored session
+    
+    // Get DOM elements
     const loginScreen = $('login-screen');
     const appDiv = $('app');
+
+    // Always require fresh credentials on page load.
+    console.log('🔒 Fresh login required - showing login screen');
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appDiv) appDiv.classList.remove('app-visible');
     document.body.style.overflow = 'auto';
     if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
-
+    
     initLoginScreen();
     initRegisterScreen();
     initModalHandlers();
@@ -2134,9 +2137,9 @@ const App = (() => {
 
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) return; // login form missing â€” do not auto-proceed
+    if (!loginForm) { proceedAfterLogin(); return; }
     
-    // â”€â”€ Addictive Login Enhancements â”€â”€
+    // ── Addictive Login Enhancements ──
     _initLoginParticles();
     _initInflationCounter();
     _initTestimonialCarousel();
@@ -2163,7 +2166,8 @@ const App = (() => {
       const origText = btn ? btn.textContent : '';
       if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
 
-      const result = await UserAuth.login(email, password);
+      // Strict auth mode: always require manual login on every fresh page load.
+      const result = await UserAuth.login(email, password, false);
       if (result.ok) {
         _dismissLoginScreen();
       } else if (result.requires_otp) {
@@ -2177,7 +2181,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Login OTP Step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Login OTP Step ──────────────────────────────────────────
   function _showLoginOTPStep(email, userId, message) {
     const loginForm = $('login-form');
     const otpStep   = $('login-otp-step');
@@ -2235,7 +2239,7 @@ const App = (() => {
     }
   }
 
-  // â•â•â• ADDICTIVE LOGIN ENGINES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══ ADDICTIVE LOGIN ENGINES ═══════════════════════════════
 
   // Floating particle canvas
   function _initLoginParticles() {
@@ -2294,12 +2298,12 @@ const App = (() => {
     draw();
   }
 
-  // Inflation counter â€” shows how much money user is losing per second
+  // Inflation counter — shows how much money user is losing per second
   function _initInflationCounter() {
     const el = document.getElementById('inflation-counter');
     if (!el) return;
     const startTime = Date.now();
-    const lossPerSecond = 0.23; // ~$7.25M/year Ã· 365 Ã· 86400 for avg American
+    const lossPerSecond = 0.23; // ~$7.25M/year ÷ 365 ÷ 86400 for avg American
     function tick() {
       if (!document.getElementById('inflation-counter')) return;
       const elapsed = (Date.now() - startTime) / 1000;
@@ -2359,7 +2363,7 @@ const App = (() => {
     }, 3000);
   }
 
-  // FOMO banner â€” duplicate content for seamless scroll
+  // FOMO banner — duplicate content for seamless scroll
   function _initFOMOBanner() {
     const scroll = document.querySelector('.fomo-scroll');
     if (!scroll) return;
@@ -2392,7 +2396,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ Registration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Registration ─────────────────────────────────────────
   function initRegisterScreen() {
     const form = $('register-form');
     if (!form) return;
@@ -2448,7 +2452,7 @@ const App = (() => {
     });
   }
 
-  // â”€â”€ Register OTP Step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Register OTP Step ───────────────────────────────────────
   function _showRegisterOTPStep(email, userId) {
     const regForm  = $('register-form');
     const otpStep  = $('register-otp-step');
@@ -2496,7 +2500,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ OTP Countdown Timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── OTP Countdown Timer ─────────────────────────────────────
   function _startOTPTimer(timerId, resendId) {
     const timerEl  = $(timerId);
     const resendEl = $(resendId);
@@ -2557,7 +2561,7 @@ const App = (() => {
       alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
     };
 
-    // â”€â”€ Smartsupp Live Chat Integration â”€â”€
+    // ── Smartsupp Live Chat Integration ──
     // Smartsupp automatically stores conversation history per visitor
     // so clients can see their full chat history when they return.
     window.openSmartsuppChat = () => {
@@ -2609,7 +2613,7 @@ const App = (() => {
       }
     };
 
-    // â”€â”€ Funding Method Tab Switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Funding Method Tab Switcher ────────────────────────
     window.switchFundingMethod = (method, btn) => {
       document.querySelectorAll('.fm-tab').forEach(t => t.classList.remove('active'));
       if (btn) btn.classList.add('active');
@@ -2618,7 +2622,7 @@ const App = (() => {
       if (panel) panel.classList.add('active');
     };
 
-    // â”€â”€ Card Form Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Card Form Helpers ──────────────────────────────────
     window.formatCardNumber = (input) => {
       let v = input.value.replace(/\D/g, '').substring(0, 16);
       input.value = v.replace(/(\d{4})/g, '$1 ').trim();
@@ -2634,7 +2638,7 @@ const App = (() => {
       e.target.reset();
     };
 
-    // â”€â”€ Ensure External Crypto Links Always Open â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Ensure External Crypto Links Always Open ──────────
     // Some mobile browsers / webapp modes block target="_blank" on styled <a> cards.
     // This adds a robust click handler that forces window.open() as a fallback.
     document.querySelectorAll('.bch-card[href], .wtb-platform[href]').forEach(link => {
@@ -2644,7 +2648,7 @@ const App = (() => {
           e.preventDefault();
           const win = window.open(url, '_blank', 'noopener,noreferrer');
           if (!win) {
-            // Popup blocked â€” fallback to location change
+            // Popup blocked — fallback to location change
             window.location.href = url;
           }
         }
@@ -2690,7 +2694,7 @@ const App = (() => {
     }, 200);
   }
 
-  // â”€â”€ Sync User Badge & Tier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sync User Badge & Tier ───────────────────────────────
   function _syncUserUI() {
     if (typeof UserAuth === 'undefined') return;
 
@@ -2741,7 +2745,7 @@ const App = (() => {
     }
   }
 
-  // â”€â”€ User Dropdown Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── User Dropdown Toggle ─────────────────────────────────
   function _initUserDropdown() {
     const capsule = $('user-capsule');
     const dropdown = $('user-dropdown');
@@ -2756,41 +2760,41 @@ const App = (() => {
     const logoutBtn = $('ud-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        console.log('ðŸ” LOGOUT: UI handler - stopping modules...');
+        console.log('🔐 LOGOUT: UI handler - stopping modules...');
         
-        // â• Stop Auto Trader â•
+        // ═ Stop Auto Trader ═
         if (typeof AutoTrader !== 'undefined' && AutoTrader.stop) {
-          try { AutoTrader.stop(); console.log('âœ“ AutoTrader stopped'); } catch(e) { console.warn('âš  AutoTrader stop error:', e.message); }
+          try { AutoTrader.stop(); console.log('✓ AutoTrader stopped'); } catch(e) { console.warn('⚠ AutoTrader stop error:', e.message); }
         }
         
-        // â• Disconnect Investment Returns â•
+        // ═ Disconnect Investment Returns ═
         if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.saveAndDisconnect) {
-          try { InvestmentReturns.saveAndDisconnect(); console.log('âœ“ InvestmentReturns disconnected'); } catch(e) { console.warn('âš  InvestmentReturns error:', e.message); }
+          try { InvestmentReturns.saveAndDisconnect(); console.log('✓ InvestmentReturns disconnected'); } catch(e) { console.warn('⚠ InvestmentReturns error:', e.message); }
         }
         
-        // â• Disconnect Gamification â•
+        // ═ Disconnect Gamification ═
         if (typeof Gamification !== 'undefined' && Gamification.saveAndDisconnect) {
-          try { Gamification.saveAndDisconnect(); console.log('âœ“ Gamification disconnected'); } catch(e) { console.warn('âš  Gamification error:', e.message); }
+          try { Gamification.saveAndDisconnect(); console.log('✓ Gamification disconnected'); } catch(e) { console.warn('⚠ Gamification error:', e.message); }
         }
         
-        // â• Disconnect Portfolio â•
+        // ═ Disconnect Portfolio ═
         if (typeof Portfolio !== 'undefined' && Portfolio.destroy) {
-          try { Portfolio.destroy(); console.log('âœ“ Portfolio destroyed'); } catch(e) { console.warn('âš  Portfolio error:', e.message); }
+          try { Portfolio.destroy(); console.log('✓ Portfolio destroyed'); } catch(e) { console.warn('⚠ Portfolio error:', e.message); }
         }
         
-        // â• Disconnect Trading â•
+        // ═ Disconnect Trading ═
         if (typeof Trading !== 'undefined' && Trading.disconnect) {
-          try { Trading.disconnect(); console.log('âœ“ Trading disconnected'); } catch(e) { console.warn('âš  Trading error:', e.message); }
+          try { Trading.disconnect(); console.log('✓ Trading disconnected'); } catch(e) { console.warn('⚠ Trading error:', e.message); }
         }
         
-        // â• Master Logout â”€ Clears ALL data, closes WebSockets, kills streams â•
-        console.log('ðŸ” LOGOUT: Master logout - terminating all data pipelines...');
+        // ═ Master Logout ─ Clears ALL data, closes WebSockets, kills streams ═
+        console.log('🔐 LOGOUT: Master logout - terminating all data pipelines...');
         if (typeof UserAuth !== 'undefined') {
           await UserAuth.logout();
         }
         
-        // â• Hide App, Show Login â•
-        console.log('ðŸ” LOGOUT: Resetting UI...');
+        // ═ Hide App, Show Login ═
+        console.log('🔐 LOGOUT: Resetting UI...');
         const app = document.getElementById('app');
         const loginScreen = document.getElementById('login-screen');
         
@@ -2811,18 +2815,18 @@ const App = (() => {
         document.body.style.overflow = 'auto';
         document.body.style.height = 'auto';
         
-        console.log('ðŸ”“ LOGOUT: Complete - UI reset and page reload pending...');
+        console.log('🔓 LOGOUT: Complete - UI reset and page reload pending...');
         
-        // â• Full Page Reload â”€ Gives app.js fresh init() run â•
+        // ═ Full Page Reload ─ Gives app.js fresh init() run ═
         setTimeout(() => {
-          console.log('ðŸ”„ LOGOUT: Reloading page for clean state...');
+          console.log('🔄 LOGOUT: Reloading page for clean state...');
           location.replace(window.location.pathname);
         }, 300);
       });
     }
   }
 
-  // â”€â”€ Admin Panel (moved to standalone admin.html) â”€â”€â”€â”€â”€â”€â”€
+  // ── Admin Panel (moved to standalone admin.html) ───────
 
   return {
     init, navigate,
@@ -2833,6 +2837,6 @@ const App = (() => {
   };
 })();
 
-// â”€â”€ Kick-off â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Kick-off ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => App.init());
 
