@@ -3599,30 +3599,28 @@
 <script src="js/investment-returns.js?v=33"></script>
 <script src="js/gamification.js?v=33"></script>
 <script src="js/plugins.js?v=33"></script>
-<!-- Tawk.to chat — onLoad flag set BEFORE embed so verification works -->
+<!-- JivoChat opener -->
 <script>
-var Tawk_API = Tawk_API || {};
-Tawk_API.onLoad = function() { window._tawkReady = true; };
 (function(){
-  function _tawkOpen() {
-    if (window._tawkReady) {
-      try { Tawk_API.maximize(); } catch(e) {}
+  function _jivoOpen() {
+    if (typeof jivo_api !== 'undefined') {
+      jivo_api.open();
     } else {
       var tries = 0;
       var t = setInterval(function() {
         tries++;
-        if (window._tawkReady) { clearInterval(t); try { Tawk_API.maximize(); } catch(e) {} }
+        if (typeof jivo_api !== 'undefined') { clearInterval(t); jivo_api.open(); }
         else if (tries >= 20) { clearInterval(t); }
       }, 400);
     }
   }
-  window.openSmartsuppChat = _tawkOpen;
+  window.openSmartsuppChat = _jivoOpen;
   document.addEventListener('DOMContentLoaded', function() {
-    window.openSmartsuppChat = _tawkOpen;
+    window.openSmartsuppChat = _jivoOpen;
   });
 })();
 </script>
-<script src="js/app.js?v=35"></script>
+<script src="js/app.js?v=36"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
@@ -3738,18 +3736,7 @@ Tawk_API.onLoad = function() { window._tawkReady = true; };
 })();
 </script>
 
-<!--Start of Tawk.to Script-->
-<script type="text/javascript">
-var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-(function(){
-var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-s1.async=true;
-s1.src='https://embed.tawk.to/69aa5caaddd7fc1c34851475/1jj0njut7';
-s1.charset='UTF-8';
-s1.setAttribute('crossorigin','*');
-s0.parentNode.insertBefore(s1,s0);
-})();
-</script>
-<!--End of Tawk.to Script-->
+<!-- JivoChat -->
+<script src="//code.jivosite.com/widget/Q5bz4EnyzD" async></script>
 </body>
 </html>

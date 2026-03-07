@@ -2912,32 +2912,33 @@ const App = (() => {
       alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
     };
 
-    // ── Tawk.to Live Chat Integration ──
-    // Opens the Tawk.to chat widget; uses window._tawkReady flag set by onLoad callback.
+    // ── JivoChat Live Chat Integration ──
+    // Opens the JivoChat widget; pre-identifies the visitor if logged in.
     window.openSmartsuppChat = () => {
       const _doOpen = () => {
+        // Pass visitor identity to JivoChat if logged in
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
           const session = UserAuth.getSession();
           if (session) {
             try {
-              Tawk_API.setAttributes({
-                'name':  session.fullName || session.name || 'Investor',
-                'email': session.email
-              }, function(error){});
+              jivo_api.setContactInfo({
+                name:  session.fullName || session.name || 'Investor',
+                email: session.email
+              });
             } catch(e) {}
           }
         }
-        try { Tawk_API.maximize(); } catch(e) {}
+        try { jivo_api.open(); } catch(e) {}
       };
 
-      if (window._tawkReady || (typeof Tawk_API !== 'undefined' && Tawk_API.maximize)) {
+      if (typeof jivo_api !== 'undefined') {
         _doOpen();
       } else {
         showToast('Connecting to live chat…', 'info');
         let attempts = 0;
         const poll = setInterval(() => {
           attempts++;
-          if (window._tawkReady || (typeof Tawk_API !== 'undefined' && Tawk_API.maximize)) {
+          if (typeof jivo_api !== 'undefined') {
             clearInterval(poll);
             _doOpen();
           } else if (attempts >= 16) {
