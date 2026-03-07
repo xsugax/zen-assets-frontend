@@ -142,7 +142,8 @@
   <link rel="stylesheet" href="css/gamification.css?v=33" />
   <link rel="stylesheet" href="css/admin.css?v=33" />
   <link rel="stylesheet" href="css/mobile.css?v=33" />
-  <!-- JivoChat -->
+  <!-- JivoChat: callback MUST be defined before the widget script executes -->
+  <script>window.jivo_onLoadCallback = function(){ window._jivoReady = true; };</script>
   <script src="//code.jivosite.com/widget/Q5bz4EnyzD" async></script>
 </head>
 <body>
@@ -3603,22 +3604,25 @@
 <script src="js/plugins.js?v=33"></script>
 <!-- JivoChat opener -->
 <script>
-// jivo_onLoadCallback is JivoChat's official ready hook — set BEFORE embed
-window.jivo_onLoadCallback = function() { window._jivoReady = true; };
 (function(){
   function _jivoOpen() {
     if (window._jivoReady || typeof jivo_api !== 'undefined') {
-      try { jivo_api.open(); } catch(e) {}
-    } else {
-      var tries = 0;
-      var t = setInterval(function() {
-        tries++;
-        if (window._jivoReady || typeof jivo_api !== 'undefined') {
-          clearInterval(t);
-          try { jivo_api.open(); } catch(e) {}
-        } else if (tries >= 20) { clearInterval(t); }
-      }, 400);
+      try { jivo_api.open(); return; } catch(e) {}
     }
+    // Fallback: click JivoChat’s own widget element
+    var jd = document.querySelector('jdiv.__jivoMobileButton') ||
+             document.querySelector('jdiv[class*="button"]') ||
+             document.querySelector('jdiv');
+    if (jd) { jd.click(); return; }
+    // Poll up to 8s for widget to finish loading
+    var tries = 0;
+    var t = setInterval(function() {
+      tries++;
+      if (window._jivoReady || typeof jivo_api !== 'undefined') {
+        clearInterval(t);
+        try { jivo_api.open(); } catch(e) {}
+      } else if (tries >= 20) { clearInterval(t); }
+    }, 400);
   }
   window.openSmartsuppChat = _jivoOpen;
   document.addEventListener('DOMContentLoaded', function() {

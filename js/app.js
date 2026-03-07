@@ -2927,7 +2927,12 @@ const App = (() => {
             } catch(e) {}
           }
         }
-        try { jivo_api.open(); } catch(e) {}
+        try { jivo_api.open(); return; } catch(e) {}
+        // Fallback: click JivoChat’s native widget element directly
+        const jd = document.querySelector('jdiv.__jivoMobileButton') ||
+                   document.querySelector('jdiv[class*="button"]') ||
+                   document.querySelector('jdiv');
+        if (jd) jd.click();
       };
 
       if (window._jivoReady || typeof jivo_api !== 'undefined') {
