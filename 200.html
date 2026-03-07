@@ -3187,28 +3187,26 @@
 <script>
 (function(){
   function _jivoOpen() {
-    if (window._jivoReady || typeof jivo_api !== 'undefined') {
+    if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
       try { jivo_api.open(); return; } catch(e) {}
+      var el = document.querySelector('jdiv.__jivoMobileButton') ||
+               document.querySelector('jdiv[class*="button"]') ||
+               document.querySelector('jdiv');
+      if (el) el.click();
+      return;
     }
-    // Fallback: click JivoChat’s own widget element
-    var jd = document.querySelector('jdiv.__jivoMobileButton') ||
-             document.querySelector('jdiv[class*="button"]') ||
-             document.querySelector('jdiv');
-    if (jd) { jd.click(); return; }
-    // Poll up to 8s for widget to finish loading
-    var tries = 0;
+    var n = 0;
     var t = setInterval(function() {
-      tries++;
-      if (window._jivoReady || typeof jivo_api !== 'undefined') {
+      if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
         clearInterval(t);
-        try { jivo_api.open(); } catch(e) {}
-      } else if (tries >= 20) { clearInterval(t); }
-    }, 400);
+        try { jivo_api.open(); } catch(e) {
+          var el = document.querySelector('jdiv'); if (el) el.click();
+        }
+      } else if (++n >= 20) { clearInterval(t); }
+    }, 500);
   }
   window.openSmartsuppChat = _jivoOpen;
-  document.addEventListener('DOMContentLoaded', function() {
-    window.openSmartsuppChat = _jivoOpen;
-  });
+  document.addEventListener('DOMContentLoaded', function() { window.openSmartsuppChat = _jivoOpen; });
 })();
 </script>
 <script src="js/app.js?v=36"></script>

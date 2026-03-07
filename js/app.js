@@ -2913,46 +2913,45 @@ const App = (() => {
     };
 
     // ── JivoChat Live Chat Integration ──
-    // Opens the JivoChat widget; pre-identifies the visitor if logged in.
     window.openSmartsuppChat = () => {
-      const _doOpen = () => {
+      const _setIdentity = () => {
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
-          const session = UserAuth.getSession();
-          if (session) {
-            try {
-              jivo_api.setContactInfo({
-                name:  session.fullName || session.name || 'Investor',
-                email: session.email
-              });
-            } catch(e) {}
+          const s = UserAuth.getSession();
+          if (s) {
+            try { jivo_api.setContactInfo({ name: s.fullName || s.name || 'Investor', email: s.email }); } catch(e) {}
           }
         }
-        try { jivo_api.open(); return; } catch(e) {}
-        // Fallback: click JivoChat’s native widget element directly
-        const jd = document.querySelector('jdiv.__jivoMobileButton') ||
-                   document.querySelector('jdiv[class*="button"]') ||
-                   document.querySelector('jdiv');
-        if (jd) jd.click();
       };
 
-      if (window._jivoReady || typeof jivo_api !== 'undefined') {
-        _doOpen();
-      } else {
-        showToast('Connecting to live chat…', 'info');
-        let attempts = 0;
-        const poll = setInterval(() => {
-          attempts++;
-          if (window._jivoReady || typeof jivo_api !== 'undefined') {
-            clearInterval(poll);
-            _doOpen();
-          } else if (attempts >= 16) {
-            clearInterval(poll);
-            showToast('Chat unavailable — please email support@zenassets.com', 'error');
-          }
-        }, 500);
-      }
-    };
+      const _open = () => {
+        _setIdentity();
+        if (typeof jivo_api !== 'undefined') {
+          try { jivo_api.open(); return; } catch(e) {}
+        }
+        const el = document.querySelector('jdiv.__jivoMobileButton') ||
+                   document.querySelector('jdiv[class*="button"]') ||
+                   document.querySelector('jdiv');
+        if (el) { el.click(); return; }
+      };
 
+      // jdiv appears in DOM as soon as JivoChat script starts running
+      if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
+        _open();
+        return;
+      }
+
+      // Widget still loading — poll up to 10s
+      showToast('Opening chat…', 'info');
+      let n = 0;
+      const t = setInterval(() => {
+        if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
+          clearInterval(t); _open();
+        } else if (++n >= 20) {
+          clearInterval(t);
+          showToast('Chat unavailable — please email support@zenassets.com', 'error');
+        }
+      }, 500);
+    };
     // Copy wallet address function
     window.copyAddress = async (address, button) => {
       try {
