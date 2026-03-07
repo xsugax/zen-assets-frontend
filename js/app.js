@@ -2916,7 +2916,6 @@ const App = (() => {
     // Opens the JivoChat widget; pre-identifies the visitor if logged in.
     window.openSmartsuppChat = () => {
       const _doOpen = () => {
-        // Pass visitor identity to JivoChat if logged in
         if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
           const session = UserAuth.getSession();
           if (session) {
@@ -2931,14 +2930,14 @@ const App = (() => {
         try { jivo_api.open(); } catch(e) {}
       };
 
-      if (typeof jivo_api !== 'undefined') {
+      if (window._jivoReady || typeof jivo_api !== 'undefined') {
         _doOpen();
       } else {
         showToast('Connecting to live chat…', 'info');
         let attempts = 0;
         const poll = setInterval(() => {
           attempts++;
-          if (typeof jivo_api !== 'undefined') {
+          if (window._jivoReady || typeof jivo_api !== 'undefined') {
             clearInterval(poll);
             _doOpen();
           } else if (attempts >= 16) {

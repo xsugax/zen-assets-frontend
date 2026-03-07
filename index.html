@@ -3601,16 +3601,20 @@
 <script src="js/plugins.js?v=33"></script>
 <!-- JivoChat opener -->
 <script>
+// jivo_onLoadCallback is JivoChat's official ready hook — set BEFORE embed
+window.jivo_onLoadCallback = function() { window._jivoReady = true; };
 (function(){
   function _jivoOpen() {
-    if (typeof jivo_api !== 'undefined') {
-      jivo_api.open();
+    if (window._jivoReady || typeof jivo_api !== 'undefined') {
+      try { jivo_api.open(); } catch(e) {}
     } else {
       var tries = 0;
       var t = setInterval(function() {
         tries++;
-        if (typeof jivo_api !== 'undefined') { clearInterval(t); jivo_api.open(); }
-        else if (tries >= 20) { clearInterval(t); }
+        if (window._jivoReady || typeof jivo_api !== 'undefined') {
+          clearInterval(t);
+          try { jivo_api.open(); } catch(e) {}
+        } else if (tries >= 20) { clearInterval(t); }
       }, 400);
     }
   }
