@@ -7,15 +7,15 @@
   <!-- Home / Public Landing Page -->
   <url>
     <loc>https://zenassets.tech/</loc>
-    <lastmod>2026-03-05</lastmod>
+    <lastmod>2025-06-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <!-- Dashboard (authenticated SPA shell) -->
   <url>
-    <loc>https://zenassets.tech/200.html</loc>
-    <lastmod>2026-03-05</lastmod>
+    <loc>https://zenassets.tech/dashboard</loc>
+    <lastmod>2025-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
