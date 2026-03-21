@@ -222,13 +222,25 @@ const UserAuth = (() => {
   };
 
   // ── Local Cache Helpers ──────────────────────────────────
-  // Read from localStorage first (remember-me sessions), fall back to sessionStorage (session-only).
+  // _activeStore tracks where auth was persisted for this session.
+  // localStorage = "Remember me" / admin; sessionStorage = tab-only session.
+  let _activeStore = null; // set by _persistAuth or init()
+
+  function _getStore() {
+    if (_activeStore) return _activeStore;
+    // Detect: if remember-me flag is set, data is in localStorage; otherwise sessionStorage
+    if (localStorage.getItem(STORAGE_REMEMBER) === '1') return localStorage;
+    return sessionStorage;
+  }
+
   function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION) || sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
-  function _saveSession(s) { s ? localStorage.setItem(STORAGE_SESSION, JSON.stringify(s)) : localStorage.removeItem(STORAGE_SESSION); }
   function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || sessionStorage.getItem(STORAGE_TOKEN) || null; }
-  function _saveToken(t)   { t ? localStorage.setItem(STORAGE_TOKEN, t) : localStorage.removeItem(STORAGE_TOKEN); }
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
-  function _saveWallet(w)  { w ? localStorage.setItem(STORAGE_WALLET, JSON.stringify(w)) : localStorage.removeItem(STORAGE_WALLET); }
+
+  // Write helpers — ALWAYS respect the active store so non-remember sessions stay in sessionStorage
+  function _saveSession(s) { const store = _getStore(); s ? store.setItem(STORAGE_SESSION, JSON.stringify(s)) : store.removeItem(STORAGE_SESSION); }
+  function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
+  function _saveWallet(w)  { const store = _getStore(); w ? store.setItem(STORAGE_WALLET, JSON.stringify(w)) : store.removeItem(STORAGE_WALLET); }
 
   // ── Persist auth — localStorage (remember-me) or sessionStorage (tab-only) ──
   function _persistAuth(token, session, wallet, remember) {
@@ -238,10 +250,16 @@ const UserAuth = (() => {
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
-    if (!token) return;
+    // On logout (token=null), also clear the remember-me flag
+    if (!token) {
+      localStorage.removeItem(STORAGE_REMEMBER);
+      _activeStore = null;
+      return;
+    }
     // Admin sessions are always persisted to localStorage regardless of checkbox
     const isAdmin = session && session.role === 'admin';
     const store = (remember || isAdmin) ? localStorage : sessionStorage;
+    _activeStore = store;
     store.setItem(STORAGE_TOKEN, token);
     if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
     if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
@@ -860,34 +878,66 @@ const UserAuth = (() => {
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
-    // If user previously checked "Remember me", keep their session alive.
-    // Otherwise clear everything so they start fresh.
     const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
+
+    // ── Path A: "Remember me" — persistent login across browser restarts ──
     if (remembered && localStorage.getItem(STORAGE_TOKEN) && localStorage.getItem(STORAGE_SESSION)) {
-      // Remembered session exists — leave it intact and validate asynchronously
+      _activeStore = localStorage;
       console.log('[Auth] Remembered session found — restoring...');
-      // Fire-and-forget validation against the API
+      // Validate token expiry locally (7-day tokens)
+      const token = localStorage.getItem(STORAGE_TOKEN);
+      const uid = _verifyLocalToken(token);
+      if (!uid) {
+        console.warn('[Auth] Remembered token expired — clearing');
+        _persistAuth(null);
+        return; // isLoggedIn() will return false → login screen shows
+      }
+      // Fire-and-forget async validation against API
       refreshSession().then(result => {
         if (!result) {
           console.warn('[Auth] Remembered session invalid — clearing');
-          _persistAuth(null); // wipe stale data
-          // Reload to show login screen
+          _persistAuth(null);
           location.reload();
         } else {
           console.log('[Auth] Remembered session validated ✓');
         }
       }).catch(() => {
-        // Offline / API unreachable — keep the cached session
         console.log('[Auth] API unreachable — using cached session');
       });
-    } else {
-      // No remember-me — clear everything for a fresh login
-      localStorage.removeItem(STORAGE_REMEMBER);
-      [localStorage, sessionStorage].forEach(s => {
-        s.removeItem(STORAGE_TOKEN);
-        s.removeItem(STORAGE_SESSION);
-        s.removeItem(STORAGE_WALLET);
-      });
+      return;
+    }
+
+    // ── Path B: No "Remember me" — clear any stale localStorage auth ──
+    // But KEEP sessionStorage intact (tab sessions survive page refresh)
+    localStorage.removeItem(STORAGE_REMEMBER);
+    localStorage.removeItem(STORAGE_TOKEN);
+    localStorage.removeItem(STORAGE_SESSION);
+    localStorage.removeItem(STORAGE_WALLET);
+
+    // Check for a valid tab session in sessionStorage
+    const tabToken = sessionStorage.getItem(STORAGE_TOKEN);
+    const tabSession = sessionStorage.getItem(STORAGE_SESSION);
+    if (tabToken && tabSession) {
+      // Validate token hasn't expired
+      const uid = _verifyLocalToken(tabToken);
+      if (uid) {
+        // Also enforce a 4-hour session timeout for non-remembered sessions
+        try {
+          const sess = JSON.parse(tabSession);
+          const elapsed = Date.now() - (sess.loginAt || 0);
+          const MAX_TAB_SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
+          if (elapsed < MAX_TAB_SESSION_MS) {
+            _activeStore = sessionStorage;
+            console.log('[Auth] Tab session valid — keeping (no remember-me)');
+            return;
+          }
+        } catch {}
+      }
+      // Token expired or session timeout — clear tab session
+      sessionStorage.removeItem(STORAGE_TOKEN);
+      sessionStorage.removeItem(STORAGE_SESSION);
+      sessionStorage.removeItem(STORAGE_WALLET);
+      console.log('[Auth] Tab session expired — cleared');
     }
   }
 

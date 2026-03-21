@@ -573,8 +573,12 @@ const InvestmentReturns = (() => {
       const saved = localStorage.getItem(key);
       if (!saved) return false;
       const parsed = JSON.parse(saved);
-      // Only apply if the stored data has a newer/different balance
-      if (parsed._adminActivated && (parsed.walletBalance !== state.walletBalance || parsed.tier !== state.tier)) {
+      // Apply if: stored data was admin-activated AND balance/tier differs,
+      // OR current state is dormant ($0) and stored data has funds
+      const balanceChanged = parsed.walletBalance !== state.walletBalance;
+      const tierChanged = parsed.tier !== state.tier;
+      const dormantToFunded = state.walletBalance <= 0 && parsed.walletBalance > 0;
+      if ((parsed._adminActivated && (balanceChanged || tierChanged)) || dormantToFunded) {
         const oldBal = state.walletBalance;
         state = { ...state, ...parsed };
         STORAGE_KEY = key;

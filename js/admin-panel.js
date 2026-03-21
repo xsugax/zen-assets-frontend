@@ -1008,17 +1008,30 @@ const AdminPanel = (() => {
       const d = new Date(); d.setHours(0, 0, 0, 0);
       const wk = new Date(); const dy = wk.getDay();
       wk.setDate(wk.getDate() - dy + (dy === 0 ? -6 : 1)); wk.setHours(0, 0, 0, 0);
+
+      // Merge with existing state (preserve trade history, returns, etc.)
+      let existing = {};
+      try { existing = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
       const invState = {
+        ...existing,
         tier, walletBalance: amount, initialDeposit: amount,
         dayStartBalance: amount, weekStartBalance: amount,
         lastAccrualTick: now, lastDailyReset: d.getTime(), lastWeeklyReset: wk.getTime(),
         _adminActivated: true, _seeded: true, _v2ClaimMigrated: true,
-        unclaimedDaily: 0, unclaimedWeekly: 0, unclaimedTrading: 0, unclaimedInterest: 0,
-        totalTradingProfit: 0, totalReturnCredit: 0, dailyReturnAccrued: 0, weeklyReturnAccrued: 0,
-        totalClaimed: 0, claimStreak: 0, lastClaimDate: null, returnHistory: [], transferLog: [],
       };
       localStorage.setItem(invKey, JSON.stringify(invState));
     } catch (e) { /* quota exceeded — graceful */ }
+
+    // Also update the user's cached wallet so login picks up the funded balance
+    try {
+      const walletKey = 'zen_wallet';
+      // Only update if the target user's session is the current cached session
+      const cachedSession = JSON.parse(localStorage.getItem('zen_session') || sessionStorage.getItem('zen_session') || '{}');
+      if (cachedSession.email && cachedSession.email.toLowerCase() === email.toLowerCase()) {
+        const wallet = { totalDeposited: amount, balance: amount, earnings: 0, currency: 'USD' };
+        localStorage.setItem(walletKey, JSON.stringify(wallet));
+      }
+    } catch {}
 
     log('admin_action', `Activated account for ${email}: $${amount.toLocaleString()}`, 'success', { email, amount });
     toast(`Account activated! $${amount.toLocaleString()} funded for ${u.fullName || email}`, 'success');
