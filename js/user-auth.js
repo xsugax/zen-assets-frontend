@@ -353,6 +353,42 @@ const UserAuth = (() => {
         };
       }
 
+      // ── Admin: credit user ────────────────────────────────
+      if (endpoint.match(/^\/admin\/users\/[^/]+\/credit$/) && method === 'POST') {
+        const uid = endpoint.split('/')[3];
+        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        const idx = allUsers.findIndex(u => u.id === uid);
+        if (idx === -1) return { ok: false, error: 'User not found.' };
+        const amt = parseFloat(body.amount) || 0;
+        allUsers[idx].balance = (allUsers[idx].balance || 0) + amt;
+        allUsers[idx].depositAmount = (allUsers[idx].depositAmount || 0) + amt;
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+        return { ok: true, balance: allUsers[idx].balance };
+      }
+
+      // ── Admin: debit user ─────────────────────────────────
+      if (endpoint.match(/^\/admin\/users\/[^/]+\/debit$/) && method === 'POST') {
+        const uid = endpoint.split('/')[3];
+        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        const idx = allUsers.findIndex(u => u.id === uid);
+        if (idx === -1) return { ok: false, error: 'User not found.' };
+        const amt = parseFloat(body.amount) || 0;
+        allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+        return { ok: true, balance: allUsers[idx].balance };
+      }
+
+      // ── Admin: set PIN ────────────────────────────────────
+      if (endpoint.match(/^\/admin\/users\/[^/]+\/set-pin$/) && method === 'POST') {
+        const uid = endpoint.split('/')[3];
+        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        const idx = allUsers.findIndex(u => u.id === uid);
+        if (idx === -1) return { ok: false, error: 'User not found.' };
+        allUsers[idx].pinHash = _simpleHash(body.pin);
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+        return { ok: true, success: true };
+      }
+
       // ── Wallet / trades / KYC — return graceful empty ─────
       return { ok: true, transactions: [], trades: [], balance: 0, totalDeposited: 0, earnings: 0 };
     }

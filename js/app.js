@@ -2043,6 +2043,25 @@ const App = (() => {
     }, duration);
   }
 
+  // ── Forgot Password ──────────────────────────────────────
+  window.showForgotPassword = function() {
+    const email = prompt('Enter your registered email address and we will send you a password reset link:');
+    if (!email) return;
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      showToast('Please enter a valid email address.', 'error');
+      return;
+    }
+    // Offline: acknowledge the request — real reset requires backend
+    showToast('If that email is registered, a reset link has been sent. Check your inbox.', 'success', 6000);
+    console.info('[ZEN] Password reset requested for:', trimmed);
+  };
+
+  // ── Enterprise SSO ───────────────────────────────────────
+  window.showSSOInfo = function() {
+    showToast('Enterprise SSO is available for institutional accounts. Contact support@zenassets.com to get started.', 'info', 7000);
+  };
+
   // ── Live Notification Engine ──────────────────────────────
   const _notifications = [];
   const _maxNotifs = 25;

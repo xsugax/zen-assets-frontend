@@ -86,13 +86,14 @@ const AdminPanel = (() => {
     return Math.floor(diff / 86400) + 'd ago';
   }
 
-  // Simple hash matching user-auth.js
+  // PIN hash — must match _simpleHash in user-auth.js exactly
   function _hash(str) {
-    let h = 0;
+    let h = 5381;
     for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      h = ((h << 5) + h) ^ str.charCodeAt(i);
+      h = h >>> 0;
     }
-    return 'h$' + Math.abs(h).toString(16);
+    return h.toString(36) + '$' + str.length.toString(36);
   }
 
   // ────────────────────────────────────────────────────────
