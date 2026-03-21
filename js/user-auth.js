@@ -608,86 +608,7 @@ const UserAuth = (() => {
     const sessionBefore = _loadSession();
     const userEmailBefore = sessionBefore?.email;
     
-    // ═ STEP 1: Terminate WebSocket & Data Streams ═
-    console.log('🔐 LOGOUT: Terminating data pipelines...');
-    
-    if (typeof RealDataAdapter !== 'undefined' && RealDataAdapter.destroy) {
-      try {
-        RealDataAdapter.destroy();
-        console.log('✓ Real data adapter terminated');
-      } catch(e) { console.warn('⚠ RealDataAdapter cleanup error:', e.message); }
-    }
-    
-    if (typeof MarketData !== 'undefined' && MarketData.destroy) {
-      try {
-        MarketData.destroy();
-        console.log('✓ Market data pipeline terminated');
-      } catch(e) { console.warn('⚠ MarketData cleanup error:', e.message); }
-    }
-    
-    // ═ STEP 2: Stop Chart Engines ═
-    console.log('🔐 LOGOUT: Stopping chart engines...');
-    
-    if (typeof AdvancedChartEngine !== 'undefined' && AdvancedChartEngine.destroyAll) {
-      try {
-        AdvancedChartEngine.destroyAll();
-        console.log('✓ Advanced chart engine destroyed (all instances)');
-      } catch(e) { console.warn('⚠ AdvancedChartEngine cleanup error:', e.message); }
-    }
-    
-    if (typeof AdvancedChartEngine !== 'undefined' && AdvancedChartEngine.stopRealtimeUpdates) {
-      try {
-        // Stop all realtime updates
-        document.querySelectorAll('[id*="chart"]').forEach(el => {
-          AdvancedChartEngine.stopRealtimeUpdates(el.id);
-        });
-        console.log('✓ All chart realtime updates stopped');
-      } catch(e) { console.warn('⚠ Chart update stop error:', e.message); }
-    }
-    
-    if (typeof ChartEngine !== 'undefined' && ChartEngine.destroyAll) {
-      try {
-        ChartEngine.destroyAll();
-        console.log('✓ Chart engine destroyed');
-      } catch(e) { console.warn('⚠ ChartEngine cleanup error:', e.message); }
-    }
-    
-    // ═ STEP 3: Clear Tick Listeners & Timers ═
-    console.log('🔐 LOGOUT: Clearing listeners and timers...');
-    
-    // Kill all pending timeouts and intervals
-    for (let i = 1; i < 10000; i++) {
-      clearTimeout(i);
-      clearInterval(i);
-    }
-    console.log('✓ All timers cleared');
-    
-    // ═ STEP 4: Clear Candle Caches ═
-    console.log('🔐 LOGOUT: Clearing candle caches...');
-    
-    const candleCacheKeys = [
-      'zen_candles',
-      'zen_ohlcv',
-      'zen_chart_cache',
-      'zen_ticker_cache',
-      'zen_market_snapshot',
-    ];
-    candleCacheKeys.forEach(key => localStorage.removeItem(key));
-    sessionStorage.clear();
-    console.log('✓ Candle and chart caches cleared');
-    
-    // ═ STEP 5: Notify API About Logout ═
-    console.log('🔐 LOGOUT: Disconnecting from API...');
-    if (_loadToken()) {
-      try { 
-        await _api('/auth/logout', { method: 'POST' });
-        console.log('✓ API logout confirmed');
-      } catch { 
-        console.warn('⚠ API logout notification failed (expected in offline mode)');
-      }
-    }
-    
-    // ═ STEP 6: Clear Auth Tokens & Session ═
+    // ═ STEP 1: Clear Auth FIRST (most important — do this before anything else) ═
     console.log('🔐 LOGOUT: Clearing authentication...');
     localStorage.removeItem(STORAGE_REMEMBER);
     [localStorage, sessionStorage].forEach(s => {
@@ -695,8 +616,31 @@ const UserAuth = (() => {
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
-    console.log('✓ Auth tokens, remember-me flag, and session cleared');
+    _activeStore = null;
+    console.log('✓ Auth cleared');
+
+    // ═ STEP 2: Terminate WebSocket & Data Streams ═
+    try {
+      if (typeof RealDataAdapter !== 'undefined' && RealDataAdapter.destroy) RealDataAdapter.destroy();
+      if (typeof MarketData !== 'undefined' && MarketData.destroy) MarketData.destroy();
+    } catch(e) { console.warn('⚠ Stream cleanup:', e.message); }
     
+    // ═ STEP 3: Stop Chart Engines ═
+    try {
+      if (typeof AdvancedChartEngine !== 'undefined' && AdvancedChartEngine.destroyAll) AdvancedChartEngine.destroyAll();
+      if (typeof ChartEngine !== 'undefined' && ChartEngine.destroyAll) ChartEngine.destroyAll();
+    } catch(e) { console.warn('⚠ Chart cleanup:', e.message); }
+    
+    // ═ STEP 4: Clear Timers ═
+    for (let i = 1; i < 10000; i++) { clearTimeout(i); clearInterval(i); }
+    
+    // ═ STEP 5: Clear Caches ═
+    ['zen_candles','zen_ohlcv','zen_chart_cache','zen_ticker_cache','zen_market_snapshot'].forEach(k => localStorage.removeItem(k));
+    sessionStorage.clear();
+    
+    // ═ STEP 6: Notify API (fire-and-forget, don't wait) ═
+    try { _api('/auth/logout', { method: 'POST' }).catch(() => {}); } catch {}
+
     // ═ STEP 7: Clear User-Specific Data ═
     console.log('🔐 LOGOUT: Clearing user data...');
     

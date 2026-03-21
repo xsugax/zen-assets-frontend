@@ -3206,69 +3206,28 @@ const App = (() => {
 
     const logoutBtn = $('ud-logout');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        console.log('🔐 LOGOUT: UI handler - stopping modules...');
-        
-        // ═ Stop Auto Trader ═
-        if (typeof AutoTrader !== 'undefined' && AutoTrader.stop) {
-          try { AutoTrader.stop(); console.log('✓ AutoTrader stopped'); } catch(e) { console.warn('⚠ AutoTrader stop error:', e.message); }
+      logoutBtn.addEventListener('click', async (e) => {
+        e.stopPropagation(); // prevent capsule toggle from interfering
+        console.log('🔐 LOGOUT: Starting...');
+        try {
+          // ═ Save user state before clearing ═
+          try { if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.saveAndDisconnect) InvestmentReturns.saveAndDisconnect(); } catch(e) {}
+          try { if (typeof AutoTrader !== 'undefined' && AutoTrader.stop) AutoTrader.stop(); } catch(e) {}
+          try { if (typeof Gamification !== 'undefined' && Gamification.saveAndDisconnect) Gamification.saveAndDisconnect(); } catch(e) {}
+          try { if (typeof Portfolio !== 'undefined' && Portfolio.destroy) Portfolio.destroy(); } catch(e) {}
+          try { if (typeof Trading !== 'undefined' && Trading.disconnect) Trading.disconnect(); } catch(e) {}
+
+          // ═ Master Logout ─ Clears auth, storage, streams ═
+          if (typeof UserAuth !== 'undefined') {
+            await UserAuth.logout();
+          }
+          console.log('🔓 LOGOUT: Auth cleared');
+        } catch(err) {
+          console.warn('⚠ Logout error (forcing reload):', err.message);
+        } finally {
+          // ═ ALWAYS reload — guaranteed even if errors above ═
+          window.location.href = window.location.pathname;
         }
-        
-        // ═ Disconnect Investment Returns ═
-        if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.saveAndDisconnect) {
-          try { InvestmentReturns.saveAndDisconnect(); console.log('✓ InvestmentReturns disconnected'); } catch(e) { console.warn('⚠ InvestmentReturns error:', e.message); }
-        }
-        
-        // ═ Disconnect Gamification ═
-        if (typeof Gamification !== 'undefined' && Gamification.saveAndDisconnect) {
-          try { Gamification.saveAndDisconnect(); console.log('✓ Gamification disconnected'); } catch(e) { console.warn('⚠ Gamification error:', e.message); }
-        }
-        
-        // ═ Disconnect Portfolio ═
-        if (typeof Portfolio !== 'undefined' && Portfolio.destroy) {
-          try { Portfolio.destroy(); console.log('✓ Portfolio destroyed'); } catch(e) { console.warn('⚠ Portfolio error:', e.message); }
-        }
-        
-        // ═ Disconnect Trading ═
-        if (typeof Trading !== 'undefined' && Trading.disconnect) {
-          try { Trading.disconnect(); console.log('✓ Trading disconnected'); } catch(e) { console.warn('⚠ Trading error:', e.message); }
-        }
-        
-        // ═ Master Logout ─ Clears ALL data, closes WebSockets, kills streams ═
-        console.log('🔐 LOGOUT: Master logout - terminating all data pipelines...');
-        if (typeof UserAuth !== 'undefined') {
-          await UserAuth.logout();
-        }
-        
-        // ═ Hide App, Show Login ═
-        console.log('🔐 LOGOUT: Resetting UI...');
-        const app = document.getElementById('app');
-        const loginScreen = document.getElementById('login-screen');
-        
-        // Force hide app elements
-        if (app) {
-          app.classList.remove('app-visible');
-          app.style.display = 'none';
-          app.innerHTML = ''; // Clear DOM to prevent any lingering event handlers
-        }
-        
-        // Force show login screen
-        if (loginScreen) {
-          loginScreen.style.display = 'block';
-          loginScreen.style.opacity = '1';
-        }
-        
-        // Reset scroll and body
-        document.body.style.overflow = 'auto';
-        document.body.style.height = 'auto';
-        
-        console.log('🔓 LOGOUT: Complete - UI reset and page reload pending...');
-        
-        // ═ Full Page Reload ─ Gives app.js fresh init() run ═
-        setTimeout(() => {
-          console.log('🔄 LOGOUT: Reloading page for clean state...');
-          location.replace(window.location.pathname);
-        }, 300);
       });
     }
   }
