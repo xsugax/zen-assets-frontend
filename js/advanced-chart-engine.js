@@ -197,12 +197,58 @@ const AdvancedChartEngine = (() => {
       lastValueVisible: true,
     });
 
+    // ── EMA 12/26 — Exponential Moving Averages ────────────
+    const ema12Series = chart.addLineSeries({
+      color:            'rgba(255,159,64,0.65)',
+      lineWidth:        1,
+      title:            'EMA12',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle:        LightweightCharts.LineStyle.Dotted,
+    });
+
+    const ema26Series = chart.addLineSeries({
+      color:            'rgba(153,102,255,0.60)',
+      lineWidth:        1,
+      title:            'EMA26',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle:        LightweightCharts.LineStyle.Dotted,
+    });
+
+    // ── VWAP — Volume-Weighted Average Price ───────────────
+    const vwapSeries = chart.addLineSeries({
+      color:            'rgba(0,188,212,0.75)',
+      lineWidth:        2,
+      title:            'VWAP',
+      priceLineVisible: false,
+      lastValueVisible: true,
+      lineStyle:        LightweightCharts.LineStyle.LargeDashed,
+    });
+
+    // ── Bollinger Bands ─────────────────────────────────────
+    const bbUpperSeries = chart.addLineSeries({
+      color:            'rgba(139,152,173,0.35)',
+      lineWidth:        1,
+      title:            'BB Upper',
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
+    const bbLowerSeries = chart.addLineSeries({
+      color:            'rgba(139,152,173,0.35)',
+      lineWidth:        1,
+      title:            'BB Lower',
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
     // Start live tick feed FIRST — forming candle begins building immediately
     // This runs in parallel while historical data is fetched
     startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe);
 
     // Load historical data — awaited so callers know when chart is ready
-    await loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe);
+    await loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe);
 
     // Handle resize
     const resizeObserver = new ResizeObserver(entries => {
@@ -218,6 +264,11 @@ const AdvancedChartEngine = (() => {
       volumeSeries,
       ma20Series,
       ma50Series,
+      ema12Series,
+      ema26Series,
+      vwapSeries,
+      bbUpperSeries,
+      bbLowerSeries,
       resizeObserver,
       symbol,
     };
@@ -233,7 +284,7 @@ const AdvancedChartEngine = (() => {
   //   4. Only fall back to simulated if real data truly fails, with background retries
   // This makes each timeframe feel genuinely different because the data IS different:
   //   1m = real micro-movements, 4h = real macro swings.
-  async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, timeframe = '5m') {
+  async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe = '5m') {
     const assetId  = symbol.split('/')[0];
     const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
@@ -252,7 +303,7 @@ const AdvancedChartEngine = (() => {
         ]);
         if (real && real.length >= 5) {
           // Clean render — real data, no visual swap later
-          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
           return;
         }
       } catch {}
@@ -269,7 +320,7 @@ const AdvancedChartEngine = (() => {
     } catch {}
 
     if (simCandles.length > 0) {
-      _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, simCandles, symbol, false, timeframe);
+      _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
     }
 
     // ── Background retries — upgrade simulated → real once network recovers ──
@@ -279,7 +330,7 @@ const AdvancedChartEngine = (() => {
       try {
         const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
         if (real && real.length >= 5) {
-          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, real, symbol, true, timeframe);
+          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
           return; // success — stop retrying
         }
       } catch {}
@@ -289,9 +340,56 @@ const AdvancedChartEngine = (() => {
     setTimeout(tryUpgrade, retryMs);
   }
 
+  // ── Indicator helpers ──────────────────────────────────
+  function calculateEMA(data, period) {
+    if (!data || data.length < period) return [];
+    const k = 2 / (period + 1);
+    const result = [];
+    // Seed with SMA of first `period` points
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += data[i].close;
+    let ema = sum / period;
+    result.push({ time: data[period - 1].time, value: parseFloat(ema.toFixed(6)) });
+    for (let i = period; i < data.length; i++) {
+      ema = data[i].close * k + ema * (1 - k);
+      result.push({ time: data[i].time, value: parseFloat(ema.toFixed(6)) });
+    }
+    return result;
+  }
+
+  function calculateVWAP(candles) {
+    if (!candles || candles.length === 0) return [];
+    let cumTPV = 0, cumVol = 0;
+    return candles.map(c => {
+      const tp = (c.high + c.low + c.close) / 3;
+      const vol = c.volume || c.v || 1;
+      cumTPV += tp * vol;
+      cumVol += vol;
+      return { time: c.time, value: parseFloat((cumTPV / cumVol).toFixed(6)) };
+    });
+  }
+
+  function calculateBollingerBands(data, period, stdDevMult) {
+    period = period || 20;
+    stdDevMult = stdDevMult || 2;
+    if (!data || data.length < period) return { upper: [], lower: [] };
+    const upper = [], lower = [];
+    for (let i = period - 1; i < data.length; i++) {
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+      const sma = sum / period;
+      let sqSum = 0;
+      for (let j = i - period + 1; j <= i; j++) sqSum += Math.pow(data[j].close - sma, 2);
+      const sd = Math.sqrt(sqSum / period);
+      upper.push({ time: data[i].time, value: parseFloat((sma + stdDevMult * sd).toFixed(6)) });
+      lower.push({ time: data[i].time, value: parseFloat((sma - stdDevMult * sd).toFixed(6)) });
+    }
+    return { upper, lower };
+  }
+
   // Render a candle dataset onto all chart series
   // Each series.setData call is independently guarded so one failure can't block others
-  function _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, candles, symbol, isReal, timeframe) {
+  function _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, candles, symbol, isReal, timeframe) {
     const candleData = candles.map(c => ({
       time: Math.floor(c.t / 1000),
       open: c.o, high: c.h, low: c.l, close: c.c,
@@ -300,6 +398,12 @@ const AdvancedChartEngine = (() => {
       time: Math.floor(c.t / 1000),
       value: c.v,
       color: c.c >= c.o ? THEME.volume.up : THEME.volume.down,
+    }));
+
+    // Build a "rich" array with time/close/high/low/volume for indicator helpers
+    const richData = candles.map(c => ({
+      time: Math.floor(c.t / 1000),
+      close: c.c, high: c.h, low: c.l, open: c.o, volume: c.v,
     }));
 
     try { candleSeries.setData(candleData); }
@@ -313,6 +417,22 @@ const AdvancedChartEngine = (() => {
 
     try { ma50Series.setData(calculateMA(candleData, 50)); }
     catch (e) { console.error('[Chart] MA50 failed:', e.message); }
+
+    // ── Advanced overlays ──
+    try { ema12Series.setData(calculateEMA(richData, 12)); }
+    catch (e) { console.error('[Chart] EMA12 failed:', e.message); }
+
+    try { ema26Series.setData(calculateEMA(richData, 26)); }
+    catch (e) { console.error('[Chart] EMA26 failed:', e.message); }
+
+    try { vwapSeries.setData(calculateVWAP(richData)); }
+    catch (e) { console.error('[Chart] VWAP failed:', e.message); }
+
+    try {
+      const bb = calculateBollingerBands(richData, 20, 2);
+      bbUpperSeries.setData(bb.upper);
+      bbLowerSeries.setData(bb.lower);
+    } catch (e) { console.error('[Chart] Bollinger Bands failed:', e.message); }
 
     // Non-critical enhancements — failures OK
     try { addSupportResistanceLevels(candleSeries, candleData); } catch {}

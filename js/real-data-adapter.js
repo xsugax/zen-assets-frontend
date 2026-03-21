@@ -361,6 +361,138 @@ const RealDataAdapter = (() => {
 
   function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+  // ═══════════════════════════════════════════════════════════
+  //  MULTI-SOURCE CONSENSUS ENGINE
+  //  Aggregates prices from Binance WS, CoinGecko REST, Yahoo
+  //  to produce a confidence-weighted "true price" per asset.
+  // ═══════════════════════════════════════════════════════════
+
+  const _priceSources = {};   // symbol → { binance:{price,ts}, coingecko:{price,ts}, yahoo:{price,ts} }
+  const _confidence   = {};   // symbol → { score:0-100, sources:N, spread:% }
+
+  function _recordSource(symbol, source, price) {
+    if (!price || isNaN(price) || price <= 0) return;
+    if (!_priceSources[symbol]) _priceSources[symbol] = {};
+    _priceSources[symbol][source] = { price, ts: Date.now() };
+    _computeConsensus(symbol);
+  }
+
+  function _computeConsensus(symbol) {
+    const feeds = _priceSources[symbol];
+    if (!feeds) return;
+    const now = Date.now();
+    const STALE_MS = 30000; // 30s stale threshold
+    const live = [];
+    for (const [src, data] of Object.entries(feeds)) {
+      if (now - data.ts < STALE_MS) live.push({ src, price: data.price, age: now - data.ts });
+    }
+    if (live.length === 0) { _confidence[symbol] = { score: 0, sources: 0, spread: 0 }; return; }
+
+    // Weighted average: fresher data gets more weight
+    let wSum = 0, wTotal = 0;
+    for (const f of live) {
+      const freshness = 1 - (f.age / STALE_MS);           // 1.0 = brand new, 0.0 = almost stale
+      const srcWeight = f.src === 'binance-ws' ? 3 : f.src === 'binance-rest' ? 2 : 1;
+      const w = freshness * srcWeight;
+      wSum += f.price * w;
+      wTotal += w;
+    }
+    const consensusPrice = wSum / wTotal;
+
+    // Spread: max deviation between sources
+    const prices = live.map(f => f.price);
+    const maxP = Math.max(...prices), minP = Math.min(...prices);
+    const spread = maxP > 0 ? ((maxP - minP) / maxP * 100) : 0;
+
+    // Confidence: more sources + tighter spread = higher confidence
+    const srcScore = Math.min(live.length / 3, 1) * 50;    // 0-50 points from source count
+    const spreadScore = Math.max(0, 50 - spread * 100);     // 0-50 points from spread
+    const score = Math.round(srcScore + spreadScore);
+
+    _confidence[symbol] = { score, sources: live.length, spread: parseFloat(spread.toFixed(4)), consensusPrice };
+  }
+
+  function getConfidence(symbol) { return _confidence[symbol] || { score: 0, sources: 0, spread: 0 }; }
+  function getConsensusPrice(symbol) { return _confidence[symbol]?.consensusPrice || cache[symbol]?.price || null; }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ADAPTIVE FETCH RATE ENGINE
+  //  When volatility spikes (big % moves), poll faster.
+  //  When markets are calm, slow down to save bandwidth.
+  // ═══════════════════════════════════════════════════════════
+
+  const _volatility = {};  // symbol → { recentMoves:[], avgVol, lastCheck }
+
+  function _trackVolatility(symbol, pricePct) {
+    if (!_volatility[symbol]) _volatility[symbol] = { recentMoves: [], avgVol: 0, lastCheck: Date.now() };
+    const v = _volatility[symbol];
+    v.recentMoves.push(Math.abs(pricePct));
+    if (v.recentMoves.length > 20) v.recentMoves.shift();
+    v.avgVol = v.recentMoves.reduce((a, b) => a + b, 0) / v.recentMoves.length;
+  }
+
+  function _getAdaptiveInterval(symbol, basePollMs) {
+    const v = _volatility[symbol];
+    if (!v || v.avgVol === 0) return basePollMs;
+    // High vol (>2% avg move): poll 2x faster.  Low vol (<0.3%): 1.5x slower
+    if (v.avgVol > 2)   return Math.max(1000, Math.floor(basePollMs * 0.5));
+    if (v.avgVol > 0.8) return Math.max(2000, Math.floor(basePollMs * 0.7));
+    if (v.avgVol < 0.3) return Math.floor(basePollMs * 1.5);
+    return basePollMs;
+  }
+
+  function getVolatilityProfile(symbol) { return _volatility[symbol] || null; }
+
+  // ═══════════════════════════════════════════════════════════
+  //  COINGECKO REDUNDANT FEED (backup for when Binance WS drops)
+  // ═══════════════════════════════════════════════════════════
+
+  let _cgTimer = null;
+
+  function startCoinGeckoFeed() {
+    _cgTimer = setInterval(async () => {
+      try {
+        const ids = Object.values(CONFIG.cryptoIds).join(',');
+        const url = `${CONFIG.apis.coingecko}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
+        const r = await fetch(url);
+        if (!r.ok) return;
+        const data = await r.json();
+        Object.entries(CONFIG.cryptoIds).forEach(([sym, cgId]) => {
+          if (!data[cgId]) return;
+          const price = data[cgId].usd;
+          const pct   = data[cgId].usd_24h_change || 0;
+          _recordSource(sym, 'coingecko', price);
+          _trackVolatility(sym, pct);
+          // Only inject if Binance WS is stale (>10s old)
+          const binFeed = _priceSources[sym]?.['binance-ws'];
+          if (!binFeed || Date.now() - binFeed.ts > 10000) {
+            const n = { symbol: sym, price, priceChangePct: pct, volume24h: data[cgId].usd_24h_vol || 0, source: 'coingecko' };
+            cache[sym] = { ...cache[sym], ...n };
+            emit('price_update', n);
+            injectIntoMarketData(n);
+          }
+        });
+      } catch {}
+    }, isMobile ? 30000 : 12000); // 12s desktop, 30s mobile
+  }
+
+  // Hook into existing processBinanceTicker to track sources
+  const _origProcessBinanceTicker = processBinanceTicker;
+
+  // ── Enhanced injection wrapper ────────────────────────────
+  // Wraps every price_update to track multi-source + volatility
+  function _enhancedInject(normalized) {
+    _recordSource(normalized.symbol, normalized.source || 'unknown', normalized.price);
+    if (normalized.priceChangePct) _trackVolatility(normalized.symbol, normalized.priceChangePct);
+  }
+
+  // Patch: tap into every price update for consensus tracking
+  const _origEmit = emit;
+  emit = function(event, data) {
+    if (event === 'price_update' && data) _enhancedInject(data);
+    _origEmit(event, data);
+  };
+
   // ── Public API ───────────────────────────────────────────
   function getPrice(symbol) { return cache[symbol]?.price || null; }
   function getTickerData(symbol) { return cache[symbol] || null; }
@@ -368,18 +500,29 @@ const RealDataAdapter = (() => {
   function isRealDataEnabled() { return CONFIG.enableRealData; }
 
   function on(event, fn) { if (!subscribers[event]) subscribers[event] = []; subscribers[event].push(fn); }
-  function emit(event, data) { (subscribers[event] || []).forEach(fn => { try { fn(data); } catch {} }); }
 
   function destroy() {
     Object.values(wsConnections).forEach(ws => { try { ws.close(); } catch {} });
     Object.values(restTimers).forEach(t => clearInterval(t));
+    if (_cgTimer) clearInterval(_cgTimer);
     wsConnections = {}; restTimers = {}; cache = {};
   }
+
+  // Start CoinGecko redundant feed after main init
+  const _origInit = init;
+  init = function() {
+    _origInit();
+    startCoinGeckoFeed();
+  };
 
   return {
     init, destroy,
     getPrice, getTickerData, getAllCachedData,
     fetchHistoricalCandles, isRealDataEnabled,
     on,
+    // New advanced APIs
+    getConfidence,
+    getConsensusPrice,
+    getVolatilityProfile,
   };
 })();
