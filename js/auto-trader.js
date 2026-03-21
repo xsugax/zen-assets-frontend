@@ -275,7 +275,7 @@ const AutoTrader = (() => {
     console.log(`⚙️ Config: ${CONFIG.maxPositions} max positions, ${CONFIG.positionSizePercent}% per trade, ${CONFIG.tradeInterval}ms interval`);
     
     // Place first trade after a short delay
-    setTimeout(() => evaluateAndTrade(), 5000);
+    setTimeout(() => evaluateAndTrade(), 2000);
     
     // Then place trades at intervals
     tradeInterval = setInterval(() => {
@@ -941,6 +941,7 @@ const AutoTrader = (() => {
     init,
     start,
     stop,
+    evaluateAndTrade,
     isRunning: () => isRunning,
     getHistory: () => tradeHistory,
     getStatistics,

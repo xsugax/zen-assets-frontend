@@ -284,19 +284,8 @@ const App = (() => {
       console.log('🎯 Smart profit-taking engine ACTIVE');
     }
     
-    // Initialize auto-trader (autonomous trading system)
-    if (typeof AutoTrader !== 'undefined') {
-      AutoTrader.init();
-      // Immediately render trade history (don't wait for interval)
-      AutoTrader.updateTradeHistoryDisplay();
-      console.log('🤖 Autonomous trading system ACTIVE');
-      // Gamification: track auto-trader activation
-      if (typeof Gamification !== 'undefined') Gamification.trackAutoTrader();
-      
-      // Auto-trader already has its own 2s interval — no duplicate needed
-    }
-    
-    // Initialize investment returns engine (wallet + tier compounding)
+    // Initialize investment returns engine FIRST (wallet + tier compounding)
+    // Must be before AutoTrader so balance checks work on first evaluation
     if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.init();
       console.log('💰 Investment returns engine ACTIVE');
@@ -313,7 +302,7 @@ const App = (() => {
           updateReturnsUI();
           updateFundManagerUI();
         }
-      }, 8000);
+      }, 4000);
 
       // Also re-sync when window regains focus (user switches back from admin tab)
       window.addEventListener('focus', () => {
@@ -325,6 +314,30 @@ const App = (() => {
           }
         }
       });
+
+      // When admin funds an account (balance $0 → funded), immediately kick-start AutoTrader
+      InvestmentReturns.on('reload', (snapshot) => {
+        if (typeof AutoTrader === 'undefined') return;
+        if (snapshot && snapshot.walletBalance > 0) {
+          if (!AutoTrader.isRunning()) {
+            console.log('🚀 Balance funded — starting AutoTrader immediately');
+            AutoTrader.start();
+          }
+          // Fire an immediate trade evaluation so first trade happens within seconds
+          setTimeout(() => AutoTrader.evaluateAndTrade(), 1500);
+        }
+      });
+    }
+
+    // Initialize auto-trader (autonomous trading system)
+    // Runs AFTER InvestmentReturns so balance is available on first trade check
+    if (typeof AutoTrader !== 'undefined') {
+      AutoTrader.init();
+      // Immediately render trade history (don't wait for interval)
+      AutoTrader.updateTradeHistoryDisplay();
+      console.log('🤖 Autonomous trading system ACTIVE');
+      // Gamification: track auto-trader activation
+      if (typeof Gamification !== 'undefined') Gamification.trackAutoTrader();
     }
 
     // Initialize gamification engine (streaks, XP, achievements)
@@ -3180,9 +3193,14 @@ const App = (() => {
     // Balance is ONLY funded via explicit admin credit from the backend.
     // Never auto-deposit from registration data or local cache.
 
-    // Load per-user trade history
+    // Load per-user trade history & kick-start trading if account is funded
     if (typeof AutoTrader !== 'undefined') {
       AutoTrader.loadUserHistory();
+      // If account already has balance, ensure auto-trader is running & fire immediate trade
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated()) {
+        if (!AutoTrader.isRunning()) AutoTrader.start();
+        setTimeout(() => AutoTrader.evaluateAndTrade(), 2000);
+      }
     }
 
     // Load per-user gamification state
