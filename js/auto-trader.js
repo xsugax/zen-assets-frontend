@@ -13,17 +13,42 @@ const AutoTrader = (() => {
   // ── Configuration ────────────────────────────────────────
   const CONFIG = {
     enabled: true,
-    tradeInterval: 28000,        // Place new trade every 28 seconds
-    closeInterval: 15000,        // Check to close positions every 15 seconds
-    maxPositions: 5,             // Max concurrent positions
-    minConfidence: 65,           // AI confidence threshold (0-100)
-    positionSizePercent: 2.0,    // 2.0% of portfolio per trade
+    tradeInterval: 45000,        // Base interval (adjusted by tier)
+    closeInterval: 20000,        // Check to close positions every 20 seconds
+    maxPositions: 3,             // Max concurrent positions (adjusted by tier)
+    minConfidence: 68,           // AI confidence threshold (0-100)
+    positionSizePercent: 1.5,    // Base 1.5% of portfolio per trade (adjusted by tier)
     useRealPrices: true,         // Use real Binance prices
-    winRateBias: 0.80,           // 80% of trades should be winners
-    avgWinPct: 1.5,              // Average winning trade % gain
-    avgLossPct: 0.4,             // Average losing trade % loss (small)
+    winRateBias: 0.72,           // 72% of trades should be winners — realistic
+    avgWinPct: 0.9,              // Average winning trade % gain — structured
+    avgLossPct: 0.5,             // Average losing trade % loss
     symbols: ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'LINK'],
   };
+
+  // ── Tier-Based Trading Profiles ──────────────────────────
+  const TIER_PROFILES = {
+    bronze:   { intervalMs: 60000, maxPos: 2, sizePct: 1.0, winBias: 0.68, avgWin: 0.7, avgLoss: 0.5 },
+    silver:   { intervalMs: 50000, maxPos: 3, sizePct: 1.3, winBias: 0.70, avgWin: 0.8, avgLoss: 0.5 },
+    gold:     { intervalMs: 40000, maxPos: 3, sizePct: 1.5, winBias: 0.72, avgWin: 0.9, avgLoss: 0.5 },
+    platinum: { intervalMs: 32000, maxPos: 4, sizePct: 1.8, winBias: 0.74, avgWin: 1.0, avgLoss: 0.45 },
+    diamond:  { intervalMs: 25000, maxPos: 5, sizePct: 2.0, winBias: 0.76, avgWin: 1.1, avgLoss: 0.4 },
+  };
+
+  function _applyTierProfile() {
+    let tier = 'gold';
+    try {
+      if (typeof InvestmentReturns !== 'undefined') {
+        tier = InvestmentReturns.getSnapshot().tier || 'gold';
+      }
+    } catch {}
+    const p = TIER_PROFILES[tier] || TIER_PROFILES.gold;
+    CONFIG.tradeInterval       = p.intervalMs;
+    CONFIG.maxPositions        = p.maxPos;
+    CONFIG.positionSizePercent = p.sizePct;
+    CONFIG.winRateBias         = p.winBias;
+    CONFIG.avgWinPct           = p.avgWin;
+    CONFIG.avgLossPct          = p.avgLoss;
+  }
 
   // ── Trading Strategies ────────────────────────────────────
   const STRATEGIES = [
@@ -242,15 +267,19 @@ const AutoTrader = (() => {
       return;
     }
 
+    // Apply tier-specific trading parameters
+    _applyTierProfile();
+
     isRunning = true;
     console.log('🚀 AutoTrader: STARTING autonomous trading');
-    console.log(`⚙️ Config: ${CONFIG.maxPositions} max positions, ${CONFIG.positionSizePercent}% per trade`);
+    console.log(`⚙️ Config: ${CONFIG.maxPositions} max positions, ${CONFIG.positionSizePercent}% per trade, ${CONFIG.tradeInterval}ms interval`);
     
-    // Place first trade immediately
-    setTimeout(() => evaluateAndTrade(), 3000);
+    // Place first trade after a short delay
+    setTimeout(() => evaluateAndTrade(), 5000);
     
     // Then place trades at intervals
     tradeInterval = setInterval(() => {
+      _applyTierProfile(); // Re-check tier each cycle
       evaluateAndTrade();
     }, CONFIG.tradeInterval);
     
@@ -703,12 +732,22 @@ const AutoTrader = (() => {
     const growth = sessionStart > 0 ? ((balance - sessionStart) / sessionStart) * 100 : 0;
     const tradeCount = _compoundTrail.length;
 
+    // Show current tier trading profile
+    let tierLabel = 'Gold';
+    try {
+      if (typeof InvestmentReturns !== 'undefined') {
+        const snap = InvestmentReturns.getSnapshot();
+        tierLabel = snap.tierLabel || 'Gold';
+      }
+    } catch {}
+
     el.innerHTML = `
       <div class="cs-item"><span class="cs-label">Balance</span><span class="cs-val">$${balance.toFixed(2)}</span></div>
+      <div class="cs-item"><span class="cs-label">Tier</span><span class="cs-val">${tierLabel}</span></div>
       <div class="cs-item"><span class="cs-label">Session P&L</span><span class="cs-val ${stats.totalPnL >= 0 ? 'up' : 'down'}">${stats.totalPnL >= 0 ? '+' : ''}$${stats.totalPnL.toFixed(2)}</span></div>
       <div class="cs-item"><span class="cs-label">Growth</span><span class="cs-val ${growth >= 0 ? 'up' : 'down'}">${growth >= 0 ? '+' : ''}${growth.toFixed(3)}%</span></div>
-      <div class="cs-item"><span class="cs-label">Compounded</span><span class="cs-val">${tradeCount} trades</span></div>
-      <div class="cs-item"><span class="cs-label">Win Rate</span><span class="cs-val ${stats.winRate >= 70 ? 'up' : ''}">${stats.winRate.toFixed(1)}%</span></div>
+      <div class="cs-item"><span class="cs-label">Trades</span><span class="cs-val">${tradeCount}</span></div>
+      <div class="cs-item"><span class="cs-label">Win Rate</span><span class="cs-val ${stats.winRate >= 65 ? 'up' : ''}">${stats.winRate.toFixed(1)}%</span></div>
     `;
   }
 

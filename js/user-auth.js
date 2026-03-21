@@ -262,11 +262,11 @@ const UserAuth = (() => {
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
 
-    // ── Attempt live API with 5 s timeout ──────────────────
+    // ── Attempt live API with 2 s timeout ──────────────────
     let apiOk = false;
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timer = setTimeout(() => controller.abort(), 2000);
       const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
       clearTimeout(timer);
       const data = await resp.json();

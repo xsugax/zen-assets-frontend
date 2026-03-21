@@ -566,6 +566,26 @@ const InvestmentReturns = (() => {
     };
   }
 
+  // ── Reload from localStorage (picks up admin funding changes) ──
+  function reloadFromStorage() {
+    const key = _getUserStorageKey();
+    try {
+      const saved = localStorage.getItem(key);
+      if (!saved) return false;
+      const parsed = JSON.parse(saved);
+      // Only apply if the stored data has a newer/different balance
+      if (parsed._adminActivated && (parsed.walletBalance !== state.walletBalance || parsed.tier !== state.tier)) {
+        const oldBal = state.walletBalance;
+        state = { ...state, ...parsed };
+        STORAGE_KEY = key;
+        console.log(`🔄 Investment state reloaded: $${oldBal.toFixed(2)} → $${state.walletBalance.toFixed(2)}`);
+        emit('reload', getSnapshot());
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
   // ── Cleanup ──────────────────────────────────────────────
   function destroy() {
     if (accrualTimer) clearInterval(accrualTimer);
@@ -575,6 +595,7 @@ const InvestmentReturns = (() => {
   return {
     init,
     loadForUser,
+    reloadFromStorage,
     saveAndDisconnect,
     isActivated,
     getSnapshot,

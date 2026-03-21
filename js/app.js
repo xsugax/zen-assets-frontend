@@ -306,6 +306,25 @@ const App = (() => {
         updateReturnsUI();
         updateFundManagerUI();
       }, 5000);
+
+      // Periodically re-read localStorage to pick up admin funding changes
+      setInterval(() => {
+        if (InvestmentReturns.reloadFromStorage && InvestmentReturns.reloadFromStorage()) {
+          updateReturnsUI();
+          updateFundManagerUI();
+        }
+      }, 8000);
+
+      // Also re-sync when window regains focus (user switches back from admin tab)
+      window.addEventListener('focus', () => {
+        if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.reloadFromStorage) {
+          if (InvestmentReturns.reloadFromStorage()) {
+            updateReturnsUI();
+            updateFundManagerUI();
+            console.log('🔄 Balance synced on window focus');
+          }
+        }
+      });
     }
 
     // Initialize gamification engine (streaks, XP, achievements)
@@ -2199,18 +2218,19 @@ const App = (() => {
     const loginForm = $('login-form');
     if (!loginForm) { proceedAfterLogin(); return; }
     
-    // ── Addictive Login Enhancements ──
-    _initLoginParticles();
-    _initInflationCounter();
-    _initTestimonialCarousel();
-    _initLiveCounterAnimation();
-    _initFOMOBanner();
-    _initTimeHorizonButtons();
-    _initAITradeFeed();
-    _initMarketPulse();
-    _initProofWall();
-    _initSocialProofPopups();
-    _initSinceArrived();
+    // ── Addictive Login Enhancements (wrapped for safety) ──
+    const _safeInit = fn => { try { fn(); } catch(e) { console.warn('Login init error:', e.message); } };
+    _safeInit(_initLoginParticles);
+    _safeInit(_initInflationCounter);
+    _safeInit(_initTestimonialCarousel);
+    _safeInit(_initLiveCounterAnimation);
+    _safeInit(_initFOMOBanner);
+    _safeInit(_initTimeHorizonButtons);
+    _safeInit(_initAITradeFeed);
+    _safeInit(_initMarketPulse);
+    _safeInit(_initProofWall);
+    _safeInit(_initSocialProofPopups);
+    _safeInit(_initSinceArrived);
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -3153,6 +3173,8 @@ const App = (() => {
     if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.setTier(session.tier);
       InvestmentReturns.loadForUser(); // catches up compounding from time away
+      // Immediately update UI with loaded balance (don't wait for 5s interval)
+      try { updateReturnsUI(); updateFundManagerUI(); } catch(e) {}
     }
 
     // Balance is ONLY funded via explicit admin credit from the backend.
