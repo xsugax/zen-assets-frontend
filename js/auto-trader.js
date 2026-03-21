@@ -67,6 +67,113 @@ const AutoTrader = (() => {
   let activePositions = [];
   let currentUserKey = 'autoTradeHistory'; // default fallback key
 
+  // ── Compound Lifecycle Engine ────────────────────────────
+  // Tracks the step-by-step lifecycle of every trade and
+  // emits events so the chart and UI can visualize each phase.
+  //
+  // Lifecycle phases:
+  //   1. SCAN     — AI scans market, picks symbol + strategy
+  //   2. SIGNAL   — Signal generated, confidence calculated
+  //   3. SIZING   — Position sized from current compounded balance
+  //   4. ENTRY    — Order placed, price lines drawn on chart
+  //   5. MANAGE   — Live monitoring (SL/TP/trailing), running P&L
+  //   6. EXIT     — Position closed, profit/loss realized
+  //   7. COMPOUND — Realized P&L reinvested into balance for next trade
+  //
+  // The compound trail shows: startingBalance → per-trade sizing →
+  // realizedPnL → newBalance → next trade sizes from that, etc.
+
+  const _lifecycleLog = [];  // rolling log of step events (max 60)
+  const _compoundTrail = []; // [{balance, tradeId, pnl, timestamp}]
+  const _listeners = {};     // event -> [callback]
+
+  function _emit(event, data) {
+    (_listeners[event] || []).forEach(fn => { try { fn(data); } catch {} });
+  }
+
+  function on(event, cb) {
+    if (!_listeners[event]) _listeners[event] = [];
+    _listeners[event].push(cb);
+  }
+
+  function _logStep(phase, data) {
+    const entry = { phase, ...data, ts: Date.now() };
+    _lifecycleLog.push(entry);
+    if (_lifecycleLog.length > 60) _lifecycleLog.shift();
+    _emit('lifecycle', entry);
+    _updateLifecycleUI(entry);
+  }
+
+  function _getCompoundBalance() {
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.getSnapshot) {
+      return InvestmentReturns.getSnapshot().walletBalance || 0;
+    }
+    return 0;
+  }
+
+  function _updateLifecycleUI(step) {
+    const feed = document.getElementById('compound-trade-feed');
+    if (!feed) return;
+
+    const icons = {
+      scan: '🔍', signal: '📡', sizing: '📐',
+      entry: '🎯', manage: '📊', exit: '💰', compound: '♻️',
+    };
+    const colors = {
+      scan: '#7d8a9a', signal: '#00bcd4', sizing: '#f0a500',
+      entry: '#2ebd85', manage: '#8b98ad', exit: step.pnl >= 0 ? '#2ebd85' : '#f6465d',
+      compound: '#d4a574',
+    };
+
+    const el = document.createElement('div');
+    el.className = 'ctf-step ctf-' + step.phase;
+    el.style.borderLeftColor = colors[step.phase] || '#7d8a9a';
+
+    let detail = '';
+    switch (step.phase) {
+      case 'scan':
+        detail = `Scanning ${step.symbol || 'markets'}… ${step.strategy || ''}`;
+        break;
+      case 'signal':
+        detail = `<b>${step.side?.toUpperCase()}</b> ${step.symbol} — AI ${step.confidence}% — R:R ${step.rr || '—'}`;
+        break;
+      case 'sizing':
+        detail = `Balance: <b>$${step.balance?.toFixed(2)}</b> → Position: <b>$${step.size?.toFixed(2)}</b> (${CONFIG.positionSizePercent}%)`;
+        break;
+      case 'entry':
+        detail = `<b>${step.side?.toUpperCase()}</b> ${step.qty?.toFixed(4)} ${step.symbol} @ <b>$${step.price?.toFixed(2)}</b> | SL $${step.sl?.toFixed(2)} | TP $${step.tp?.toFixed(2)}`;
+        break;
+      case 'manage':
+        detail = `${step.symbol} running ${step.pnl >= 0 ? '+' : ''}$${step.pnl?.toFixed(2)} (${step.pnlPct >= 0 ? '+' : ''}${step.pnlPct?.toFixed(2)}%)`;
+        break;
+      case 'exit':
+        detail = `Closed ${step.symbol} — <b>${step.pnl >= 0 ? '+' : ''}$${step.pnl?.toFixed(2)}</b> (${step.pnlPct >= 0 ? '+' : ''}${step.pnlPct?.toFixed(2)}%) — ${step.reason || ''}`;
+        break;
+      case 'compound':
+        detail = `Reinvested → New balance: <b>$${step.newBalance?.toFixed(2)}</b> (${step.growth >= 0 ? '+' : ''}${step.growth?.toFixed(2)}% session growth)`;
+        break;
+    }
+
+    el.innerHTML = `
+      <span class="ctf-icon">${icons[step.phase] || '•'}</span>
+      <span class="ctf-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+      <span class="ctf-detail">${detail}</span>
+    `;
+
+    // Prepend (newest on top)
+    feed.prepend(el);
+
+    // Keep max 30 items visible
+    while (feed.children.length > 30) feed.lastChild.remove();
+
+    // Trigger animation
+    requestAnimationFrame(() => el.classList.add('ctf-visible'));
+  }
+
+  function getLifecycleLog() { return _lifecycleLog.slice(); }
+  function getCompoundTrail() { return _compoundTrail.slice(); }
+  let _manageCounter = 0;
+
   // ── Per-User Storage Key ─────────────────────────────────
   function _getUserStorageKey() {
     try {
@@ -322,7 +429,20 @@ const AutoTrader = (() => {
       console.error('❌ Trading module not available');
       return;
     }
-    
+
+    // ── Lifecycle: SCAN → SIGNAL → SIZING → ENTRY ─────────
+    _logStep('scan', { symbol: signal.symbol, strategy: signal.strategyName });
+
+    _logStep('signal', {
+      symbol: signal.symbol, side: signal.side,
+      confidence: signal.confidence, rr: signal.riskReward,
+    });
+
+    const balance = _getCompoundBalance();
+    _logStep('sizing', {
+      balance, size: signal.positionValue,
+    });
+
     // Place the trade via Trading engine
     const order = Trading.placeOrder({
       sym: signal.symbol,
@@ -336,6 +456,26 @@ const AutoTrader = (() => {
       console.error('❌ Failed to place auto trade');
       return;
     }
+
+    _logStep('entry', {
+      symbol: signal.symbol, side: signal.side,
+      qty: signal.quantity, price: signal.price,
+      sl: signal.sl, tp: signal.tp,
+    });
+
+    // ── Chart markers: draw entry arrow + SL/TP lines ──────
+    try {
+      if (typeof AdvancedChartEngine !== 'undefined') {
+        AdvancedChartEngine.addTradeMarker('main-price-chart', {
+          action: 'entry', side: signal.side,
+          price: signal.price, time: Date.now(),
+        });
+        AdvancedChartEngine.addTradePriceLines('main-price-chart', {
+          entryPrice: signal.price, sl: signal.sl, tp: signal.tp,
+          side: signal.side,
+        });
+      }
+    } catch {}
     
     // Log to history with full trade intelligence
     const historyEntry = {
@@ -452,6 +592,42 @@ const AutoTrader = (() => {
       // Gamification: track auto-trade execution
       if (typeof Gamification !== 'undefined') Gamification.trackTrade();
 
+      // ── Lifecycle: EXIT → COMPOUND ───────────────────────
+      _logStep('exit', {
+        symbol: trade.symbol, side: trade.side,
+        pnl: trade.pnl, pnlPct: trade.pnlPct,
+        reason: trade.closeReason,
+      });
+
+      // Chart exit marker
+      try {
+        if (typeof AdvancedChartEngine !== 'undefined') {
+          AdvancedChartEngine.addTradeMarker('main-price-chart', {
+            action: 'exit', side: trade.side,
+            price: trade.exitPrice, time: Date.now(),
+            pnl: trade.pnl, pnlPct: trade.pnlPct,
+          });
+        }
+      } catch {}
+
+      const newBalance = _getCompoundBalance();
+      const sessionStart = _compoundTrail.length > 0 ? _compoundTrail[0].balance : newBalance;
+      const sessionGrowth = sessionStart > 0 ? ((newBalance - sessionStart) / sessionStart) * 100 : 0;
+
+      _compoundTrail.push({
+        balance: newBalance, tradeId: trade.id,
+        pnl: trade.pnl, timestamp: Date.now(),
+      });
+      if (_compoundTrail.length > 100) _compoundTrail.shift();
+
+      _logStep('compound', {
+        newBalance, growth: sessionGrowth,
+        pnl: trade.pnl,
+      });
+
+      // Update compound stats header
+      _updateCompoundStats();
+
       saveHistory();
       updateTradeHistoryDisplay();
 
@@ -516,6 +692,26 @@ const AutoTrader = (() => {
     }
   }
 
+  // ── Update Compound Stats Header ──────────────────────
+  function _updateCompoundStats() {
+    const el = document.getElementById('compound-stats');
+    if (!el) return;
+
+    const stats = getStatistics();
+    const balance = _getCompoundBalance();
+    const sessionStart = _compoundTrail.length > 0 ? _compoundTrail[0].balance : balance;
+    const growth = sessionStart > 0 ? ((balance - sessionStart) / sessionStart) * 100 : 0;
+    const tradeCount = _compoundTrail.length;
+
+    el.innerHTML = `
+      <div class="cs-item"><span class="cs-label">Balance</span><span class="cs-val">$${balance.toFixed(2)}</span></div>
+      <div class="cs-item"><span class="cs-label">Session P&L</span><span class="cs-val ${stats.totalPnL >= 0 ? 'up' : 'down'}">${stats.totalPnL >= 0 ? '+' : ''}$${stats.totalPnL.toFixed(2)}</span></div>
+      <div class="cs-item"><span class="cs-label">Growth</span><span class="cs-val ${growth >= 0 ? 'up' : 'down'}">${growth >= 0 ? '+' : ''}${growth.toFixed(3)}%</span></div>
+      <div class="cs-item"><span class="cs-label">Compounded</span><span class="cs-val">${tradeCount} trades</span></div>
+      <div class="cs-item"><span class="cs-label">Win Rate</span><span class="cs-val ${stats.winRate >= 70 ? 'up' : ''}">${stats.winRate.toFixed(1)}%</span></div>
+    `;
+  }
+
   // ── Format Duration ──────────────────────────────────────
   function _formatDuration(ms) {
     const sec = Math.floor(ms / 1000);
@@ -530,6 +726,7 @@ const AutoTrader = (() => {
 
   // ── Update Active Positions List (with live PnL) ────────
   function updatePositionsList() {
+    _manageCounter++;
     const container = document.getElementById('auto-positions-list');
     if (!container) return;
     
@@ -554,6 +751,14 @@ const AutoTrader = (() => {
       if (trade) {
         trade.runningPnl = pos.pnl || 0;
         trade.runningPnlPct = pos.pnlPct || 0;
+      }
+
+      // Emit manage step every ~12s (every 3rd updatePositionsList cycle)
+      if (trade && (_manageCounter % 3 === 0)) {
+        _logStep('manage', {
+          symbol: pos.sym, pnl: pos.pnl || 0,
+          pnlPct: pos.pnlPct || 0,
+        });
       }
       
       return `
@@ -705,6 +910,9 @@ const AutoTrader = (() => {
     updateTradeHistoryDisplay,
     saveHistory,
     loadUserHistory,
+    on,
+    getLifecycleLog,
+    getCompoundTrail,
     CONFIG,
   };
 })();

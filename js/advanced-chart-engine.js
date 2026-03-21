@@ -969,6 +969,112 @@ const AdvancedChartEngine = (() => {
     Object.keys(lightweightCharts).forEach(id => destroy(id));
   }
 
+  // ── Trade Markers on Chart ──────────────────────────────
+  // Visual entry/exit arrows + SL/TP price lines so users
+  // can see exactly where trades happen in real time
+  const _tradeMarkers = {};   // containerId -> [{...marker}]
+  const _tradeLines   = {};   // containerId -> [priceLine refs]
+
+  function addTradeMarker(containerId, trade) {
+    const lw = lightweightCharts[containerId];
+    if (!lw || !lw.candleSeries) return;
+
+    if (!_tradeMarkers[containerId]) _tradeMarkers[containerId] = [];
+
+    const isEntry = trade.action === 'entry';
+    const isBuy   = trade.side === 'long';
+    const t = Math.floor((trade.time || Date.now()) / 1000);
+
+    _tradeMarkers[containerId].push({
+      time: t,
+      position: isEntry
+        ? (isBuy ? 'belowBar' : 'aboveBar')
+        : (trade.pnl >= 0 ? 'aboveBar' : 'belowBar'),
+      color: isEntry
+        ? (isBuy ? '#2ebd85' : '#f6465d')
+        : (trade.pnl >= 0 ? '#2ebd85' : '#f6465d'),
+      shape: isEntry
+        ? (isBuy ? 'arrowUp' : 'arrowDown')
+        : 'circle',
+      text: isEntry
+        ? `${isBuy ? 'BUY' : 'SELL'} $${trade.price.toFixed(0)}`
+        : `EXIT ${trade.pnl >= 0 ? '+' : ''}${trade.pnlPct.toFixed(2)}%`,
+    });
+
+    // Sort by time (required by LW Charts)
+    _tradeMarkers[containerId].sort((a, b) => a.time - b.time);
+
+    // Keep max 20 markers to avoid clutter
+    if (_tradeMarkers[containerId].length > 20) {
+      _tradeMarkers[containerId] = _tradeMarkers[containerId].slice(-20);
+    }
+
+    try { lw.candleSeries.setMarkers(_tradeMarkers[containerId]); } catch {}
+  }
+
+  function addTradePriceLines(containerId, trade) {
+    const lw = lightweightCharts[containerId];
+    if (!lw || !lw.candleSeries) return;
+
+    if (!_tradeLines[containerId]) _tradeLines[containerId] = [];
+
+    // Remove old trade lines (max 3 sets visible)
+    while (_tradeLines[containerId].length > 9) {
+      try { lw.candleSeries.removePriceLine(_tradeLines[containerId].shift()); } catch {}
+    }
+
+    // Entry line
+    try {
+      _tradeLines[containerId].push(lw.candleSeries.createPriceLine({
+        price: trade.entryPrice,
+        color: 'rgba(0,188,212,0.6)',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        axisLabelVisible: true,
+        title: `${trade.side === 'long' ? '▲' : '▼'} Entry`,
+      }));
+    } catch {}
+
+    // SL line
+    if (trade.sl) {
+      try {
+        _tradeLines[containerId].push(lw.candleSeries.createPriceLine({
+          price: trade.sl,
+          color: 'rgba(246,70,93,0.5)',
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: 'SL',
+        }));
+      } catch {}
+    }
+
+    // TP line
+    if (trade.tp) {
+      try {
+        _tradeLines[containerId].push(lw.candleSeries.createPriceLine({
+          price: trade.tp,
+          color: 'rgba(46,189,133,0.5)',
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: 'TP',
+        }));
+      } catch {}
+    }
+  }
+
+  function clearTradeMarkers(containerId) {
+    const lw = lightweightCharts[containerId];
+    if (!lw) return;
+    _tradeMarkers[containerId] = [];
+    try { lw.candleSeries.setMarkers([]); } catch {}
+    (_tradeLines[containerId] || []).forEach(pl => {
+      try { lw.candleSeries.removePriceLine(pl); } catch {}
+    });
+    _tradeLines[containerId] = [];
+  }
+
   return {
     createLightweightChart,
     createOrderBookHeatmap,
@@ -978,6 +1084,10 @@ const AdvancedChartEngine = (() => {
     destroyAll,
     stopRealtimeUpdates,
     changeTimeframe,
+    addTradeMarker,
+    addTradePriceLines,
+    clearTradeMarkers,
+    getChartInstance: (id) => lightweightCharts[id],
     THEME,
     TIMEFRAMES,
   };
