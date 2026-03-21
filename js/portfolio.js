@@ -29,9 +29,13 @@ const Portfolio = (() => {
   const _equityHistory = (() => {
     const curve = [100000];
     for (let i = 1; i < 90; i++) {
-      // Always-positive growth: steady upward trend reflecting compounding
-      const growth = 0.001 + Math.random() * 0.004; // +0.1% to +0.5% per point
-      const d = curve[i - 1] * (1 + growth);
+      // Realistic: sometimes up, sometimes down, mostly small moves
+      let drift = 0.0003 + Math.random() * 0.0015; // +0.03% to +0.18% drift
+      let noise = (Math.random() - 0.5) * 0.007;   // -0.35% to +0.35% noise
+      let move = drift + noise;
+      // Occasionally a down day
+      if (Math.random() < 0.18) move -= 0.002 + Math.random() * 0.004;
+      const d = curve[i - 1] * (1 + move);
       curve.push(parseFloat(d.toFixed(2)));
     }
     return curve;
@@ -101,11 +105,15 @@ const Portfolio = (() => {
     // Push equity point every 30s — positive trend tied to wallet growth
     const now = Date.now();
     if (now - _lastEquityUpdate > 30000) {
-      const growthRate = totalPortfolioValue > 0 && _walletAnchor > 0
-        ? Math.max((totalPortfolioValue / _walletAnchor - 1) * 0.004, 0.0004)
-        : 0.0008;
-      const noise = Math.random() * 0.003; // Always positive noise — equity only goes up
-      _equityHistory.push(parseFloat((_equityHistory[_equityHistory.length - 1] * (1 + growthRate + noise)).toFixed(2)));
+      // Realistic: allow for small losses, volatility, and slower growth
+      let base = totalPortfolioValue > 0 && _walletAnchor > 0
+        ? (totalPortfolioValue / _walletAnchor - 1) * 0.0025
+        : 0.0003;
+      let noise = (Math.random() - 0.5) * 0.006; // -0.3% to +0.3%
+      let move = base + noise;
+      // Occasionally a down move
+      if (Math.random() < 0.22) move -= 0.002 + Math.random() * 0.004;
+      _equityHistory.push(parseFloat((_equityHistory[_equityHistory.length - 1] * (1 + move)).toFixed(2)));
       if (_equityHistory.length > 200) _equityHistory.shift();
       if (totalPortfolioValue > 0) _walletAnchor = totalPortfolioValue;
       _lastEquityUpdate = now;

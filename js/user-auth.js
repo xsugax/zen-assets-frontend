@@ -101,7 +101,7 @@ const UserAuth = (() => {
     },
 
     // ── register ───────────────────────────────────────────
-    register({ fullName, email, password, tier, depositAmount }) {
+    register({ fullName, email, password, tier, depositAmount, pin }) {
       if (this.findByEmail(email)) {
         return { ok: false, error: 'An account with this email already exists.' };
       }
@@ -109,6 +109,7 @@ const UserAuth = (() => {
       const user = {
         id, fullName, email: email.toLowerCase(),
         passwordHash: _simpleHash(password),
+        pinHash: pin ? _simpleHash(pin) : null,
         tier: tier || 'bronze',
         depositAmount: 0,   // always $0 — only admin can fund via backend
         role: 'user', balance: 0, earnings: 0,
@@ -140,7 +141,29 @@ const UserAuth = (() => {
         return { ok: false, error: 'Incorrect password. Please try again.' };
       }
       const token = _makeToken(user.id);
-      const { passwordHash, ...safe } = user;
+      const { passwordHash, pinHash, ...safe } = user;
+      return {
+        ok: true, token,
+        user: safe,
+        wallet: {
+          totalDeposited: user.depositAmount || 0,
+          balance: user.balance || 0,
+          earnings: user.earnings || 0,
+          currency: 'USD',
+        },
+      };
+    },
+
+    // ── PIN login (offline fallback) ───────────────────────
+    pinLogin(email, pin) {
+      const user = this.findByEmail(email);
+      if (!user) return { ok: false, error: 'No account found with this email address.' };
+      if (!user.pinHash) return { ok: false, error: 'No PIN set for this account. Use password login.' };
+      if (user.pinHash !== _simpleHash(pin)) {
+        return { ok: false, error: 'Invalid PIN. Please try again.' };
+      }
+      const token = _makeToken(user.id);
+      const { passwordHash, pinHash: _, ...safe } = user;
       return {
         ok: true, token,
         user: safe,
@@ -291,6 +314,11 @@ const UserAuth = (() => {
         return _localStore.login(body.email, body.password);
       }
 
+      // ── PIN Login ─────────────────────────────────────────
+      if (endpoint === '/auth/pin-login' && method === 'POST') {
+        return _localStore.pinLogin(body.email, body.pin);
+      }
+
       // ── Me / Session refresh ──────────────────────────────
       if (endpoint === '/auth/me') {
         const userId = _verifyLocalToken(token);
@@ -331,12 +359,15 @@ const UserAuth = (() => {
   }
 
   // ── Register (async) ────────────────────────────────────
-  async function register({ fullName, email, password, tier, deposit }) {
+  async function register({ fullName, email, password, tier, deposit, pin }) {
     if (!fullName || !email || !password || !tier) {
       return { ok: false, error: 'All fields are required.' };
     }
     if (password.length < 6) {
       return { ok: false, error: 'Password must be at least 6 characters.' };
+    }
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return { ok: false, error: 'Please set a 4-digit PIN for quick login.' };
     }
     if (!TIERS[tier]) {
       return { ok: false, error: 'Invalid membership tier.' };
@@ -349,7 +380,7 @@ const UserAuth = (() => {
 
     const result = await _api('/auth/register', {
       method: 'POST',
-      body: { fullName, email, password, tier, depositAmount: dep },
+      body: { fullName, email, password, tier, depositAmount: dep, pin },
       auth: false,
     });
 
@@ -378,6 +409,33 @@ const UserAuth = (() => {
       _pendingRememberMe = rememberMe; // preserve choice across the OTP step
       return { ok: false, requires_otp: true, userId: result.userId, message: result.message };
     }
+
+    if (result.ok && result.token) {
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _persistAuth(result.token, session, result.wallet, rememberMe);
+      return { ok: true, user: result.user, session, wallet: result.wallet };
+    }
+
+    return result;
+  }
+
+  // ── PIN Login (async — skips OTP for quick access) ──────
+  async function pinLogin(email, pin, rememberMe = false) {
+    if (!email || !pin) return { ok: false, error: 'Email and PIN are required.' };
+    if (!/^\d{4}$/.test(pin)) return { ok: false, error: 'PIN must be exactly 4 digits.' };
+
+    const result = await _api('/auth/pin-login', {
+      method: 'POST',
+      body: { email, pin },
+      auth: false,
+    });
 
     if (result.ok && result.token) {
       const session = {
@@ -764,18 +822,39 @@ const UserAuth = (() => {
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
-    // Hard security mode: always start unauthenticated on page load.
-    // This disables all automatic re-authentication from stored state.
-    localStorage.removeItem(STORAGE_REMEMBER);
-    [localStorage, sessionStorage].forEach(s => {
-      s.removeItem(STORAGE_TOKEN);
-      s.removeItem(STORAGE_SESSION);
-      s.removeItem(STORAGE_WALLET);
-    });
+    // If user previously checked "Remember me", keep their session alive.
+    // Otherwise clear everything so they start fresh.
+    const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
+    if (remembered && localStorage.getItem(STORAGE_TOKEN) && localStorage.getItem(STORAGE_SESSION)) {
+      // Remembered session exists — leave it intact and validate asynchronously
+      console.log('[Auth] Remembered session found — restoring...');
+      // Fire-and-forget validation against the API
+      refreshSession().then(result => {
+        if (!result) {
+          console.warn('[Auth] Remembered session invalid — clearing');
+          _persistAuth(null); // wipe stale data
+          // Reload to show login screen
+          location.reload();
+        } else {
+          console.log('[Auth] Remembered session validated ✓');
+        }
+      }).catch(() => {
+        // Offline / API unreachable — keep the cached session
+        console.log('[Auth] API unreachable — using cached session');
+      });
+    } else {
+      // No remember-me — clear everything for a fresh login
+      localStorage.removeItem(STORAGE_REMEMBER);
+      [localStorage, sessionStorage].forEach(s => {
+        s.removeItem(STORAGE_TOKEN);
+        s.removeItem(STORAGE_SESSION);
+        s.removeItem(STORAGE_WALLET);
+      });
+    }
   }
 
   return {
-    init, register, login, logout,
+    init, register, login, pinLogin, logout,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,

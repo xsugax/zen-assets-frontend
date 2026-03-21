@@ -267,14 +267,12 @@ const AutoTrader = (() => {
     // Use real market price
     const price = asset.price;
     
-    // Position size from wallet balance
-    let portfolioValue = 100000;
-    if (typeof InvestmentReturns !== 'undefined') {
-      const snap = InvestmentReturns.getSnapshot();
-      if (snap.walletBalance > 0) portfolioValue = snap.walletBalance;
-    } else {
-      portfolioValue = Portfolio?.computeMetrics()?.totalValue || 100000;
+    // Position size from wallet balance — only trade on funded, activated accounts
+    if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.isActivated || !InvestmentReturns.isActivated()) {
+      return; // Account not yet funded — keep balance at $0
     }
+    const portfolioValue = InvestmentReturns.getSnapshot().walletBalance;
+    if (portfolioValue <= 0) return; // Safety guard
     const positionSize = (portfolioValue * CONFIG.positionSizePercent) / 100;
     const quantity = positionSize / price;
     

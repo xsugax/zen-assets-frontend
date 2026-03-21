@@ -118,7 +118,15 @@ const Security = (() => {
   function enforceCSP() {
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: wss:";
+    meta.content = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.smartsuppchat.com https://*.smartsuppchat.com https://*.smartsupp.com",
+      "style-src 'self' 'unsafe-inline' https://*.smartsuppchat.com https://*.smartsupp.com",
+      "img-src 'self' data: https:",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' https://*.smartsuppchat.com https://*.smartsupp.com",
+      "font-src 'self' https: data:"
+    ].join('; ');
     document.head.appendChild(meta);
   }
 

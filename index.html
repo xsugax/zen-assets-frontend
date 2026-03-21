@@ -11,6 +11,13 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>ZEN ASSETS | AI Investment Platform — Automated Crypto &amp; Stock Trading</title>
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
   <!-- ═══ SEO — Google Search ═══════════════════════════════ -->
   <meta name="description" content="ZEN ASSETS — the $97 billion AI investment platform celebrities trust. Automated crypto &amp; stock trading, 15–85% APY, real-time analytics. Open to the public. Start from $5,000." />
   <meta name="keywords" content="AI trading platform, automated investing, crypto trading, stock portfolio management, OmniVest AI, wealth management, passive income, algorithmic trading, ZEN ASSETS" />
@@ -26,7 +33,7 @@
   <meta property="og:site_name"   content="ZEN ASSETS" />
   <meta property="og:title"       content="ZEN ASSETS — AI Investment Platform | $97 Billion Trading Network" />
   <meta property="og:description" content="Grow your wealth with OmniVest AI. Automated crypto &amp; stock trading, real-time analytics, and intelligent portfolio management. Join thousands of investors today." />
-  <meta property="og:image"       content="https://zenassets.tech/og-image.png" />
+  <meta property="og:image"       content="https://zenassets.tech/og-image.svg" />
   <meta property="og:image:width"  content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt"    content="ZEN ASSETS AI Investment Platform" />
@@ -36,7 +43,7 @@
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:title"       content="ZEN ASSETS — AI Investment Platform | $97 Billion Trading Network" />
   <meta name="twitter:description" content="Grow your wealth with OmniVest AI. Automated crypto &amp; stock trading, real-time analytics, and intelligent portfolio management." />
-  <meta name="twitter:image"       content="https://zenassets.tech/og-image.png" />
+  <meta name="twitter:image"       content="https://zenassets.tech/og-image.svg" />
 
   <!-- Structured Data — FinancialService (Google Rich Results) -->
   <script type="application/ld+json">
@@ -48,7 +55,7 @@
     "url": "https://zenassets.tech",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://zenassets.tech/og-image.png",
+      "url": "https://zenassets.tech/og-image.svg",
       "width": 1200,
       "height": 630
     },
@@ -118,38 +125,55 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=33" defer></script>
+  <script src="js/security.js?v=41" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
+  <!-- Preload critical CSS -->
+  <link rel="preload" href="css/main.css?v=41" as="style" />
+  <link rel="preload" href="css/animations.css?v=41" as="style" />
+
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=33" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=41" />
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=33"></script>
+  <!-- Chart.js (deferred — not needed on login screen) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=41" defer></script>
 
-  <!-- TradingView Lightweight Charts -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=33"></script>
+  <!-- TradingView Lightweight Charts (deferred) -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=41" defer></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=33" />
-  <link rel="stylesheet" href="css/main.css?v=33" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=33" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=33" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=33" />
-  <link rel="stylesheet" href="css/gamification.css?v=33" />
-  <link rel="stylesheet" href="css/admin.css?v=33" />
-  <link rel="stylesheet" href="css/mobile.css?v=33" />
-  <!-- JivoChat: callback MUST be defined before the widget script executes -->
-  <script>window.jivo_onLoadCallback = function(){ window._jivoReady = true; };</script>
-  <script src="//code.jivosite.com/widget/Q5bz4EnyzD" async></script>
+  <link rel="stylesheet" href="css/animations.css?v=41" />
+  <link rel="stylesheet" href="css/main.css?v=41" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=41" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=41" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=41" />
+  <link rel="stylesheet" href="css/gamification.css?v=41" />
+  <link rel="stylesheet" href="css/admin.css?v=41" />
+  <link rel="stylesheet" href="css/mobile.css?v=41" />
+  <!-- Smartsupp Live Chat Widget -->
+  <script>
+    var _smartsupp = _smartsupp || {};
+    _smartsupp.key = 'f72cc578302b94a10463c6570ec97c8bb07d6a62';
+    window.smartsupp||(function(d) {
+      var s,c,o=smartsupp=function(){ o._.push(arguments)}; o._=[];
+      s=d.getElementsByTagName('script')[0]; c=d.createElement('script');
+      c.type='text/javascript'; c.charset='utf-8'; c.async=true;
+      c.src='https://www.smartsuppchat.com/loader.js?'; s.parentNode.insertBefore(c,s);
+    })(document);
+  </script>
+  <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 </head>
 <body>
 
+<!-- Skip Navigation (Accessibility) -->
+<a href="#login-form" class="skip-link">Skip to main content</a>
+
 <!-- ═══════ LOGIN SCREEN ═══════ -->
-<div id="login-screen" class="login-screen">
+<div id="login-screen" class="login-screen" role="main">
   <div class="login-ambient"></div>
   
   <!-- Floating Particle Canvas -->
@@ -905,6 +929,43 @@
         </div>
         <p class="mtp-footer">*Historical backtested returns. Past performance does not guarantee future results. Risk disclosure available post-login.</p>
       </div>
+
+      <!-- ═══ FAQ SECTION ═══ -->
+      <div class="scroll-section-label"><span>❓ Frequently Asked Questions</span></div>
+      <div class="faq-section" id="faq-section">
+        <h4 class="faq-header"><i class="fa fa-circle-question"></i> Got Questions? We've Got Answers</h4>
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> What is ZEN ASSETS and how does it work?</summary>
+            <div class="faq-answer">ZEN ASSETS is an AI-powered investment platform that uses advanced algorithms to trade crypto and stock markets on your behalf. Our AI engine executes hundreds of optimized trades daily, generating returns between 15-85% APY depending on your chosen tier. Simply create an account, select your tier, fund it, and let the AI work for you 24/7.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> How do I create an account?</summary>
+            <div class="faq-answer">Click "Create Account" at the top of the page. Fill in your name, email, and password, then select your preferred wealth tier and investment amount. You'll receive a 6-digit OTP verification code to your email — enter it to activate your account. Your balance starts at $0 until you fund it after registration.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> What is the minimum investment?</summary>
+            <div class="faq-answer">The minimum investment depends on your chosen tier: Bronze starts at $5,000, Silver at $25,000, Gold at $100,000, Platinum at $500,000, and Diamond at $1,000,000. Each tier unlocks progressively higher returns and exclusive features.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> Is my money safe?</summary>
+            <div class="faq-answer">Your security is our top priority. We use 256-bit SSL encryption, bcrypt password hashing, two-factor email verification (OTP) for every login, rate-limiting to prevent brute force attacks, and SOC-2 compliant infrastructure. All investments are held in segregated accounts.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> How do I fund my account?</summary>
+            <div class="faq-answer">After registration, you can fund your account via cryptocurrency deposits. Your account balance starts at $0 and is only credited once funds are received and confirmed. All deposit details and wallet addresses are available in your dashboard after login.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> Can I withdraw my funds anytime?</summary>
+            <div class="faq-answer">Yes. ZEN ASSETS operates with zero lockup periods. You can request a withdrawal at any time through your dashboard. Withdrawals are processed within 1-3 business days after approval. You will receive email confirmations at each step.</div>
+          </details>
+          <details class="faq-item">
+            <summary class="faq-question"><i class="fa fa-chevron-right faq-arrow"></i> How do I contact support?</summary>
+            <div class="faq-answer">You can reach our support team via the live chat widget (click "Chat with Manager" on this page), or email us at support@zenassets.tech. Gold tier and above members receive dedicated account managers with priority response times.</div>
+          </details>
+        </div>
+      </div>
+
     </div>
   </div><!-- /.login-container -->
 
@@ -957,19 +1018,33 @@
           <div class="lsb-stat"><strong>0.2%</strong> churn — nobody leaves</div>
         </div>
         
-        <form id="login-form" class="login-form">
+        <div class="login-mode-tabs">
+          <button type="button" class="login-tab active" id="tab-password" onclick="switchLoginMode('password')"><i class="fa fa-lock"></i> Password</button>
+          <button type="button" class="login-tab" id="tab-pin" onclick="switchLoginMode('pin')"><i class="fa fa-grid-4"></i> Quick PIN</button>
+        </div>
+        <form id="login-form" class="login-form" aria-label="Sign in to your account">
+          <div id="login-error" class="login-error" role="alert" aria-live="polite"></div>
           <div class="form-group">
             <label for="login-email"><i class="fa fa-envelope"></i> Email Address</label>
-            <input type="email" id="login-email" class="form-input" placeholder="your.name@institution.com" required />
+            <input type="email" id="login-email" class="form-input" placeholder="your.name@institution.com" required autocomplete="email" aria-required="true" />
           </div>
-          <div class="form-group">
+          <div class="form-group" id="login-password-group">
             <label for="login-password"><i class="fa fa-lock"></i> Password</label>
-            <input type="password" id="login-password" class="form-input" placeholder="Enter your secure password" required />
+            <div class="password-input-wrap">
+              <input type="password" id="login-password" class="form-input" placeholder="Enter your secure password" required autocomplete="current-password" />
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="Toggle password visibility">
+                <i class="fa fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" id="login-pin-group" style="display:none">
+            <label for="login-pin"><i class="fa fa-grid-4"></i> 4-Digit PIN</label>
+            <input type="tel" id="login-pin" class="form-input" placeholder="Enter your PIN" maxlength="4" pattern="\d{4}" inputmode="numeric" />
           </div>
           <div class="form-options">
             <label class="checkbox-label">
-              <input type="checkbox" id="login-remember" disabled />
-              <span>Always require fresh login</span>
+              <input type="checkbox" id="login-remember" />
+              <span>Remember me next time</span>
             </label>
             <a href="#" class="link-text">Forgot password?</a>
           </div>
@@ -1062,6 +1137,13 @@
 
         <div class="login-footer">
           <p class="login-disclaimer">Platform available to accredited investors. All investments carry risk. Historical returns do not guarantee future performance.</p>
+          <div class="login-legal-links">
+            <a href="#" onclick="showLegalModal('privacy'); return false;">Privacy Policy</a>
+            <span class="legal-sep">·</span>
+            <a href="#" onclick="showLegalModal('terms'); return false;">Terms of Service</a>
+            <span class="legal-sep">·</span>
+            <a href="#" onclick="showLegalModal('risk'); return false;">Risk Disclosure</a>
+          </div>
         </div>
       </div>
     </div><!-- /.login-form-section -->
@@ -1077,19 +1159,39 @@
         <h2>Start Building Wealth Today</h2>
         <p>Select a tier and watch your money transform</p>
       </div>
-      <div id="register-error" class="register-error"></div>
-      <form id="register-form" class="register-form">
+      <div class="register-trust-badges">
+        <span><i class="fa fa-shield-halved"></i> Bank-Grade Security</span>
+        <span><i class="fa fa-lock"></i> 256-bit Encrypted</span>
+        <span><i class="fa fa-user-shield"></i> GDPR Compliant</span>
+      </div>
+      <div id="register-error" class="register-error" role="alert" aria-live="polite"></div>
+      <form id="register-form" class="register-form" aria-label="Create a new account">
         <div class="form-group">
           <label for="reg-name">Full Name</label>
-          <input type="text" id="reg-name" class="form-input" placeholder="John Doe" required />
+          <input type="text" id="reg-name" class="form-input" placeholder="John Doe" required autocomplete="name" aria-required="true" />
         </div>
         <div class="form-group">
           <label for="reg-email">Email Address</label>
-          <input type="email" id="reg-email" class="form-input" placeholder="john@example.com" required />
+          <input type="email" id="reg-email" class="form-input" placeholder="john@example.com" required autocomplete="email" aria-required="true" />
+          <small class="field-hint" id="reg-email-hint"></small>
         </div>
         <div class="form-group">
           <label for="reg-password">Password</label>
-          <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" required />
+          <div class="password-input-wrap">
+            <input type="password" id="reg-password" class="form-input" placeholder="Min 8 characters" required minlength="8" autocomplete="new-password" />
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('reg-password', this)" aria-label="Toggle password visibility">
+              <i class="fa fa-eye"></i>
+            </button>
+          </div>
+          <div class="password-strength" id="reg-password-strength">
+            <div class="strength-bar"><div class="strength-fill" id="reg-strength-fill"></div></div>
+            <span class="strength-text" id="reg-strength-text"></span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-pin"><i class="fa fa-grid-4"></i> Quick Login PIN</label>
+          <input type="tel" id="reg-pin" class="form-input" placeholder="4-digit PIN" maxlength="4" pattern="\d{4}" inputmode="numeric" required aria-describedby="reg-pin-hint" />
+          <small id="reg-pin-hint" style="color:#64748b;font-size:11px;margin-top:4px;display:block">Set a 4-digit PIN for quick sign-in next time</small>
         </div>
         <div class="tier-selector">
           <label>Choose Your Wealth Tier</label>
@@ -1133,10 +1235,16 @@
         </div>
         <div class="form-group">
           <label for="reg-deposit">Investment Amount (USD)</label>
-          <input type="number" id="reg-deposit" class="form-input" placeholder="100000" min="5000" step="1000" required />
-          <small style="color:#64748b;font-size:11px;margin-top:4px;display:block">Fund your account via crypto after registration. Balance starts at $0 until funded.</small>
+          <input type="number" id="reg-deposit" class="form-input" placeholder="100000" min="5000" step="1000" required aria-describedby="reg-deposit-hint" />
+          <small id="reg-deposit-hint" style="color:#64748b;font-size:11px;margin-top:4px;display:block">Fund your account via crypto after registration. Balance starts at $0 until funded.</small>
         </div>
-        <button type="submit" class="btn-register">
+        <div class="form-group terms-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="reg-terms" required />
+            <span>I agree to the <a href="#" onclick="showLegalModal('terms'); return false;" class="link-text">Terms of Service</a> and <a href="#" onclick="showLegalModal('privacy'); return false;" class="link-text">Privacy Policy</a></span>
+          </label>
+        </div>
+        <button type="submit" class="btn-register" id="btn-register-submit">
           <i class="fa fa-rocket"></i> Create Account & Start Earning
         </button>
       </form>
@@ -2602,13 +2710,23 @@
         <div class="bch-wr-addresses">
           <div class="bch-wr-addr">
             <span class="bch-wr-coin btc"><i class="fab fa-bitcoin"></i> BTC</span>
-            <code>bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>
-            <button class="btn-copy-sm" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+            <code>bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5</code>
+            <button class="btn-copy-sm" onclick="copyAddress('bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5', this)"><i class="fa fa-copy"></i></button>
           </div>
           <div class="bch-wr-addr">
-            <span class="bch-wr-coin eth"><i class="fab fa-ethereum"></i> ETH/USDT/USDC</span>
-            <code>0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1</code>
-            <button class="btn-copy-sm" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+            <span class="bch-wr-coin eth"><i class="fab fa-ethereum"></i> ETH/USDC</span>
+            <code>0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff</code>
+            <button class="btn-copy-sm" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
+          </div>
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin usdt" style="color:#26A17B"><i class="fa fa-dollar-sign"></i> USDT</span>
+            <code>2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD</code>
+            <button class="btn-copy-sm" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
+          </div>
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin sol" style="color:#9945FF"><i class="fa fa-circle-nodes"></i> SOL</span>
+            <code>2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD</code>
+            <button class="btn-copy-sm" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
           </div>
         </div>
       </div>
@@ -2969,8 +3087,8 @@
                     <div class="wi-meta">Min: 0.0001 BTC · 2 confirmations · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" readonly />
-                    <button class="btn-copy" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5" readonly />
+                    <button class="btn-copy" onclick="copyAddress('bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -2984,8 +3102,8 @@
                     <div class="wi-meta">Min: 0.01 ETH · Gas: ~$2-5 · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -2994,13 +3112,13 @@
                     <div class="wi-icon usdt"><i class="fa fa-dollar-sign" style="color:#26A17B"></i></div>
                     <div class="wi-name">
                       <div class="wi-symbol">USDT</div>
-                      <div class="wi-full">Tether (ERC-20 / TRC-20)</div>
+                      <div class="wi-full">Tether (Solana SPL)</div>
                     </div>
-                    <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
+                    <div class="wi-meta">Min: $10 · Solana network · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD" readonly />
+                    <button class="btn-copy" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -3016,8 +3134,25 @@
                     <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon sol" style="background:linear-gradient(135deg, #9945FF, #14F195)">
+                      <i class="fa fa-circle-nodes" style="color:#fff"></i>
+                    </div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">SOL</div>
+                      <div class="wi-full">Solana Network</div>
+                    </div>
+                    <div class="wi-meta">Min: 0.1 SOL · Fast &amp; low fees · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD" readonly />
+                    <button class="btn-copy" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
               </div>
@@ -3583,52 +3718,26 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=33"></script>
-<script src="js/user-auth.js?v=33"></script>
-<script src="js/api-proxy.js?v=33"></script>
-<script src="js/resilience-engine.js?v=33"></script>
+<script src="js/market-data.js?v=41"></script>
+<script src="js/user-auth.js?v=41"></script>
+<script src="js/api-proxy.js?v=41"></script>
+<script src="js/resilience-engine.js?v=41"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=33"></script> -->
-<script src="js/real-data-adapter.js?v=33"></script>
-<script src="js/ai-engine.js?v=33"></script>
-<script src="js/chart-engine.js?v=33"></script>
-<script src="js/advanced-chart-engine.js?v=33"></script>
-<script src="js/chart-validation.js?v=33"></script>
-<script src="js/chart-data-indicator.js?v=33"></script>
-<script src="js/trading.js?v=33"></script>
-<script src="js/smart-exit-engine.js?v=33"></script>
-<script src="js/auto-trader.js?v=33"></script>
-<script src="js/portfolio.js?v=33"></script>
-<script src="js/investment-returns.js?v=33"></script>
-<script src="js/gamification.js?v=33"></script>
-<script src="js/plugins.js?v=33"></script>
-<!-- JivoChat opener -->
-<script>
-(function(){
-  function _jivoOpen() {
-    if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-      try { jivo_api.open(); return; } catch(e) {}
-      var el = document.querySelector('jdiv.__jivoMobileButton') ||
-               document.querySelector('jdiv[class*="button"]') ||
-               document.querySelector('jdiv');
-      if (el) el.click();
-      return;
-    }
-    var n = 0;
-    var t = setInterval(function() {
-      if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-        clearInterval(t);
-        try { jivo_api.open(); } catch(e) {
-          var el = document.querySelector('jdiv'); if (el) el.click();
-        }
-      } else if (++n >= 20) { clearInterval(t); }
-    }, 500);
-  }
-  window.openSmartsuppChat = _jivoOpen;
-  document.addEventListener('DOMContentLoaded', function() { window.openSmartsuppChat = _jivoOpen; });
-})();
-</script>
-<script src="js/app.js?v=36"></script>
+<!-- <script src="js/debug-monitor.js?v=41"></script> -->
+<script src="js/real-data-adapter.js?v=41"></script>
+<script src="js/ai-engine.js?v=41"></script>
+<script src="js/chart-engine.js?v=41"></script>
+<script src="js/advanced-chart-engine.js?v=41"></script>
+<script src="js/chart-validation.js?v=41"></script>
+<script src="js/chart-data-indicator.js?v=41"></script>
+<script src="js/trading.js?v=41"></script>
+<script src="js/smart-exit-engine.js?v=41"></script>
+<script src="js/auto-trader.js?v=41"></script>
+<script src="js/portfolio.js?v=41"></script>
+<script src="js/investment-returns.js?v=41"></script>
+<script src="js/gamification.js?v=41"></script>
+<script src="js/plugins.js?v=41"></script>
+<script src="js/app.js?v=41"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
@@ -3740,6 +3849,194 @@
         });
       });
     }).observe(document.body||document.documentElement,{childList:true,subtree:true});
+  }
+})();
+</script>
+
+<!-- ═══ ANALYTICS & EVENT TRACKING ═══ -->
+<script>
+(function(){
+  'use strict';
+  // Lightweight event tracker — sends to backend or queues locally
+  var ZenAnalytics = {
+    _queue: [],
+    track: function(event, data) {
+      var entry = {
+        event: event,
+        data: data || {},
+        ts: new Date().toISOString(),
+        page: location.pathname,
+        ua: navigator.userAgent
+      };
+      this._queue.push(entry);
+      // Log in dev, in production this could POST to /api/analytics
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        console.log('[Analytics]', event, data || '');
+      }
+    },
+    getQueue: function() { return this._queue; }
+  };
+  window.ZenAnalytics = ZenAnalytics;
+
+  // Auto-track key user interactions
+  document.addEventListener('DOMContentLoaded', function() {
+    ZenAnalytics.track('page_view', { referrer: document.referrer });
+
+    // Track auth tab switches
+    document.querySelectorAll('.auth-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        ZenAnalytics.track('auth_tab_click', { view: tab.dataset.authView });
+      });
+    });
+
+    // Track tier selections in registration
+    document.querySelectorAll('.tier-opt').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        ZenAnalytics.track('tier_selected', { tier: opt.dataset.tier });
+      });
+    });
+
+    // Track FAQ opens
+    document.querySelectorAll('.faq-item').forEach(function(item) {
+      item.addEventListener('toggle', function() {
+        if (item.open) {
+          var q = item.querySelector('.faq-question');
+          ZenAnalytics.track('faq_opened', { question: q ? q.textContent.trim().substring(0, 60) : '' });
+        }
+      });
+    });
+
+    // Track chat button clicks
+    var chatBtn = document.querySelector('.floating-contact-btn');
+    if (chatBtn) {
+      chatBtn.addEventListener('click', function() {
+        ZenAnalytics.track('chat_opened');
+      });
+    }
+
+    // Track time on page
+    var startTime = Date.now();
+    window.addEventListener('beforeunload', function() {
+      ZenAnalytics.track('page_exit', { duration_ms: Date.now() - startTime });
+    });
+  });
+})();
+</script>
+
+<!-- ═══ LEGAL MODAL ═══ -->
+<div id="legal-modal" class="legal-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title">
+  <div class="legal-modal-overlay" onclick="closeLegalModal()"></div>
+  <div class="legal-modal-content">
+    <button class="legal-modal-close" onclick="closeLegalModal()" aria-label="Close"><i class="fa fa-times"></i></button>
+    <h2 id="legal-modal-title" class="legal-modal-heading"></h2>
+    <div id="legal-modal-body" class="legal-modal-body"></div>
+  </div>
+</div>
+
+<!-- ═══ FAQ SECTION (below login, in login-brand-section) ═══ -->
+<script>
+(function(){
+  // Legal modal content
+  var legalContent = {
+    privacy: {
+      title: 'Privacy Policy',
+      body: '<p><strong>Last Updated:</strong> March 2025</p><p>ZEN ASSETS ("we", "our") is committed to protecting your personal information. This policy outlines how we collect, use, and safeguard your data.</p><h4>Information We Collect</h4><ul><li><strong>Account Information:</strong> Name, email address, password (encrypted)</li><li><strong>Financial Information:</strong> Investment tier selection, deposit amounts</li><li><strong>Usage Data:</strong> Login times, page views, feature interactions</li><li><strong>Device Data:</strong> Browser type, IP address, operating system</li></ul><h4>How We Use Your Data</h4><ul><li>Account creation and management</li><li>Transaction processing and verification</li><li>Security monitoring and fraud prevention</li><li>Platform improvement and analytics</li><li>Communication (OTP codes, account updates, reports)</li></ul><h4>Data Protection</h4><ul><li>256-bit SSL/TLS encryption for all data in transit</li><li>bcrypt password hashing (cost factor 12)</li><li>SOC-2 compliant infrastructure</li><li>Regular security audits and penetration testing</li></ul><h4>Your Rights</h4><p>You may request access to, correction of, or deletion of your personal data by contacting support@zenassets.tech.</p>'
+    },
+    terms: {
+      title: 'Terms of Service',
+      body: '<p><strong>Last Updated:</strong> March 2025</p><p>By creating an account on ZEN ASSETS, you agree to the following terms:</p><h4>Eligibility</h4><p>You must be at least 18 years old and legally permitted to invest in your jurisdiction.</p><h4>Account Responsibility</h4><ul><li>You are responsible for maintaining the security of your account credentials</li><li>You must provide accurate information during registration</li><li>You agree to verify your email address via OTP code</li></ul><h4>Investment Terms</h4><ul><li>All balances start at $0 until explicitly funded</li><li>Returns are variable and not guaranteed. Past performance does not indicate future results</li><li>Minimum investment thresholds apply per tier</li><li>Withdrawals are processed according to platform policies</li></ul><h4>Prohibited Activities</h4><ul><li>Creating multiple accounts</li><li>Automated scraping or abuse of platform resources</li><li>Money laundering or fraudulent activities</li></ul><h4>Limitation of Liability</h4><p>ZEN ASSETS is not liable for investment losses. All investments carry inherent risk.</p>'
+    },
+    risk: {
+      title: 'Risk Disclosure',
+      body: '<p><strong>Important:</strong> Please read this carefully before investing.</p><h4>Investment Risk</h4><p>All investments carry risk, including the potential loss of principal. The returns displayed on this platform are based on historical performance and algorithmic backtesting. <strong>Past performance does not guarantee future results.</strong></p><h4>Market Volatility</h4><p>Cryptocurrency and stock markets are highly volatile. Your portfolio value may fluctuate significantly in short time periods.</p><h4>No Guaranteed Returns</h4><p>APY ranges shown for each tier are targets based on historical data, not guarantees. Actual returns may be higher or lower.</p><h4>Regulatory Risk</h4><p>Changes in regulations in various jurisdictions may impact the availability of services or the value of investments.</p><h4>Recommendation</h4><p>Only invest what you can afford to lose. Consider consulting a licensed financial advisor before making investment decisions.</p>'
+    }
+  };
+
+  window.showLegalModal = function(type) {
+    var modal = document.getElementById('legal-modal');
+    var title = document.getElementById('legal-modal-title');
+    var body = document.getElementById('legal-modal-body');
+    if (!modal || !legalContent[type]) return;
+    title.textContent = legalContent[type].title;
+    body.innerHTML = legalContent[type].body;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeLegalModal = function() {
+    var modal = document.getElementById('legal-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  // Close on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLegalModal();
+  });
+
+  // Password visibility toggle
+  window.togglePasswordVisibility = function(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+    } else {
+      input.type = 'password';
+      if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+    }
+  };
+
+  // Password strength checker
+  function checkPasswordStrength(password) {
+    var score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    return score; // 0-5
+  }
+
+  var strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+  var strengthColors = ['', '#d65d5d', '#d48954', '#d4a574', '#5fb38e', '#00ff88'];
+
+  var regPassword = document.getElementById('reg-password');
+  if (regPassword) {
+    regPassword.addEventListener('input', function() {
+      var fill = document.getElementById('reg-strength-fill');
+      var text = document.getElementById('reg-strength-text');
+      var wrap = document.getElementById('reg-password-strength');
+      if (!fill || !text || !wrap) return;
+      var pwd = regPassword.value;
+      if (!pwd) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'flex';
+      var score = checkPasswordStrength(pwd);
+      fill.style.width = (score * 20) + '%';
+      fill.style.background = strengthColors[score] || '#d65d5d';
+      text.textContent = strengthLabels[score] || '';
+      text.style.color = strengthColors[score] || '#d65d5d';
+    });
+  }
+
+  // Real-time email validation
+  var regEmail = document.getElementById('reg-email');
+  if (regEmail) {
+    regEmail.addEventListener('blur', function() {
+      var hint = document.getElementById('reg-email-hint');
+      if (!hint) return;
+      var val = regEmail.value.trim();
+      if (!val) { hint.textContent = ''; return; }
+      var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      if (valid) {
+        hint.textContent = '\u2713 Valid email';
+        hint.style.color = '#5fb38e';
+      } else {
+        hint.textContent = 'Please enter a valid email address';
+        hint.style.color = '#d65d5d';
+      }
+    });
   }
 })();
 </script>

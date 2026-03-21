@@ -56,12 +56,17 @@ const Trading = (() => {
     const asset = MarketData.getAllAssets().find(a => a.sym === sym || a.id === sym.split('/')[0]);
     if (!asset) return;
 
-    const side = Math.random() > 0.4 ? 'long' : 'short';
+    const side = Math.random() > 0.45 ? 'long' : 'short';
     const wr = parseFloat(trader.winRate) / 100;
-    const isWin = Math.random() < wr;
+    // More wins than losses, but still realistic
+    let outcomeRoll = Math.random();
+    let outcome;
+    if (outcomeRoll < wr * 0.93) outcome = 'win'; // ~93% of winRate are wins
+    else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven'; // 5% break-even
+    else outcome = 'loss'; // rest are losses
 
-    // Use 1-3% of copied balance
-    const tradePct = 0.01 + Math.random() * 0.02;
+    // Use 0.7-2.2% of copied balance (smaller trades)
+    const tradePct = 0.007 + Math.random() * 0.015;
 
     let portfolioValue = 100000;
     if (typeof InvestmentReturns !== 'undefined') {
@@ -71,20 +76,22 @@ const Trading = (() => {
     const tradeValue = portfolioValue * tradePct;
 
     // Calculate PnL
-    let pnl;
-    if (isWin) {
-      pnl = tradeValue * (0.008 + Math.random() * 0.015); // 0.8%-2.3% win
+    let pnl = 0;
+    if (outcome === 'win') {
+      pnl = tradeValue * (0.002 + Math.random() * 0.008); // 0.2%-1.0% win
+    } else if (outcome === 'loss') {
+      pnl = -(tradeValue * (0.003 + Math.random() * 0.009)); // 0.3%-1.2% loss
     } else {
-      pnl = -(tradeValue * (0.002 + Math.random() * 0.004)); // 0.2%-0.6% loss
+      pnl = (Math.random() - 0.5) * tradeValue * 0.001; // break-even: -0.05% to +0.05%
     }
 
     // Credit/debit to wallet
     if (typeof InvestmentReturns !== 'undefined') {
-      if (pnl > 0) {
+      if (pnl > 0.01) {
         InvestmentReturns.creditTradingProfit(pnl, { symbol: sym, side, source: `Copy: ${trader.name}` });
-      } else {
+      } else if (pnl < -0.01) {
         InvestmentReturns.debitTradingLoss(Math.abs(pnl), { symbol: sym, side, source: `Copy: ${trader.name}` });
-      }
+      } // else: break-even, do nothing
     }
 
     trader.totalCopied += Math.abs(pnl);

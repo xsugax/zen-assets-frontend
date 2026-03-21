@@ -729,7 +729,8 @@ const AdminPanel = (() => {
             <td><span class="risk-badge ${riskClass}">${riskScore}</span></td>
             <td class="actions-cell">
               <button class="act-btn" title="Edit" onclick="AdminPanel.openEditUser('${u.email}')"><i class="fa fa-edit"></i></button>
-              <button class="act-btn ${u.status === 'active' ? 'warn' : 'green'}" title="${u.status === 'active' ? 'Suspend' : 'Activate'}" onclick="AdminPanel.toggleUserStatus('${u.email}')">
+              <button class="act-btn green" title="Fund &amp; Activate" onclick="AdminPanel.activateAccountPrompt('${u.email}')"><i class="fa fa-rocket"></i></button>
+              <button class="act-btn ${u.status === 'active' ? 'warn' : 'green'}" title="${u.status === 'active' ? 'Suspend' : 'Reactivate'}" onclick="AdminPanel.toggleUserStatus('${u.email}')">
                 <i class="fa fa-${u.status === 'active' ? 'ban' : 'check'}"></i>
               </button>
               <button class="act-btn danger" title="Delete" onclick="AdminPanel.confirmDeleteUser('${u.email}')"><i class="fa fa-trash"></i></button>
@@ -890,6 +891,7 @@ const AdminPanel = (() => {
     $('edit-user-status').value = user.status || 'active';
     $('edit-user-earnings').value = user.earningsOverride || '';
     $('edit-user-password').value = '';
+    if ($('edit-user-pin')) $('edit-user-pin').value = '';
 
     openModal('modal-user-edit');
   }
@@ -916,6 +918,42 @@ const AdminPanel = (() => {
     closeModal('modal-user-edit');
     log('user_update', `Updated ${newName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
     toast(`${newName} updated successfully`, 'success');
+
+    // ── Handle PIN set/reset via admin API ──
+    const newPin = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
+    if (newPin) {
+      if (!/^\d{4}$/.test(newPin)) {
+        toast('PIN must be exactly 4 digits', 'error');
+      } else {
+        try {
+          const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? 'http://localhost:4000/api' : 'https://api.zenassets.tech/api';
+          const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+          const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ pin: newPin }),
+          });
+          const pinRes = await resp.json();
+          if (pinRes.success) {
+            toast('PIN updated', 'success');
+            log('user_pin_set', `PIN set for ${newName} (${email})`, 'info', { email });
+          } else {
+            toast(pinRes.error || 'PIN update failed', 'error');
+          }
+        } catch (e) {
+          // Offline: update localStore directly
+          const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+          const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+          if (idx !== -1) {
+            allUsers[idx].pinHash = _hash(newPin);
+            localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+            toast('PIN set (offline)', 'success');
+          }
+        }
+      }
+    }
+
     renderUsers();
     _updateHeaderStats();
   }
@@ -930,10 +968,65 @@ const AdminPanel = (() => {
     $('edit-user-status').value = 'active';
     $('edit-user-earnings').value = '';
     $('edit-user-password').value = '';
+    if ($('edit-user-pin')) $('edit-user-pin').value = '';
     openModal('modal-user-edit');
   }
 
   // Toggle status
+  // ── Fund & Activate Account ────────────────────────────
+  function activateAccountPrompt(email) {
+    const users = loadUsers();
+    const u = users ? users[email.toLowerCase()] : null;
+    if (!u) return toast('User not found', 'error');
+    $('activate-user-email').value = email;
+    $('activate-user-name').textContent = u.fullName || email;
+    $('activate-amount').value = u.depositAmount || u.balance || '';
+    const tierSel = $('activate-tier');
+    if (tierSel) tierSel.value = u.tier || 'gold';
+    openModal('modal-activate');
+  }
+
+  async function executeActivation() {
+    const email = $('activate-user-email').value;
+    const amount = parseFloat($('activate-amount').value) || 0;
+    if (amount <= 0) return toast('Enter a valid deposit amount', 'error');
+    const tier = ($('activate-tier') || {}).value || 'gold';
+
+    const users = loadUsers();
+    const u = users ? users[email.toLowerCase()] : null;
+    if (!u) return toast('User not found', 'error');
+
+    // Update user record via offline-safe API
+    await UserAuth.adminUpdateUser(u.id, { depositAmount: amount, balance: amount, tier, status: 'active' });
+
+    // Also write the investment state directly so it takes effect on the user's next login
+    // (works for same-device demos; cross-device requires the live backend)
+    try {
+      const invKey = 'zen_investment_' + email.toLowerCase();
+      const now = Date.now();
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      const wk = new Date(); const dy = wk.getDay();
+      wk.setDate(wk.getDate() - dy + (dy === 0 ? -6 : 1)); wk.setHours(0, 0, 0, 0);
+      const invState = {
+        tier, walletBalance: amount, initialDeposit: amount,
+        dayStartBalance: amount, weekStartBalance: amount,
+        lastAccrualTick: now, lastDailyReset: d.getTime(), lastWeeklyReset: wk.getTime(),
+        _adminActivated: true, _seeded: true, _v2ClaimMigrated: true,
+        unclaimedDaily: 0, unclaimedWeekly: 0, unclaimedTrading: 0, unclaimedInterest: 0,
+        totalTradingProfit: 0, totalReturnCredit: 0, dailyReturnAccrued: 0, weeklyReturnAccrued: 0,
+        totalClaimed: 0, claimStreak: 0, lastClaimDate: null, returnHistory: [], transferLog: [],
+      };
+      localStorage.setItem(invKey, JSON.stringify(invState));
+    } catch (e) { /* quota exceeded — graceful */ }
+
+    log('admin_action', `Activated account for ${email}: $${amount.toLocaleString()}`, 'success', { email, amount });
+    toast(`Account activated! $${amount.toLocaleString()} funded for ${u.fullName || email}`, 'success');
+    closeModal('modal-activate');
+    _cache.users = null;
+    renderUsers();
+    _updateHeaderStats();
+  }
+
   async function toggleUserStatus(email) {
     const users = loadUsers();
     const key   = email.toLowerCase();
@@ -1927,6 +2020,8 @@ const AdminPanel = (() => {
     searchAuditLogs, filterAuditLogs, exportAuditLogs, clearAuditLogs,
     // Broadcast
     onBroadcastTargetChange, previewBroadcast, sendBroadcast,
+    // Fund & Activate
+    activateAccountPrompt, executeActivation,
     // Modals
     openModal, closeModal,
   };

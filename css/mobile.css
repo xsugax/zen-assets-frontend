@@ -926,3 +926,44 @@
   .fm-process-amount { font-size: 1.6rem !important; }
   .fm-process-steps { gap: 0.6rem !important; font-size: 0.55rem !important; }
 }
+
+/* ═══ Mobile Improvements for New UI Elements ═══ */
+@media (max-width: 768px) {
+  /* Password strength meter */
+  .password-strength { gap: 8px; }
+  .strength-text { font-size: 10px; min-width: 50px; }
+
+  /* Trust badges */
+  .register-trust-badges {
+    gap: 10px !important;
+  }
+  .register-trust-badges span {
+    font-size: 10px !important;
+  }
+
+  /* Legal modal */
+  .legal-modal-content {
+    width: 95% !important; max-height: 85vh !important;
+    padding: 24px 18px !important;
+  }
+  .legal-modal-heading { font-size: 18px !important; }
+
+  /* Legal links footer */
+  .login-legal-links {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  .legal-sep { display: none !important; }
+
+  /* Terms checkbox */
+  .terms-group .checkbox-label {
+    font-size: 11px !important;
+    align-items: flex-start !important;
+  }
+
+  /* Login error */
+  .login-error {
+    font-size: 12px !important;
+    padding: 10px 12px !important;
+  }
+}

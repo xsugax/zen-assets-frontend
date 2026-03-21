@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZEN ASSETS — Admin Command Center</title>
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="robots" content="noindex, nofollow" />
+
   <!-- Security Module (must load early) -->
   <script src="js/security.js" defer></script>
 
@@ -903,6 +907,12 @@
           <input type="password" id="edit-user-password" placeholder="••••••••" />
         </div>
       </div>
+      <div class="amb-row">
+        <div class="amb-field full">
+          <label><i class="fa fa-grid-4"></i> Set/Reset PIN (4 digits, leave empty to keep current)</label>
+          <input type="tel" id="edit-user-pin" placeholder="0000" maxlength="4" pattern="\d{4}" inputmode="numeric" />
+        </div>
+      </div>
     </div>
     <div class="amb-footer">
       <button class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-user-edit')">Cancel</button>
@@ -965,6 +975,42 @@
       <button class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-balance')">Cancel</button>
       <button class="btn-admin-sm primary" onclick="AdminPanel.executeBalanceAdjust()">
         <i class="fa fa-check"></i> Apply Adjustment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Fund & Activate Account Modal -->
+<div class="admin-modal-overlay" id="modal-activate">
+  <div class="admin-modal-box small">
+    <div class="amb-header">
+      <h3><i class="fa fa-rocket" style="color:#22c55e"></i> Fund &amp; Activate Account</h3>
+      <button class="amb-close" onclick="AdminPanel.closeModal('modal-activate')">&times;</button>
+    </div>
+    <div class="amb-body">
+      <input type="hidden" id="activate-user-email" />
+      <p style="color:var(--text-secondary);margin-bottom:1rem">Activating account for <strong id="activate-user-name"></strong></p>
+      <div class="amb-row">
+        <div class="amb-field">
+          <label>Deposit Amount ($)</label>
+          <input type="number" id="activate-amount" min="100" step="100" placeholder="e.g. 5000" />
+        </div>
+        <div class="amb-field">
+          <label>Tier</label>
+          <select id="activate-tier">
+            <option value="bronze">Bronze</option>
+            <option value="silver">Silver</option>
+            <option value="gold">Gold</option>
+            <option value="platinum">Platinum</option>
+            <option value="diamond">Diamond</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="amb-footer">
+      <button class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-activate')">Cancel</button>
+      <button class="btn-admin-sm primary" onclick="AdminPanel.executeActivation()">
+        <i class="fa fa-rocket"></i> Activate &amp; Fund
       </button>
     </div>
   </div>

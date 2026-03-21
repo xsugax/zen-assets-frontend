@@ -114,12 +114,43 @@ const InvestmentReturns = (() => {
     console.log(`💰 InvestmentReturns: ${TIERS[state.tier].icon} ${TIERS[state.tier].label} tier | Balance: $${state.walletBalance.toFixed(2)}`);
   }
 
+  // ── Activation gate — account is dormant until admin funds it ─
+  function isActivated() {
+    return state.walletBalance > 0 || state.initialDeposit > 0 || state._adminActivated === true;
+  }
+
   // ── Load for a specific user (called on login) ───────────
   function loadForUser() {
     // Stop existing accrual if running
     if (accrualTimer) { clearInterval(accrualTimer); accrualTimer = null; }
     STORAGE_KEY = _getUserStorageKey();
     loadState();
+
+    // Sync from admin-credited wallet if account was funded but investment state not yet seeded
+    if (!state._adminActivated && state.walletBalance <= 0) {
+      try {
+        const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
+        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
+        if (amount > 0) {
+          state.walletBalance   = amount;
+          state.initialDeposit  = amount;
+          state.dayStartBalance = amount;
+          state.weekStartBalance = amount;
+          state.lastAccrualTick  = Date.now();
+          state.lastDailyReset   = startOfDay();
+          state.lastWeeklyReset  = startOfWeek();
+          state._adminActivated  = true;
+          state._seeded          = true;
+          state.unclaimedDaily   = 0;
+          state.unclaimedWeekly  = 0;
+          state.unclaimedTrading = 0;
+          state.unclaimedInterest = 0;
+          saveState();
+          console.log(`💰 Account activated from wallet: $${amount.toFixed(2)}`);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     _catchUpCompounding();
     checkDailyWeeklyReset();
     // Restart accrual
@@ -545,6 +576,7 @@ const InvestmentReturns = (() => {
     init,
     loadForUser,
     saveAndDisconnect,
+    isActivated,
     getSnapshot,
     getProjectedGrowth,
     creditTradingProfit,

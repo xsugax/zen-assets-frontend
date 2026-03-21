@@ -11,6 +11,35 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>ZEN ASSETS — OmniVest AI · Quantum Trading Platform</title>
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- SEO -->
+  <meta name="description" content="ZEN ASSETS — the $97 billion AI investment platform. Automated crypto &amp; stock trading, 15–85% APY, real-time analytics. Start from $5,000." />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="ZEN ASSETS" />
+  <link rel="canonical" href="https://zenassets.tech/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://zenassets.tech/" />
+  <meta property="og:site_name" content="ZEN ASSETS" />
+  <meta property="og:title" content="ZEN ASSETS — AI Investment Platform | $97 Billion Trading Network" />
+  <meta property="og:description" content="Grow your wealth with OmniVest AI. Automated crypto &amp; stock trading, real-time analytics, and intelligent portfolio management." />
+  <meta property="og:image" content="https://zenassets.tech/og-image.svg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ZEN ASSETS — AI Investment Platform" />
+  <meta name="twitter:description" content="Automated crypto &amp; stock trading, 15–85% APY. Join thousands of investors." />
+  <meta name="twitter:image" content="https://zenassets.tech/og-image.svg" />
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,17 +54,26 @@
   <!-- TradingView Lightweight Charts -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=33" />
-  <link rel="stylesheet" href="css/main.css?v=33" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=33" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=33" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=33" />
-  <link rel="stylesheet" href="css/gamification.css?v=33" />
-  <link rel="stylesheet" href="css/admin.css?v=33" />
-  <link rel="stylesheet" href="css/mobile.css?v=33" />
-  <!-- JivoChat: callback MUST be defined before the widget script executes -->
-  <script>window.jivo_onLoadCallback = function(){ window._jivoReady = true; };</script>
-  <script src="//code.jivosite.com/widget/Q5bz4EnyzD" async></script>
+  <link rel="stylesheet" href="css/animations.css?v=41" />
+  <link rel="stylesheet" href="css/main.css?v=41" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=41" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=41" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=41" />
+  <link rel="stylesheet" href="css/gamification.css?v=41" />
+  <link rel="stylesheet" href="css/admin.css?v=41" />
+  <link rel="stylesheet" href="css/mobile.css?v=41" />
+  <!-- Smartsupp Live Chat Widget -->
+  <script>
+    var _smartsupp = _smartsupp || {};
+    _smartsupp.key = 'f72cc578302b94a10463c6570ec97c8bb07d6a62';
+    window.smartsupp||(function(d) {
+      var s,c,o=smartsupp=function(){ o._.push(arguments)}; o._=[];
+      s=d.getElementsByTagName('script')[0]; c=d.createElement('script');
+      c.type='text/javascript'; c.charset='utf-8'; c.async=true;
+      c.src='https://www.smartsuppchat.com/loader.js?'; s.parentNode.insertBefore(c,s);
+    })(document);
+  </script>
+  <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 </head>
 <body>
 
@@ -600,14 +638,22 @@
         <h2 class="login-title">Unlock Your <span class="login-title-glow">Wealth Engine</span></h2>
         <p class="login-subtitle-enhanced">The platform celebrities trade on — <span class="highlight-gold">now open to the public</span>. Join <span class="highlight-gold" id="login-user-count">18,427</span> investors generating wealth <span class="highlight-gold">while they sleep</span></p>
         
+        <div class="login-mode-tabs">
+          <button type="button" class="login-tab active" id="tab-password" onclick="switchLoginMode('password')"><i class="fa fa-lock"></i> Password</button>
+          <button type="button" class="login-tab" id="tab-pin" onclick="switchLoginMode('pin')"><i class="fa fa-grid-4"></i> Quick PIN</button>
+        </div>
         <form id="login-form" class="login-form">
           <div class="form-group">
             <label for="login-email"><i class="fa fa-envelope"></i> Email Address</label>
             <input type="email" id="login-email" class="form-input" placeholder="your.name@institution.com" required />
           </div>
-          <div class="form-group">
+          <div class="form-group" id="login-password-group">
             <label for="login-password"><i class="fa fa-lock"></i> Password</label>
             <input type="password" id="login-password" class="form-input" placeholder="Enter your secure password" required />
+          </div>
+          <div class="form-group" id="login-pin-group" style="display:none">
+            <label for="login-pin"><i class="fa fa-grid-4"></i> 4-Digit PIN</label>
+            <input type="tel" id="login-pin" class="form-input" placeholder="Enter your PIN" maxlength="4" pattern="\d{4}" inputmode="numeric" />
           </div>
           <div class="form-options">
             <label class="checkbox-label">
@@ -704,6 +750,11 @@
         <div class="form-group">
           <label for="reg-password">Password</label>
           <input type="password" id="reg-password" class="form-input" placeholder="Min 6 characters" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-pin"><i class="fa fa-grid-4"></i> Quick Login PIN</label>
+          <input type="tel" id="reg-pin" class="form-input" placeholder="4-digit PIN" maxlength="4" pattern="\d{4}" inputmode="numeric" required />
+          <small style="color:#64748b;font-size:11px;margin-top:4px;display:block">Set a 4-digit PIN for quick sign-in next time</small>
         </div>
         <div class="tier-selector">
           <label>Choose Your Wealth Tier</label>
@@ -2188,13 +2239,23 @@
         <div class="bch-wr-addresses">
           <div class="bch-wr-addr">
             <span class="bch-wr-coin btc"><i class="fab fa-bitcoin"></i> BTC</span>
-            <code>bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>
-            <button class="btn-copy-sm" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+            <code>bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5</code>
+            <button class="btn-copy-sm" onclick="copyAddress('bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5', this)"><i class="fa fa-copy"></i></button>
           </div>
           <div class="bch-wr-addr">
-            <span class="bch-wr-coin eth"><i class="fab fa-ethereum"></i> ETH/USDT/USDC</span>
-            <code>0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1</code>
-            <button class="btn-copy-sm" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+            <span class="bch-wr-coin eth"><i class="fab fa-ethereum"></i> ETH/USDC</span>
+            <code>0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff</code>
+            <button class="btn-copy-sm" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
+          </div>
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin usdt" style="color:#26A17B"><i class="fa fa-dollar-sign"></i> USDT</span>
+            <code>2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD</code>
+            <button class="btn-copy-sm" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
+          </div>
+          <div class="bch-wr-addr">
+            <span class="bch-wr-coin sol" style="color:#9945FF"><i class="fa fa-circle-nodes"></i> SOL</span>
+            <code>2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD</code>
+            <button class="btn-copy-sm" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
           </div>
         </div>
       </div>
@@ -2555,8 +2616,8 @@
                     <div class="wi-meta">Min: 0.0001 BTC · 2 confirmations · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" readonly />
-                    <button class="btn-copy" onclick="copyAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5" readonly />
+                    <button class="btn-copy" onclick="copyAddress('bc1qdpqyxrv428qp4vdlq0hpudmrpmgs5x9qcyhfa5', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -2570,8 +2631,8 @@
                     <div class="wi-meta">Min: 0.01 ETH · Gas: ~$2-5 · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -2580,13 +2641,13 @@
                     <div class="wi-icon usdt"><i class="fa fa-dollar-sign" style="color:#26A17B"></i></div>
                     <div class="wi-name">
                       <div class="wi-symbol">USDT</div>
-                      <div class="wi-full">Tether (ERC-20 / TRC-20)</div>
+                      <div class="wi-full">Tether (Solana SPL)</div>
                     </div>
-                    <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
+                    <div class="wi-meta">Min: $10 · Solana network · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD" readonly />
+                    <button class="btn-copy" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
 
@@ -2602,8 +2663,25 @@
                     <div class="wi-meta">Min: $10 · Same as ETH address · <span class="text-green">0% fee</span></div>
                   </div>
                   <div class="wi-address">
-                    <input type="text" class="address-input" value="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1" readonly />
-                    <button class="btn-copy" onclick="copyAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1', this)"><i class="fa fa-copy"></i></button>
+                    <input type="text" class="address-input" value="0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff" readonly />
+                    <button class="btn-copy" onclick="copyAddress('0x14BeaCB76970C7aD354f35aB1ca21F0e2f826cff', this)"><i class="fa fa-copy"></i></button>
+                  </div>
+                </div>
+
+                <div class="wallet-item">
+                  <div class="wi-header">
+                    <div class="wi-icon sol" style="background:linear-gradient(135deg, #9945FF, #14F195)">
+                      <i class="fa fa-circle-nodes" style="color:#fff"></i>
+                    </div>
+                    <div class="wi-name">
+                      <div class="wi-symbol">SOL</div>
+                      <div class="wi-full">Solana Network</div>
+                    </div>
+                    <div class="wi-meta">Min: 0.1 SOL · Fast &amp; low fees · <span class="text-green">0% fee</span></div>
+                  </div>
+                  <div class="wi-address">
+                    <input type="text" class="address-input" value="2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD" readonly />
+                    <button class="btn-copy" onclick="copyAddress('2FbNJXqoyxfXwpe1ycT4FG5bu3RP1vckT7qSWV4zVpMD', this)"><i class="fa fa-copy"></i></button>
                   </div>
                 </div>
               </div>
@@ -3169,47 +3247,21 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=33"></script>
-<script src="js/user-auth.js?v=33"></script>
-<script src="js/real-data-adapter.js?v=33"></script>
-<script src="js/ai-engine.js?v=33"></script>
-<script src="js/chart-engine.js?v=33"></script>
-<script src="js/advanced-chart-engine.js?v=33"></script>
-<script src="js/chart-data-indicator.js?v=33"></script>
-<script src="js/trading.js?v=33"></script>
-<script src="js/smart-exit-engine.js?v=33"></script>
-<script src="js/auto-trader.js?v=33"></script>
-<script src="js/portfolio.js?v=33"></script>
-<script src="js/investment-returns.js?v=33"></script>
-<script src="js/gamification.js?v=33"></script>
-<script src="js/plugins.js?v=33"></script>
-<!-- JivoChat opener -->
-<script>
-(function(){
-  function _jivoOpen() {
-    if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-      try { jivo_api.open(); return; } catch(e) {}
-      var el = document.querySelector('jdiv.__jivoMobileButton') ||
-               document.querySelector('jdiv[class*="button"]') ||
-               document.querySelector('jdiv');
-      if (el) el.click();
-      return;
-    }
-    var n = 0;
-    var t = setInterval(function() {
-      if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-        clearInterval(t);
-        try { jivo_api.open(); } catch(e) {
-          var el = document.querySelector('jdiv'); if (el) el.click();
-        }
-      } else if (++n >= 20) { clearInterval(t); }
-    }, 500);
-  }
-  window.openSmartsuppChat = _jivoOpen;
-  document.addEventListener('DOMContentLoaded', function() { window.openSmartsuppChat = _jivoOpen; });
-})();
-</script>
-<script src="js/app.js?v=36"></script>
+<script src="js/market-data.js?v=41"></script>
+<script src="js/user-auth.js?v=41"></script>
+<script src="js/real-data-adapter.js?v=41"></script>
+<script src="js/ai-engine.js?v=41"></script>
+<script src="js/chart-engine.js?v=41"></script>
+<script src="js/advanced-chart-engine.js?v=41"></script>
+<script src="js/chart-data-indicator.js?v=41"></script>
+<script src="js/trading.js?v=41"></script>
+<script src="js/smart-exit-engine.js?v=41"></script>
+<script src="js/auto-trader.js?v=41"></script>
+<script src="js/portfolio.js?v=41"></script>
+<script src="js/investment-returns.js?v=41"></script>
+<script src="js/gamification.js?v=41"></script>
+<script src="js/plugins.js?v=41"></script>
+<script src="js/app.js?v=41"></script>
 
 <!-- Surge Badge Killer — removes any injected branding on ALL devices -->
 <script>

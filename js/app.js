@@ -109,11 +109,73 @@ const AuthManager = (() => {
   };
 })();
 
-// Initialize AuthManager when DOM is ready
+
+// ── Login mode toggle (password vs PIN) ──────────────────
+let _loginMode = 'password'; // 'password' | 'pin'
+function switchLoginMode(mode) {
+  _loginMode = mode;
+  const pwGroup  = document.getElementById('login-password-group');
+  const pinGroup = document.getElementById('login-pin-group');
+  const tabPw    = document.getElementById('tab-password');
+  const tabPin   = document.getElementById('tab-pin');
+  const pwInput  = document.getElementById('login-password');
+  const pinInput = document.getElementById('login-pin');
+
+  if (mode === 'pin') {
+    if (pwGroup)  pwGroup.style.display  = 'none';
+    if (pinGroup) pinGroup.style.display = '';
+    if (tabPw)  tabPw.classList.remove('active');
+    if (tabPin) tabPin.classList.add('active');
+    if (pwInput)  { pwInput.required = false; pwInput.value = ''; }
+    if (pinInput) { pinInput.required = true; pinInput.focus(); }
+  } else {
+    if (pwGroup)  pwGroup.style.display  = '';
+    if (pinGroup) pinGroup.style.display = 'none';
+    if (tabPw)  tabPw.classList.add('active');
+    if (tabPin) tabPin.classList.remove('active');
+    if (pwInput) pwInput.required = true;
+    if (pinInput) { pinInput.required = false; pinInput.value = ''; }
+  }
+}
+
+// Initialize AuthManager and login form handler when DOM is ready
+function initLoginFormHandler() {
+  const loginForm = document.getElementById('login-form');
+  if (!loginForm) return;
+  loginForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const rememberMe = document.getElementById('login-remember').checked;
+
+    let result;
+    if (_loginMode === 'pin') {
+      const pin = document.getElementById('login-pin').value.trim();
+      result = await UserAuth.pinLogin(email, pin, rememberMe);
+    } else {
+      const password = document.getElementById('login-password').value;
+      result = await UserAuth.login(email, password, rememberMe);
+    }
+
+    if (result.ok) {
+      window.location.reload();
+    } else if (result.requires_otp) {
+      // Show OTP step if required (handled elsewhere)
+    } else {
+      const errEl = document.getElementById('login-error');
+      if (errEl) { errEl.textContent = result.error || 'Login failed.'; errEl.style.display = 'block'; }
+      else alert(result.error || 'Login failed.');
+    }
+  });
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => AuthManager.init());
+  document.addEventListener('DOMContentLoaded', () => {
+    AuthManager.init();
+    initLoginFormHandler();
+  });
 } else {
   AuthManager.init();
+  initLoginFormHandler();
 }
 
 const App = (() => {
@@ -2126,8 +2188,16 @@ const App = (() => {
     const loginScreen = $('login-screen');
     const appDiv = $('app');
 
-    // Always require fresh credentials on page load.
-    console.log('🔒 Fresh login required - showing login screen');
+    // Check if user has a remembered session ("Remember me" was checked)
+    if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
+      console.log('🔓 Remembered session found — skipping login screen');
+      if (loginScreen) loginScreen.style.display = 'none';
+      proceedAfterLogin();
+      return; // skip login/register screen setup
+    }
+
+    // No active session — show login screen
+    console.log('🔒 No active session - showing login screen');
     if (loginScreen) loginScreen.style.display = 'flex';
     if (appDiv) appDiv.classList.remove('app-visible');
     document.body.style.overflow = 'auto';
@@ -2161,6 +2231,7 @@ const App = (() => {
       e.preventDefault();
       const email = $('login-email').value.trim();
       const password = $('login-password').value;
+      const rememberMe = $('login-remember') ? $('login-remember').checked : false;
 
       if (!email || !password) {
         _showLoginError('Please enter your email and password.');
@@ -2174,21 +2245,21 @@ const App = (() => {
 
       // Show loading state
       const btn = document.querySelector('.btn-login');
-      const origText = btn ? btn.textContent : '';
-      if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
+      const origHTML = btn ? btn.innerHTML : '';
+      if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Signing in...'; btn.disabled = true; }
 
-      // Strict auth mode: always require manual login on every fresh page load.
-      const result = await UserAuth.login(email, password, false);
+      // Use the actual rememberMe value from the checkbox
+      const result = await UserAuth.login(email, password, rememberMe);
       if (result.ok) {
         _dismissLoginScreen();
       } else if (result.requires_otp) {
-        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
         _showLoginOTPStep(email, result.userId, result.message);
         return;
       } else {
         _showLoginError(result.error);
       }
-      if (btn) { btn.textContent = origText; btn.disabled = false; }
+      if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
     });
   }
 
@@ -2523,7 +2594,14 @@ const App = (() => {
   }
 
   function _showLoginError(msg) {
-    // Reuse a toast or inline
+    // Use the dedicated error box if available, otherwise inline
+    const errBox = $('login-error');
+    if (errBox) {
+      errBox.textContent = msg;
+      errBox.classList.add('visible');
+      setTimeout(() => errBox.classList.remove('visible'), 6000);
+      return;
+    }
     const btn = document.querySelector('.btn-login');
     if (!btn) return;
     const prev = btn.parentElement.querySelector('.login-inline-err');
@@ -2772,6 +2850,7 @@ const App = (() => {
       const fullName = $('reg-name').value;
       const email    = $('reg-email').value;
       const password = $('reg-password').value;
+      const pin      = ($('reg-pin') || {}).value || '';
       const tierRadio = document.querySelector('input[name="reg-tier"]:checked');
       const tier     = tierRadio ? tierRadio.value : 'gold';
       const deposit  = $('reg-deposit').value;
@@ -2784,22 +2863,22 @@ const App = (() => {
 
       // Show loading state
       const btn = form.querySelector('button[type="submit"]');
-      const origText = btn ? btn.textContent : '';
-      if (btn) { btn.textContent = 'Creating account...'; btn.disabled = true; }
+      const origHTML = btn ? btn.innerHTML : '';
+      if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Creating account...'; btn.disabled = true; }
 
-      const result = await UserAuth.register({ fullName, email, password, tier, deposit });
+      const result = await UserAuth.register({ fullName, email, password, tier, deposit, pin });
       if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
       } else if (result.requiresVerification) {
-        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
         _showRegisterOTPStep(email, result.userId);
         return;
       } else {
         errBox.textContent = result.error;
         errBox.classList.add('visible');
       }
-      if (btn) { btn.textContent = origText; btn.disabled = false; }
+      if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
     });
   }
 
@@ -2912,40 +2991,18 @@ const App = (() => {
       alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
     };
 
-    // ── JivoChat Live Chat Integration ──
+    // ── Smartsupp Live Chat Integration ──
     window.openSmartsuppChat = () => {
-      const _setIdentity = () => {
-        if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
-          const s = UserAuth.getSession();
-          if (s) {
-            try { jivo_api.setContactInfo({ name: s.fullName || s.name || 'Investor', email: s.email }); } catch(e) {}
-          }
-        }
-      };
-
-      const _open = () => {
-        _setIdentity();
-        if (typeof jivo_api !== 'undefined') {
-          try { jivo_api.open(); return; } catch(e) {}
-        }
-        const el = document.querySelector('jdiv.__jivoMobileButton') ||
-                   document.querySelector('jdiv[class*="button"]') ||
-                   document.querySelector('jdiv');
-        if (el) { el.click(); return; }
-      };
-
-      // jdiv appears in DOM as soon as JivoChat script starts running
-      if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-        _open();
+      if (typeof smartsupp === 'function') {
+        smartsupp('chat:open');
         return;
       }
-
       // Widget still loading — poll up to 10s
-      showToast('Opening chat…', 'info');
       let n = 0;
       const t = setInterval(() => {
-        if (document.querySelector('jdiv') || typeof jivo_api !== 'undefined') {
-          clearInterval(t); _open();
+        if (typeof smartsupp === 'function') {
+          clearInterval(t);
+          smartsupp('chat:open');
         } else if (++n >= 20) {
           clearInterval(t);
           showToast('Chat unavailable — please email support@zenassets.com', 'error');
