@@ -138,44 +138,10 @@ function switchLoginMode(mode) {
   }
 }
 
-// Initialize AuthManager and login form handler when DOM is ready
-function initLoginFormHandler() {
-  const loginForm = document.getElementById('login-form');
-  if (!loginForm) return;
-  loginForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value.trim();
-    const rememberMe = document.getElementById('login-remember').checked;
-
-    let result;
-    if (_loginMode === 'pin') {
-      const pin = document.getElementById('login-pin').value.trim();
-      result = await UserAuth.pinLogin(email, pin, rememberMe);
-    } else {
-      const password = document.getElementById('login-password').value;
-      result = await UserAuth.login(email, password, rememberMe);
-    }
-
-    if (result.ok) {
-      window.location.reload();
-    } else if (result.requires_otp) {
-      // Show OTP step if required (handled elsewhere)
-    } else {
-      const errEl = document.getElementById('login-error');
-      if (errEl) { errEl.textContent = result.error || 'Login failed.'; errEl.style.display = 'block'; }
-      else alert(result.error || 'Login failed.');
-    }
-  });
-}
-
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    AuthManager.init();
-    initLoginFormHandler();
-  });
+  document.addEventListener('DOMContentLoaded', () => { AuthManager.init(); });
 } else {
   AuthManager.init();
-  initLoginFormHandler();
 }
 
 const App = (() => {
@@ -2249,11 +2215,10 @@ const App = (() => {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('login-email').value.trim();
-      const password = $('login-password').value;
       const rememberMe = $('login-remember') ? $('login-remember').checked : false;
 
-      if (!email || !password) {
-        _showLoginError('Please enter your email and password.');
+      if (!email) {
+        _showLoginError('Please enter your email address.');
         return;
       }
 
@@ -2267,8 +2232,27 @@ const App = (() => {
       const origHTML = btn ? btn.innerHTML : '';
       if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Signing in...'; btn.disabled = true; }
 
-      // Use the actual rememberMe value from the checkbox
-      const result = await UserAuth.login(email, password, rememberMe);
+      let result;
+      if (typeof _loginMode !== 'undefined' && _loginMode === 'pin') {
+        // ── PIN login ──
+        const pin = $('login-pin') ? $('login-pin').value.trim() : '';
+        if (!pin) {
+          _showLoginError('Please enter your 4-digit PIN.');
+          if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+          return;
+        }
+        result = await UserAuth.pinLogin(email, pin, rememberMe);
+      } else {
+        // ── Password login ──
+        const password = $('login-password').value;
+        if (!password) {
+          _showLoginError('Please enter your password.');
+          if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+          return;
+        }
+        result = await UserAuth.login(email, password, rememberMe);
+      }
+
       if (result.ok) {
         _dismissLoginScreen();
       } else if (result.requires_otp) {
@@ -2276,7 +2260,7 @@ const App = (() => {
         _showLoginOTPStep(email, result.userId, result.message);
         return;
       } else {
-        _showLoginError(result.error);
+        _showLoginError(result.error || 'Login failed.');
       }
       if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
     });

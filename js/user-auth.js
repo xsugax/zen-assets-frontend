@@ -239,12 +239,14 @@ const UserAuth = (() => {
       s.removeItem(STORAGE_WALLET);
     });
     if (!token) return;
-    const store = remember ? localStorage : sessionStorage;
+    // Admin sessions are always persisted to localStorage regardless of checkbox
+    const isAdmin = session && session.role === 'admin';
+    const store = (remember || isAdmin) ? localStorage : sessionStorage;
     store.setItem(STORAGE_TOKEN, token);
     if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
     if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
     // Set or clear the remember-me flag accordingly
-    if (remember) {
+    if (remember || isAdmin) {
       localStorage.setItem(STORAGE_REMEMBER, '1');
     } else {
       localStorage.removeItem(STORAGE_REMEMBER);
