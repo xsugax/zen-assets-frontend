@@ -214,16 +214,19 @@ const App = (() => {
 
   function showApp() {
     const loading = $('loading-screen');
-    if (loading) { loading.style.opacity = '0'; setTimeout(() => loading.style.display = 'none', 600); }
+    if (loading) {
+      loading.style.opacity = '0';
+      loading.style.pointerEvents = 'none';
+      setTimeout(() => { loading.style.display = 'none'; }, 600);
+    }
     const app = $('app');
     if (app) app.classList.add('app-visible');
-    // startCursorTrail(); // Removed — clean professional UI
     startClock();
-    initData();
+    try { initData(); } catch(e) { console.error('initData error:', e); }
     initCharts();
-    initAllSections();
-    startLiveFeed();
-    startLiveNotifications();
+    try { initAllSections(); } catch(e) { console.error('initAllSections error:', e); }
+    try { startLiveFeed(); } catch(e) { console.error('startLiveFeed error:', e); }
+    try { startLiveNotifications(); } catch(e) { console.error('startLiveNotifications error:', e); }
   }
 
   // ── Boot Canvas Particles ─────────────────────────────────
@@ -415,6 +418,7 @@ const App = (() => {
 
   // ── Sidebar Nav ───────────────────────────────────────────
   function initNav() {
+    // Direct click handlers on each nav item
     $$('.nav-item[data-section]').forEach(item => {
       item.addEventListener('click', () => navigate(item.dataset.section));
     });
@@ -422,6 +426,18 @@ const App = (() => {
     const sidebar       = $('sidebar');
     if (sidebarToggle && sidebar) {
       sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+    }
+
+    // BULLETPROOF: Event delegation on sidebar (catches clicks even if direct handlers fail)
+    const sidebarNav = document.querySelector('#sidebar .sidebar-nav');
+    if (sidebarNav && !sidebarNav._zenDelegated) {
+      sidebarNav._zenDelegated = true;
+      sidebarNav.addEventListener('click', (e) => {
+        const navItem = e.target.closest('.nav-item[data-section]');
+        if (navItem && navItem.dataset.section) {
+          navigate(navItem.dataset.section);
+        }
+      });
     }
   }
 
@@ -433,18 +449,25 @@ const App = (() => {
     if (sec) sec.classList.add('active');
     const nav = document.querySelector(`.nav-item[data-section="${name}"]`);
     if (nav) nav.classList.add('active');
-    // Section-specific re-renders
-    if (name === 'markets')      renderMarketsTable();
-    if (name === 'ai-engine')    renderAIEngine();
-    if (name === 'portfolio')    renderPortfolio();
-    if (name === 'trading')      renderTrading();
-    if (name === 'analytics')    renderAnalytics();
-    if (name === 'signals')      renderSignals();
-    if (name === 'plugins')      renderPlugins();
-    if (name === 'transparency') renderTransparency();
-    if (name === 'security')     renderSecurity();
-    if (name === 'buy-crypto')   initBuyCryptoAnimations();
-    // Admin panel is now standalone (admin.html)
+
+    // Scroll main content area to top
+    const mc = $('main-content');
+    if (mc) mc.scrollTop = 0;
+
+    // Section-specific re-renders (try-catch each to prevent cascade failure)
+    try {
+      if (name === 'markets')      renderMarketsTable();
+      if (name === 'ai-engine')    renderAIEngine();
+      if (name === 'portfolio')    renderPortfolio();
+      if (name === 'trading')      renderTrading();
+      if (name === 'analytics')    renderAnalytics();
+      if (name === 'signals')      renderSignals();
+      if (name === 'plugins')      renderPlugins();
+      if (name === 'transparency') renderTransparency();
+      if (name === 'security')     renderSecurity();
+      if (name === 'buy-crypto')   initBuyCryptoAnimations();
+      if (name === 'dashboard')    renderDashCopyTraders();
+    } catch(e) { console.error('Section render error:', e); }
 
     // Update mobile bottom nav active state
     _updateMobileNavActive(name);
@@ -555,6 +578,7 @@ const App = (() => {
     renderWhaleAlerts();
     renderSignalsMini(AIEngine.getSignals().slice(0, 6));
     renderAssetClassGrid();
+    renderDashCopyTraders();
     updateChartStats(_sym);
   }
 
@@ -1044,6 +1068,31 @@ const App = (() => {
       const pct = a ? a.pct24h : 0;
       const cls = pct >= 0 ? 'up' : 'down';
       return `<div class="asset-class-card" onclick="App.navigatePublic('markets')"><i class="fa-solid ${c.icon} ${cls}" style="color:${pct>=0?'#00ff88':'#ff4757'}"></i><span class="ac-name">${c.label}</span><span class="ac-change ${cls}">${signPnl(pct)}${pct.toFixed(2)}%</span></div>`;
+    }).join('');
+  }
+
+  // ── Dashboard Copy Traders ────────────────────────────────
+  function renderDashCopyTraders() {
+    const list = $('dash-copy-trade-list'); if (!list) return;
+    const traders = Trading.getCopyTraders();
+    list.innerHTML = traders.map(t => {
+      const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
+      const btnCls = t.active ? 'btn-danger' : 'btn-primary';
+      const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
+      return `<div class="ct-card ${t.active ? 'ct-active' : ''}">
+        <div class="ct-avatar">${t.avatar}</div>
+        <div class="ct-info">
+          <b>${t.name}</b> ${liveTag}
+          <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
+          ${tradesInfo}
+        </div>
+        <div class="ct-stats">
+          <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
+          <small>30d PnL</small>
+        </div>
+        <button class="btn ${btnCls} btn-xs" onclick="App.toggleCopyTrader('${t.id}')">${btnTxt}</button>
+      </div>`;
     }).join('');
   }
 
@@ -1804,6 +1853,7 @@ const App = (() => {
         const m = Portfolio.computeMetrics();
         updateDashKPIs(m);
         updateAllocTotal(m.totalValue);
+        renderDashCopyTraders();
         // Only recreate allocation chart if data actually changed
         const allocKey = JSON.stringify(m.alloc);
         if (allocKey !== _lastAllocData) {
@@ -2191,7 +2241,7 @@ const App = (() => {
       if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
     }
   }
-  function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); }
+  function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); renderDashCopyTraders(); }
   function navigatePublic(s)  { navigate(s); }
 
   // ── Entry Point ───────────────────────────────────────────
@@ -3144,6 +3194,22 @@ const App = (() => {
     initBootCanvas();
     runBoot();
     window._App = { showToast, navigate };
+
+    // SAFETY: Force-remove loading screen after 12s in case boot animation stalls
+    setTimeout(() => {
+      const ls = $('loading-screen');
+      if (ls && ls.style.display !== 'none') {
+        ls.style.display = 'none';
+        ls.style.pointerEvents = 'none';
+        console.warn('⚠️ Loading screen force-removed (safety timeout)');
+      }
+      // Also ensure login screen is truly gone
+      const login = $('login-screen');
+      if (login && login.style.display !== 'none') {
+        login.style.display = 'none';
+        login.style.pointerEvents = 'none';
+      }
+    }, 12000);
 
     // After boot completes, sync user state
     setTimeout(() => {
