@@ -150,7 +150,7 @@ const App = (() => {
   // ── Utils ─────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   const $$ = sel => document.querySelectorAll(sel);
-  const fmt = (n, decimals = 2) => n === undefined || n === null ? '—' : parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const fmt = (n, decimals = 2) => { const v = parseFloat(n); return isNaN(v) ? '0.00' : v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }); };
   const fmtPx = px => px > 1000 ? fmt(px, 2) : px > 1 ? fmt(px, 4) : fmt(px, 6);
   const clsPnl = v => v >= 0 ? 'up' : 'down';
   const signPnl = v => v >= 0 ? '+' : '';
@@ -988,7 +988,7 @@ const App = (() => {
   }
 
   function fmtVolume(n) {
-    if (!n) return '—';
+    if (!n) return '$0';
     if (n >= 1e12) return `$${(n/1e12).toFixed(2)}T`;
     if (n >= 1e9)  return `$${(n/1e9).toFixed(2)}B`;
     if (n >= 1e6)  return `$${(n/1e6).toFixed(2)}M`;

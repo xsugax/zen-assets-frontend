@@ -76,9 +76,9 @@ const Portfolio = (() => {
     const totalPnL   = totalPortfolioValue > 0 ? totalPortfolioValue - initialDeposit : (walletBalance > 0 ? walletBalance - initialDeposit : rawPortValue - totalCost);
     const totalPct   = totalPortfolioValue > 0 && initialDeposit > 0
       ? parseFloat(((totalPnL / initialDeposit) * 100).toFixed(2))
-      : parseFloat((((rawPortValue - totalCost) / totalCost) * 100).toFixed(2));
+      : totalCost > 0 ? parseFloat((((rawPortValue - totalCost) / totalCost) * 100).toFixed(2)) : 0;
 
-    const alloc = enriched.map(h => ({ label: h.name, pct: parseFloat(((h.value / rawPortValue) * 100).toFixed(1)) }));
+    const alloc = enriched.map(h => ({ label: h.name, pct: rawPortValue > 0 ? parseFloat(((h.value / rawPortValue) * 100).toFixed(1)) : 0 }));
 
     // Risk metrics (computed from equity history)
     const hist  = _equityHistory;
