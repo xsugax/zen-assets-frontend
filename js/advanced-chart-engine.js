@@ -244,12 +244,11 @@ const AdvancedChartEngine = (() => {
       lastValueVisible: false,
     });
 
-    // Start live tick feed FIRST — forming candle begins building immediately
-    // This runs in parallel while historical data is fetched
-    startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe);
-
-    // Load historical data — awaited so callers know when chart is ready
+    // Load historical data FIRST — series must have data before realtime updates
     await loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe);
+
+    // THEN start live tick feed — appends to the historical data
+    startRealtimeUpdates(containerId, symbol, candleSeries, volumeSeries, timeframe);
 
     // Handle resize
     const resizeObserver = new ResizeObserver(entries => {
@@ -284,67 +283,64 @@ const AdvancedChartEngine = (() => {
   //   3. Render real data cleanly — no jarring swap, no fake placeholder
   //   4. Only fall back to simulated if real data truly fails, with background retries
   // This makes each timeframe feel genuinely different because the data IS different:
-  //   1m = real micro-movements, 4h = real macro swings.
+  //   Always shows simulated candles instantly, then silently upgrades to real data.
   async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe = '5m') {
     const assetId  = symbol.split('/')[0];
     const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
-    const isCrypto = CRYPTO_SYMBOLS.has(assetId);
-    const maxWait  = isCrypto ? 5000 : 8000; // generous timeout for Binance / Yahoo
 
-    // Show loading badge while we wait for real data
-    try { if (typeof ChartDataIndicator !== 'undefined') ChartDataIndicator.showLoading(containerId); } catch {}
-
-    let rendered = false;
-
-    // ── Try real data first ────────────────────────────────
-    if (typeof RealDataAdapter !== 'undefined') {
-      try {
-        const timeoutP = new Promise(r => setTimeout(() => r(null), maxWait));
-        const real = await Promise.race([
-          RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit),
-          timeoutP,
-        ]);
-        if (real && real.length >= 5) {
-          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
-          rendered = true;
-        }
-      } catch {}
-    }
-
-    // ── Fallback: simulated (only when real data truly failed) ──
-    if (!rendered) {
-      try {
-        let simCandles = [];
-        if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
-          simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
-        }
+    // ── Step 1: Always render simulated data IMMEDIATELY ──
+    // This guarantees the chart never stays on "Fetching..."
+    try {
+      if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
+        const simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
         if (simCandles.length > 0) {
           _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
-          rendered = true;
+          console.log(`📊 [${assetId}] Rendered ${simCandles.length} simulated candles`);
+        } else {
+          console.warn(`⚠️ [${assetId}] getOHLCV returned empty`);
+          try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
         }
-      } catch (e) { console.warn('[Chart] simulated fallback failed:', e.message); }
-    }
-
-    // ── Safety: always clear the "Fetching…" badge ─────────
-    if (!rendered) {
+      } else {
+        console.warn(`⚠️ MarketData not available for ${assetId}`);
+        try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
+      }
+    } catch (e) {
+      console.error(`❌ [${assetId}] Simulated render failed:`, e.message);
       try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
     }
 
-    // ── Background retries — upgrade simulated → real once network recovers ──
-    let retryMs = 4000;
-    const tryUpgrade = async () => {
-      if (typeof RealDataAdapter === 'undefined') return;
-      try {
-        const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
-        if (real && real.length >= 5) {
-          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
-          return; // success — stop retrying
+    // ── Step 2: Try upgrading to real Binance/Yahoo data in background ──
+    if (typeof RealDataAdapter !== 'undefined') {
+      const tryRealData = async () => {
+        try {
+          const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
+          if (real && real.length >= 5) {
+            _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
+            console.log(`✅ [${assetId}] Upgraded to ${real.length} REAL candles`);
+            return true;
+          }
+        } catch (e) {
+          console.warn(`⚠️ [${assetId}] Real data fetch failed:`, e.message);
         }
-      } catch {}
-      retryMs = Math.min(retryMs * 1.5, 20000);
-      setTimeout(tryUpgrade, retryMs);
-    };
-    setTimeout(tryUpgrade, retryMs);
+        return false;
+      };
+
+      // First attempt — don't block, run in background
+      tryRealData().then(ok => {
+        if (ok) return;
+        // Retry with exponential backoff
+        let retryMs = 5000;
+        const retry = () => {
+          tryRealData().then(success => {
+            if (!success) {
+              retryMs = Math.min(retryMs * 1.5, 30000);
+              setTimeout(retry, retryMs);
+            }
+          });
+        };
+        setTimeout(retry, retryMs);
+      });
+    }
   }
 
   // ── Indicator helpers ──────────────────────────────────
