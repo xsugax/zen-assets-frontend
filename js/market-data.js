@@ -60,8 +60,8 @@ const MarketData = (() => {
   let   whaleTimer = null;
   const HISTORY_SIZE = 200;
 
-  // Volatility config per asset type
-  const VOLS = { crypto: 0.0025, stocks: 0.0008, forex: 0.0003, commodities: 0.0012, indices: 0.0005, defi: 0.004, etf: 0.0007 };
+  // Volatility config per asset type (per-tick: controls forming candle movement speed)
+  const VOLS = { crypto: 0.0038, stocks: 0.0014, forex: 0.0005, commodities: 0.0020, indices: 0.0009, defi: 0.0055, etf: 0.0012 };
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
@@ -349,32 +349,61 @@ const MarketData = (() => {
     const cat          = asset.cat || 'crypto';
 
     // ── Stochastic parameters (per-asset unique) ────────────
-    // Hash asset ID into a small modifier so each asset has
-    // a distinct volatility & drift signature, not just per-class
     let _assetHash = 0;
     for (let c = 0; c < id.length; c++) _assetHash = ((_assetHash << 5) - _assetHash + id.charCodeAt(c)) | 0;
     const assetMod = ((_assetHash & 0xFFFF) / 65536) * 0.5 - 0.25; // -0.25 to +0.25
-    const sigma    = (_SIGMA[cat] || 0.60) * (1 + assetMod * 0.4);  // +/-10% vol variation
-    const mu       = (_MU[cat]    || 0.05) + assetMod * 0.04;       // +/-1% drift variation
+
+    // ── Per-Asset-Timeframe Regime ──────────────────────────
+    // Hash (asset + timeframe) → pick one of 8 distinct chart "personalities"
+    // so BTC/5m looks COMPLETELY different from ETH/5m and BTC/1h
+    let _rHash = 0;
+    const _rStr = `${id}|${period}|rgm3`;
+    for (let c = 0; c < _rStr.length; c++) _rHash = ((_rHash << 5) - _rHash + _rStr.charCodeAt(c)) | 0;
+    const rSeed = ((_rHash >>> 0) % 10000) / 10000; // 0→1 deterministic
+
+    // 8 regimes — drift is TARGET TOTAL TREND % over the visible chart
+    // (auto-scales to any timeframe: 5m, 1h, 4h, 1D all look correct)
+    const _RGM = [
+      { drift:  16, volMul: 0.80, mom: 0.45 }, // Strong bull rally   (+16%)
+      { drift: -14, volMul: 0.85, mom: 0.40 }, // Strong bear selloff (-14%)
+      { drift:   7, volMul: 0.55, mom: 0.58 }, // Steady accumulation (+7%)
+      { drift:  -5, volMul: 0.60, mom: 0.52 }, // Slow distribution   (-5%)
+      { drift:   1, volMul: 1.60, mom: 0.12 }, // High-vol choppy range
+      { drift:  -1, volMul: 0.45, mom: 0.65 }, // Tight compression channel
+      { drift:  11, volMul: 1.10, mom: 0.30 }, // Volatile bull (+11% with big wicks)
+      { drift:  -9, volMul: 1.15, mom: 0.28 }, // Volatile bear (-9% with bounces)
+    ];
+    const regime = _RGM[Math.floor(rSeed * _RGM.length)];
+
+    const sigma    = (_SIGMA[cat] || 0.60) * (1 + assetMod * 0.4) * regime.volMul;
+    const momCoeff = regime.mom;
     const candleSec = intervalMs / 1000;
     const dt       = candleSec / _SECS_PER_YEAR;   // candle as year-fraction
+    // Convert target chart trend % to annualized mu (auto-scales with TF)
+    const totalChartYears = dt * bars;
+    const trendTarget = (regime.drift + assetMod * 4) / 100; // e.g. 16 → 0.16
+    const mu = trendTarget / (totalChartYears + 1e-12) + 0.5 * sigma * sigma;
     const TICKS    = 30;                            // sub-ticks per candle
     const dtTick   = dt / TICKS;
     const subSigma = sigma * Math.sqrt(dtTick);
 
     // ── Time alignment: snap to real clock boundary ────────
-    // 5m candles open at :00 :05 :10 …
-    // 1h candles open at the hour, 4h at 00:00/04:00, etc.
     const now            = Date.now();
     const latestBoundary = Math.floor(now / intervalMs) * intervalMs;
 
-    // ── Step 1: Seeded candle-level log-returns ────────────
+    // ── Step 1: Seeded candle-level log-returns (with momentum) ─
+    // Momentum autocorrelation makes consecutive candles trend in
+    // the same direction → produces real-looking rallies & selloffs
     const candleMeta = [];
+    let prevZ = 0;
     for (let i = 0; i < bars; i++) {
       const candleTime = latestBoundary - (bars - 1 - i) * intervalMs;
       const seed  = _hashSeed(id, candleTime, intervalMs);
       const rng   = _mulberry32(seed);
-      const z     = _boxMuller(rng);
+      const freshZ = _boxMuller(rng);
+      // Blend previous direction with fresh randomness → trending sequences
+      const z = momCoeff * prevZ + Math.sqrt(1 - momCoeff * momCoeff) * freshZ;
+      prevZ = z;
       const logRet = (mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * z;
       candleMeta.push({ logRet, rng, candleTime });
     }
