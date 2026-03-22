@@ -520,10 +520,13 @@ const AdvancedChartEngine = (() => {
       const fc = _formingCandles[containerId];
       if (!fc || fc.candleTime !== candleTime) {
         // New candle opened — start fresh
+        const openPrice = fc ? fc.c : price; // open at previous close (no gaps)
         _formingCandles[containerId] = {
           candleTime, t,
-          o: fc ? fc.c : price, // open at previous close (no gaps)
-          h: price, l: price, c: price, v: 0,
+          o: openPrice,
+          h: Math.max(openPrice, price),
+          l: Math.min(openPrice, price),
+          c: price, v: 0,
         };
       } else {
         // Same candle — extend H/L, update close

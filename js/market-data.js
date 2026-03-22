@@ -107,31 +107,41 @@ const MarketData = (() => {
   function _initRegime(id) {
     const roll = Math.random();
     _regime[id] = {
-      dir:       roll < 0.45 ? 1 : roll < 0.80 ? -1 : 0,  // 45% bull, 35% bear, 20% range
-      strength:  0.25 + Math.random() * 0.75,   // regime intensity 0.25–1.0
-      remaining: 25  + Math.floor(Math.random() * 90), // ticks before next regime
-      volMult:   0.7 + Math.random() * 0.6,     // 0.7×–1.3× base volatility
+      dir:       roll < 0.50 ? 1 : roll < 0.82 ? -1 : 0,  // 50% bull, 32% bear, 18% range
+      strength:  0.30 + Math.random() * 0.70,   // regime intensity 0.30–1.0
+      remaining: 40  + Math.floor(Math.random() * 120), // longer trends (40–160 ticks)
+      volMult:   0.75 + Math.random() * 0.50,   // 0.75×–1.25× (tighter range)
       momentum:  0,                              // price momentum carry
+      _smoothDir: roll < 0.50 ? 1 : roll < 0.82 ? -1 : 0, // smooth transition target
     };
   }
 
   function _advanceRegime(id, vol) {
     const reg = _regime[id];
     reg.remaining--;
+
+    // Smooth interpolation toward target direction (no abrupt flips)
+    if (reg._smoothDir !== undefined) {
+      reg.dir += (reg._smoothDir - reg.dir) * 0.08;
+    }
+
     if (reg.remaining > 0) return;
 
     // Regime expired — pick a new one with realistic transitions
-    const prev = reg.dir;
+    const prev = reg._smoothDir || reg.dir;
     const r    = Math.random();
-    if (prev === 1)  reg.dir = r < 0.40 ? -1 : r < 0.65 ? 0 : 1;   // bull → often correct or range
-    else if (prev === -1) reg.dir = r < 0.35 ? 1 : r < 0.60 ? 0 : -1; // bear → often bounce or range
-    else            reg.dir = r < 0.45 ? 1 : r < 0.80 ? -1 : 0;    // range → break either way
+    let newDir;
+    if (prev > 0.5)  newDir = r < 0.35 ? -1 : r < 0.60 ? 0 : 1;   // bull → often correct or range
+    else if (prev < -0.5) newDir = r < 0.30 ? 1 : r < 0.55 ? 0 : -1; // bear → often bounce or range
+    else              newDir = r < 0.50 ? 1 : r < 0.82 ? -1 : 0;    // range → break either way
 
-    reg.strength  = 0.20 + Math.random() * 0.80;
-    reg.remaining = 20   + Math.floor(Math.random() * 100);
-    // Volatility often expands on regime change (breakout) then settles
-    reg.volMult   = 0.8  + Math.random() * 1.2;
-    reg.momentum  = 0;  // reset momentum on regime switch
+    reg._smoothDir = newDir;   // gradual transition target
+    reg.strength  = 0.25 + Math.random() * 0.75;
+    reg.remaining = 35   + Math.floor(Math.random() * 130); // longer regimes
+    // Volatility gently shifts (no big jumps)
+    reg.volMult   = reg.volMult * 0.6 + (0.75 + Math.random() * 0.50) * 0.4;
+    // Keep 40% of old momentum on regime switch (continuity, not hard reset)
+    reg.momentum  = reg.momentum * 0.40;
   }
 
   // ── Tick Engine ──────────────────────────────────────────
@@ -154,22 +164,22 @@ const MarketData = (() => {
 
     // ── Price move = regime drift + volatility noise + momentum carry ──
     // Regime drift: direction * strength governs the trend component
-    const drift       = reg.dir * reg.strength * vol * 0.45;
-    // Noise: fat-tailed — occasionally a bigger move (± 3× normal)
+    const drift       = reg.dir * reg.strength * vol * 0.55;
+    // Noise: gently fat-tailed — fewer random spikes for professional movement
     const u = Math.random();
-    const noiseScale  = u < 0.05 ? 3.0 : u < 0.15 ? 1.8 : 1.0; // 5% spike, 10% elevated
-    const noise       = (Math.random() - 0.5) * vol * 1.8 * noiseScale * reg.volMult;
-    // Momentum carry: 18% of previous move continues (short-term autocorrelation)
-    const carry       = reg.momentum * 0.18;
+    const noiseScale  = u < 0.03 ? 2.5 : u < 0.09 ? 1.6 : 1.0; // 3% spike, 6% elevated
+    const noise       = (Math.random() - 0.5) * vol * 1.4 * noiseScale * reg.volMult;
+    // Momentum carry: 35% of previous move continues (strong autocorrelation = smooth trends)
+    const carry       = reg.momentum * 0.35;
 
     const totalMove   = drift + noise + carry;
     reg.momentum      = totalMove;  // store for next tick
 
     const raw   = s.price * (1 + totalMove);
-    // Clamp: prevent runaway price (soft mean-reversion toward seed price at extreme ±40%)
+    // Clamp: prevent runaway price (soft mean-reversion toward seed price at extreme ±30%)
     const seed  = ASSETS.find(a => a.id === id)?.price || s.price;
     const ratio = raw / seed;
-    const clamped = ratio > 1.4 ? raw * 0.9992 : ratio < 0.6 ? raw * 1.0008 : raw;
+    const clamped = ratio > 1.30 ? raw * 0.9988 : ratio < 0.70 ? raw * 1.0012 : raw;
     const price = parseFloat(clamped.toFixed(s.price > 10000 ? 1 : s.price > 100 ? 2 : s.price > 1 ? 4 : 6));
 
     const prev  = s.price;

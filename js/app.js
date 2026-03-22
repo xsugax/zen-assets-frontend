@@ -399,7 +399,7 @@ const App = (() => {
       const a = MarketData.getAsset(id);
       if (!a) return;
       const chgCls = a.pct24h >= 0 ? 'up' : 'down';
-      el.querySelector('.mpb-price').textContent = fmtPx(a.price);
+      el.querySelector('.mpb-price').textContent = `$${fmtPx(a.price)}`;
       const chgEl = el.querySelector('.mpb-chg');
       if (chgEl) { chgEl.textContent = `${signPnl(a.pct24h)}${a.pct24h.toFixed(2)}%`; chgEl.className = `mpb-chg ${chgCls}`; }
     });

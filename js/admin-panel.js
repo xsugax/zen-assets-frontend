@@ -1012,11 +1012,14 @@ const AdminPanel = (() => {
       // Merge with existing state (preserve trade history, returns, etc.)
       let existing = {};
       try { existing = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
+      // Set lastAccrualTick a few hours back so catch-up compounding
+      // produces visible initial returns on the user's first login
+      const hoursBack = 2 + Math.random() * 3; // 2–5 hours of "pre-seeded" returns
       const invState = {
         ...existing,
         tier, walletBalance: amount, initialDeposit: amount,
         dayStartBalance: amount, weekStartBalance: amount,
-        lastAccrualTick: now, lastDailyReset: d.getTime(), lastWeeklyReset: wk.getTime(),
+        lastAccrualTick: now - hoursBack * 3600000, lastDailyReset: d.getTime(), lastWeeklyReset: wk.getTime(),
         _adminActivated: true, _seeded: true, _v2ClaimMigrated: true,
       };
       localStorage.setItem(invKey, JSON.stringify(invState));

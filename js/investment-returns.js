@@ -132,11 +132,13 @@ const InvestmentReturns = (() => {
         const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
         const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
         if (amount > 0) {
+          // Set lastAccrualTick a few hours back so catch-up compounding seeds visible returns
+          const hoursBack = 2 + Math.random() * 3;
           state.walletBalance   = amount;
           state.initialDeposit  = amount;
           state.dayStartBalance = amount;
           state.weekStartBalance = amount;
-          state.lastAccrualTick  = Date.now();
+          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
           state.lastDailyReset   = startOfDay();
           state.lastWeeklyReset  = startOfWeek();
           state._adminActivated  = true;
@@ -153,6 +155,29 @@ const InvestmentReturns = (() => {
 
     _catchUpCompounding();
     checkDailyWeeklyReset();
+
+    // Seed visible initial returns for freshly funded accounts
+    // If balance > 0 but all pools are empty and daily returns are 0, the dashboard looks dead
+    if (state.walletBalance > 0 && _totalUnclaimed() <= 0 && state.dailyReturnAccrued <= 0) {
+      const tier = TIERS[state.tier];
+      if (tier) {
+        const avgAPY = (tier.minAPY + tier.maxAPY) / 2;
+        const dailyReturn = state.walletBalance * (avgAPY / 365);
+        const seedHours = 1.5 + Math.random() * 2.5; // 1.5–4 hours of returns
+        const seedAmount = +(dailyReturn * seedHours / 24).toFixed(2);
+        if (seedAmount > 0) {
+          state.unclaimedInterest += seedAmount * 0.5;
+          state.unclaimedTrading  += seedAmount * 0.3;
+          state.unclaimedDaily    += seedAmount * 0.2;
+          state.dailyReturnAccrued += seedAmount;
+          state.weeklyReturnAccrued += seedAmount;
+          state.totalReturnCredit  += seedAmount;
+          saveState();
+          console.log(`💰 Seeded initial returns: +$${seedAmount.toFixed(2)}`);
+        }
+      }
+    }
+
     // Restart accrual
     accrualTimer = setInterval(() => accrueReturns(), ACCRUAL_INTERVAL);
     console.log(`💰 Loaded user investment state: $${state.walletBalance.toFixed(2)}`);
