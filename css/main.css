@@ -2627,8 +2627,8 @@ body:has(#sidebar.collapsed) #main-content { left: 64px; }
   font-size: 9px; font-weight: 700; letter-spacing: 1px;
   font-family: var(--font-mono); flex-shrink: 0;
 }
-.sig-dir-badge.buy  { background: rgba(0,255,136,.12); color: var(--green); border: 1px solid rgba(0,255,136,.25); }
-.sig-dir-badge.sell { background: rgba(255,71,87,.12);  color: var(--red);   border: 1px solid rgba(255,71,87,.25); }
+.sig-dir-badge.buy, .sig-dir-badge.long  { background: rgba(0,255,136,.12); color: var(--green); border: 1px solid rgba(0,255,136,.25); }
+.sig-dir-badge.sell, .sig-dir-badge.short { background: rgba(255,71,87,.12);  color: var(--red);   border: 1px solid rgba(255,71,87,.25); }
 
 /* Asset Class Grid */
 .asset-class-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; padding: 10px 12px 14px; }

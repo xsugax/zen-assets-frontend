@@ -163,7 +163,7 @@ const App = (() => {
   let _anlSym  = 'ETH';
   let _chartTF = '5m';
   let _marketFilter = 'all';
-  let _confThreshold = 75;
+  let _confThreshold = 60;
   let _activeOrderType = 'market';
 
   // ── Boot Screen ───────────────────────────────────────────
@@ -466,7 +466,7 @@ const App = (() => {
       if (name === 'transparency') renderTransparency();
       if (name === 'security')     renderSecurity();
       if (name === 'buy-crypto')   initBuyCryptoAnimations();
-      if (name === 'dashboard')    renderDashCopyTraders();
+      if (name === 'dashboard')    { refreshDashboardCharts(); renderDashCopyTraders(); }
     } catch(e) { console.error('Section render error:', e); }
 
     // Update mobile bottom nav active state
@@ -1071,6 +1071,33 @@ const App = (() => {
     }).join('');
   }
 
+  // ── Refresh Dashboard Charts on Navigate Back ─────────────
+  async function refreshDashboardCharts() {
+    // Wait for section to be visible + painted
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const symbol = _sym;
+    // Re-create main candlestick chart (may have been destroyed/hidden)
+    if (typeof AdvancedChartEngine !== 'undefined') {
+      try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
+      await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
+    }
+    // Update chart badge
+    if (typeof ChartDataIndicator !== 'undefined' && typeof RealDataAdapter !== 'undefined') {
+      try { ChartDataIndicator.updateStatus('main-price-chart', RealDataAdapter.isRealDataEnabled(), symbol, _activeTimeframe); } catch {}
+    }
+    // Refresh supporting charts
+    ChartEngine.createSentimentGauge('sentiment-gauge', MarketData.getFearGreed().value);
+    const m = Portfolio.computeMetrics();
+    ChartEngine.createAllocationChart('alloc-donut', m.alloc);
+    updateDashKPIs(m);
+    updateChartStats(symbol);
+    updateReturnsUI();
+    updateFundManagerUI();
+    renderWhaleAlerts();
+    renderSignalsMini(AIEngine.getSignals().slice(0, 6));
+  }
+
   // ── Dashboard Copy Traders ────────────────────────────────
   function renderDashCopyTraders() {
     const list = $('dash-copy-trade-list'); if (!list) return;
@@ -1407,11 +1434,17 @@ const App = (() => {
     renderCopyTraders();
     // Strategies
     renderStrategies();
+
+    // Wait for section to be visible + painted before creating chart
+    // (container needs real dimensions after display:none → block transition)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
     // Terminal chart — candlesticks with real data + proper timeframe
     const termSymbol = _termSym.split('/')[0];
     const termTF = _chartTF.toLowerCase() || '5m';
     if (typeof AdvancedChartEngine !== 'undefined') {
-      AdvancedChartEngine.createLightweightChart('terminal-chart', termSymbol, termTF);
+      try { AdvancedChartEngine.destroy('terminal-chart'); } catch {}
+      await AdvancedChartEngine.createLightweightChart('terminal-chart', termSymbol, termTF);
     } else {
       await ChartEngine.createCandlestickChart('terminal-chart', [], termSymbol, termTF);
     }
@@ -1672,9 +1705,28 @@ const App = (() => {
   function renderSignals() {
     const grid  = $('signals-full-grid'); if (!grid) return;
     const cnt   = $('signals-live-count');
-    const sigs  = AIEngine.getSignals().filter(s => s.conf >= _confThreshold);
+    let sigs  = AIEngine.getSignals().filter(s => s.conf >= _confThreshold);
+
+    // Direction filter (long/short)
+    if (_sigDirFilter !== 'all') {
+      sigs = sigs.filter(s => s.dir === _sigDirFilter);
+    }
+    // Asset class filter (crypto/stocks/forex)
+    if (_sigClassFilter !== 'all') {
+      sigs = sigs.filter(s => {
+        const asset = MarketData.getAsset(s.assetId);
+        if (!asset) return true;
+        if (_sigClassFilter === 'crypto') return asset.cat === 'crypto' || asset.cat === 'defi';
+        if (_sigClassFilter === 'stocks') return asset.cat === 'stocks';
+        if (_sigClassFilter === 'forex') return asset.cat === 'forex';
+        return true;
+      });
+    }
+
     if (cnt) cnt.textContent = sigs.length;
-    grid.innerHTML = sigs.map(s => {
+    grid.innerHTML = sigs.length === 0
+      ? `<div style="grid-column:1/-1;text-align:center;padding:48px 16px;color:#4a6080"><i class="fa fa-satellite-dish" style="font-size:28px;opacity:.3;display:block;margin-bottom:12px"></i>No signals match current filters<br><small style="opacity:.5">Try lowering the confidence threshold or changing the filter</small></div>`
+      : sigs.map(s => {
       const confColor = s.conf > 85 ? '#00ff88' : s.conf > 70 ? '#f59e0b' : '#ff4757';
       const confPct   = s.conf + '%';
       return `<div class="signal-card ${s.dir}">
@@ -1701,6 +1753,9 @@ const App = (() => {
     }).join('');
   }
 
+  let _sigDirFilter = 'all';
+  let _sigClassFilter = 'all';
+
   function initSignalControls() {
     const slider = $('conf-slider');
     const valEl  = $('conf-slider-val');
@@ -1711,6 +1766,35 @@ const App = (() => {
         if (_section === 'signals') renderSignals();
       });
     }
+
+    // Signal direction & class filter buttons
+    $$('.filter-btn[data-sig-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.sigFilter;
+        // Determine if this is a direction or class filter
+        if (val === 'all') {
+          _sigDirFilter = 'all';
+          _sigClassFilter = 'all';
+          $$('.filter-btn[data-sig-filter]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        } else if (val === 'long' || val === 'short') {
+          _sigDirFilter = val;
+          // Remove active from dir buttons + all button
+          $$('.filter-btn[data-sig-filter="all"]').forEach(b => b.classList.remove('active'));
+          $$('.filter-btn[data-sig-filter="long"]').forEach(b => b.classList.remove('active'));
+          $$('.filter-btn[data-sig-filter="short"]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        } else {
+          _sigClassFilter = val;
+          $$('.filter-btn[data-sig-filter="all"]').forEach(b => b.classList.remove('active'));
+          $$('.filter-btn[data-sig-filter="crypto"]').forEach(b => b.classList.remove('active'));
+          $$('.filter-btn[data-sig-filter="stocks"]').forEach(b => b.classList.remove('active'));
+          $$('.filter-btn[data-sig-filter="forex"]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        }
+        if (_section === 'signals') renderSignals();
+      });
+    });
   }
 
   // ── Plugins Section ────────────────────────────────────────
