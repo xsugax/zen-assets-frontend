@@ -2508,7 +2508,7 @@ body:has(#sidebar.collapsed) #main-content { left: 64px; }
   gap: 12px; margin-bottom: 16px;
 }
 .chart-card-main { padding: 0; }
-.chart-wrap { padding: 0 16px 16px; position: relative; }
+.chart-wrap { padding: 0; position: relative; overflow: hidden; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 .chart-stats-strip {
   display: flex; gap: 0;
   border-top: 1px solid rgba(255,255,255,.06);

@@ -29,8 +29,8 @@ const AdvancedChartEngine = (() => {
       down: { body: '#f6465d', wick: '#f6465d', border: '#f6465d' }, // Binance red
     },
     volume: {
-      up:   'rgba(46,189,133,0.55)',
-      down: 'rgba(246,70,93,0.55)',
+      up:   'rgba(46,189,133,0.35)',
+      down: 'rgba(246,70,93,0.35)',
     },
     grid: {
       main: 'rgba(255,255,255,0.055)',
@@ -61,11 +61,11 @@ const AdvancedChartEngine = (() => {
   const TIMEFRAMES = {
     '1m':  { binance: '1m',  interval: 60000,     label: '1 Minute',  limit: 120 },
     '5m':  { binance: '5m',  interval: 300000,    label: '5 Minutes', limit: 150 },
-    '15m': { binance: '15m', interval: 900000,    label: '15 Minutes', limit: 150 },
-    '1h':  { binance: '1h',  interval: 3600000,   label: '1 Hour',    limit: 168 },
-    '4h':  { binance: '4h',  interval: 14400000,  label: '4 Hours',   limit: 180 },
-    '1d':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 365 },
-    '1D':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 365 },
+    '15m': { binance: '15m', interval: 900000,    label: '15 Minutes', limit: 120 },
+    '1h':  { binance: '1h',  interval: 3600000,   label: '1 Hour',    limit: 120 },
+    '4h':  { binance: '4h',  interval: 14400000,  label: '4 Hours',   limit: 120 },
+    '1d':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 120 },
+    '1D':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 120 },
   };
 
   let currentTimeframe = '5m'; // Default to 5 minutes (better UX - shows more action)
@@ -92,45 +92,48 @@ const AdvancedChartEngine = (() => {
     }
 
     const chart = LightweightCharts.createChart(container, {
-      width:  container.clientWidth  || container.offsetWidth  || 600,
-      height: container.clientHeight || container.offsetHeight || 360,
+      width:  container.clientWidth  || container.offsetWidth  || 800,
+      height: container.clientHeight || container.offsetHeight || 520,
       layout: {
-        background: { color: THEME.bg.chart },
-        textColor:  THEME.text.secondary,
-        fontSize:   12,
-        fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+        background: { color: '#0b0e11' },
+        textColor:  '#848e9c',
+        fontSize:   11,
+        fontFamily: "'Inter', -apple-system, sans-serif",
       },
       grid: {
-        vertLines: { color: THEME.grid.sub,  style: LightweightCharts.LineStyle.Dotted },
-        horzLines: { color: THEME.grid.main, style: LightweightCharts.LineStyle.Dotted },
+        vertLines: { visible: false },
+        horzLines: { color: 'rgba(255,255,255,0.04)', style: LightweightCharts.LineStyle.Solid },
       },
       crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
         vertLine: {
-          color:                'rgba(212,165,116,0.75)',
+          color:                'rgba(255,255,255,0.25)',
           width:                1,
-          style:                LightweightCharts.LineStyle.Solid,
-          labelBackgroundColor: '#c89858',
+          style:                LightweightCharts.LineStyle.Dashed,
+          labelBackgroundColor: '#1e2329',
         },
         horzLine: {
-          color:                'rgba(212,165,116,0.75)',
+          color:                'rgba(255,255,255,0.25)',
           width:                1,
-          style:                LightweightCharts.LineStyle.Solid,
-          labelBackgroundColor: '#c89858',
+          style:                LightweightCharts.LineStyle.Dashed,
+          labelBackgroundColor: '#1e2329',
         },
       },
       timeScale: {
         timeVisible:    true,
         secondsVisible: timeframe === '1m',
         borderColor:    'rgba(255,255,255,0.06)',
-        rightOffset:    8,
-        barSpacing:     timeframe === '1m' ? 6 : 8,
-        minBarSpacing:  2,
+        rightOffset:    5,
+        barSpacing:     timeframe === '1m' ? 8 : timeframe === '1d' || timeframe === '1D' ? 14 : 11,
+        minBarSpacing:  4,
+        fixLeftEdge:    true,
+        fixRightEdge:   true,
       },
       rightPriceScale: {
         borderColor:  'rgba(255,255,255,0.06)',
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        scaleMargins: { top: 0.05, bottom: 0.18 },
         autoScale:    true,
+        alignLabels:  true,
       },
       handleScroll: {
         mouseWheel:       true,
@@ -143,31 +146,23 @@ const AdvancedChartEngine = (() => {
         pinch:                true,
         axisPressedMouseMove: { time: true, price: true },
       },
-      watermark: {
-        visible:   true,
-        fontSize:  44,
-        horzAlign: 'center',
-        vertAlign: 'center',
-        color:     'rgba(255,255,255,0.018)',
-        text:      'ZEN ASSETS',
-      },
     });
 
-    // Candlestick series — Binance-standard colors, price line shows current level
+    // Candlestick series — Binance-exact colors and style
     const candleSeries = chart.addCandlestickSeries({
-      upColor:          THEME.candle.up.body,
-      downColor:        THEME.candle.down.body,
-      borderUpColor:    THEME.candle.up.border,
-      borderDownColor:  THEME.candle.down.border,
-      wickUpColor:      THEME.candle.up.wick,
-      wickDownColor:    THEME.candle.down.wick,
-      borderVisible:    true,
+      upColor:          '#2ebd85',
+      downColor:        '#f6465d',
+      borderUpColor:    '#2ebd85',
+      borderDownColor:  '#f6465d',
+      wickUpColor:      '#2ebd85',
+      wickDownColor:    '#f6465d',
+      borderVisible:    false,
       wickVisible:      true,
-      priceLineVisible: true,              // dashed current-price line across chart
+      priceLineVisible: true,
       priceLineWidth:   1,
-      priceLineStyle:   LightweightCharts.LineStyle.Dotted,
-      priceLineColor:   '#2ebd85',
-      lastValueVisible: true,              // price label on right axis
+      priceLineStyle:   LightweightCharts.LineStyle.Solid,
+      priceLineColor:   'rgba(255,255,255,0.25)',
+      lastValueVisible: true,
     });
 
     // Volume series (histogram)
@@ -178,70 +173,72 @@ const AdvancedChartEngine = (() => {
     });
 
     chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 },
+      scaleMargins: { top: 0.85, bottom: 0 },
     });
 
-    // Moving averages — visible but don't fight the candles
+    // Only MA7 + MA25 visible by default (Binance standard)
     const ma20Series = chart.addLineSeries({
-      color:            'rgba(240,165,0,0.75)',
+      color:            'rgba(240,185,11,0.85)',
       lineWidth:        1,
-      title:            'MA20',
+      title:            'MA7',
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
     });
 
     const ma50Series = chart.addLineSeries({
-      color:            'rgba(60,143,191,0.70)',
+      color:            'rgba(234,57,67,0.80)',
       lineWidth:        1,
-      title:            'MA50',
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-
-    // ── EMA 12/26 — Exponential Moving Averages ────────────
-    const ema12Series = chart.addLineSeries({
-      color:            'rgba(255,159,64,0.65)',
-      lineWidth:        1,
-      title:            'EMA12',
+      title:            'MA25',
       priceLineVisible: false,
       lastValueVisible: false,
-      lineStyle:        LightweightCharts.LineStyle.Dotted,
+    });
+
+    // ── EMA 12/26 — hidden by default, computed but not shown ──
+    const ema12Series = chart.addLineSeries({
+      color:            'rgba(255,159,64,0.0)',
+      lineWidth:        1,
+      title:            '',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible:          false,
     });
 
     const ema26Series = chart.addLineSeries({
-      color:            'rgba(153,102,255,0.60)',
+      color:            'rgba(153,102,255,0.0)',
       lineWidth:        1,
-      title:            'EMA26',
+      title:            '',
       priceLineVisible: false,
       lastValueVisible: false,
-      lineStyle:        LightweightCharts.LineStyle.Dotted,
+      visible:          false,
     });
 
-    // ── VWAP — Volume-Weighted Average Price ───────────────
+    // ── VWAP — hidden by default ────────────────────────────
     const vwapSeries = chart.addLineSeries({
-      color:            'rgba(0,188,212,0.75)',
-      lineWidth:        2,
-      title:            'VWAP',
-      priceLineVisible: false,
-      lastValueVisible: true,
-      lineStyle:        LightweightCharts.LineStyle.LargeDashed,
-    });
-
-    // ── Bollinger Bands ─────────────────────────────────────
-    const bbUpperSeries = chart.addLineSeries({
-      color:            'rgba(139,152,173,0.35)',
+      color:            'rgba(0,188,212,0.0)',
       lineWidth:        1,
-      title:            'BB Upper',
+      title:            '',
       priceLineVisible: false,
       lastValueVisible: false,
+      visible:          false,
+    });
+
+    // ── Bollinger Bands — hidden by default ────────────────
+    const bbUpperSeries = chart.addLineSeries({
+      color:            'rgba(139,152,173,0.0)',
+      lineWidth:        1,
+      title:            '',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible:          false,
     });
 
     const bbLowerSeries = chart.addLineSeries({
-      color:            'rgba(139,152,173,0.35)',
+      color:            'rgba(139,152,173,0.0)',
       lineWidth:        1,
-      title:            'BB Lower',
+      title:            '',
       priceLineVisible: false,
       lastValueVisible: false,
+      visible:          false,
     });
 
     // Load historical data FIRST — series must have data before realtime updates
@@ -415,11 +412,11 @@ const AdvancedChartEngine = (() => {
     try { volumeSeries.setData(volumeData); }
     catch (e) { console.error('[Chart] volumeSeries.setData failed:', e.message); }
 
-    try { ma20Series.setData(calculateMA(candleData, 20)); }
-    catch (e) { console.error('[Chart] MA20 failed:', e.message); }
+    try { ma20Series.setData(calculateMA(candleData, 7)); }
+    catch (e) { console.error('[Chart] MA7 failed:', e.message); }
 
-    try { ma50Series.setData(calculateMA(candleData, 50)); }
-    catch (e) { console.error('[Chart] MA50 failed:', e.message); }
+    try { ma50Series.setData(calculateMA(candleData, 25)); }
+    catch (e) { console.error('[Chart] MA25 failed:', e.message); }
 
     // ── Advanced overlays ──
     try { ema12Series.setData(calculateEMA(richData, 12)); }
@@ -437,29 +434,8 @@ const AdvancedChartEngine = (() => {
       bbLowerSeries.setData(bb.lower);
     } catch (e) { console.error('[Chart] Bollinger Bands failed:', e.message); }
 
-    // Non-critical enhancements — failures OK
+    // Support/Resistance — clean Binance-style dashed lines
     try { addSupportResistanceLevels(candleSeries, candleData); } catch {}
-
-    try {
-      if (typeof MarketData !== 'undefined' && MarketData.detectPatterns) {
-        const detected = MarketData.detectPatterns(candles);
-        if (detected && detected.length > 0) {
-          const priority = { morning_star:5, evening_star:5, three_soldiers:5, three_crows:5, engulfing:4, piercing:3, dark_cloud:3, hammer:2, shooting_star:2, marubozu:1, doji:0 };
-          const markers = detected
-            .sort((a, b) => (priority[b.type] || 0) - (priority[a.type] || 0))
-            .slice(0, 6)
-            .map(p => ({
-              time: Math.floor(p.t / 1000),
-              position: p.signal === 'bullish' ? 'belowBar' : p.signal === 'bearish' ? 'aboveBar' : 'inBar',
-              color: p.signal === 'bullish' ? '#5fb38e' : p.signal === 'bearish' ? '#d65d5d' : '#d4a574',
-              shape: p.signal === 'bullish' ? 'arrowUp' : p.signal === 'bearish' ? 'arrowDown' : 'circle',
-              text: p.name,
-            }))
-            .sort((a, b) => a.time - b.time);
-          try { candleSeries.setMarkers(markers); } catch {}
-        }
-      }
-    } catch {}
 
     try { updateDataSourceIndicator(symbol, isReal, timeframe, containerId); } catch {}
   }
@@ -755,23 +731,23 @@ const AdvancedChartEngine = (() => {
     // Find support (bottom 3 lows cluster)
     const support = lows.slice(0, 5).reduce((a, b) => a + b) / 5;
 
-    // Add price lines
+    // Add price lines — subtle Binance style
     series.createPriceLine({
       price: resistance,
-      color: THEME.levels.resistance,
+      color: 'rgba(246,70,93,0.4)',
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Resistance',
+      axisLabelVisible: false,
+      title: '',
     });
 
     series.createPriceLine({
       price: support,
-      color: THEME.levels.support,
+      color: 'rgba(46,189,133,0.4)',
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Support',
+      axisLabelVisible: false,
+      title: '',
     });
   }
 

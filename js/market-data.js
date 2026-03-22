@@ -304,10 +304,12 @@ const MarketData = (() => {
   }
 
   // ── 5. Probability & Stochastic Processes — Parameters ──
-  // Annualized volatility σ by asset class
+  // Annualized volatility σ by asset class — AMPLIFIED for visible chart movement
+  // Real BTC annualized vol is ~60-80%, but for compelling 5m chart visuals
+  // we boost because sqrt(dt) for 5m is tiny (0.003)
   const _SIGMA = {
-    crypto: 0.65, stocks: 0.25, forex: 0.08,
-    commodities: 0.20, indices: 0.15, defi: 0.85, etf: 0.22,
+    crypto: 1.80, stocks: 0.75, forex: 0.30,
+    commodities: 0.65, indices: 0.50, defi: 2.40, etf: 0.60,
   };
   // Annualized drift μ by asset class
   const _MU = {
@@ -408,16 +410,16 @@ const MarketData = (() => {
       }
 
       // Regime-driven drift (trending/ranging)
-      const regDrift = reg.dir * reg.strength * sigma * dt * 2.5;
+      const regDrift = reg.dir * reg.strength * sigma * dt * 4.0;
 
       // Stochastic noise
       const z = _boxMuller(rng);
       const isSpike = rng() < dna.spikeProb;
-      const noiseScale = isSpike ? (2.0 + rng() * 1.5) : (reg.volBurst ? 1.4 : 1.0);
+      const noiseScale = isSpike ? (2.5 + rng() * 2.0) : (reg.volBurst ? 1.6 : 1.0);
       const noise = sigma * Math.sqrt(dt) * z * dna.volatility * noiseScale;
 
       // Momentum carry — autocorrelation with previous candle
-      const carry = prevRet * dna.momentum;
+      const carry = prevRet * dna.momentum * 1.2;
 
       // Mean-reversion toward drift (range regimes snap back)
       const meanRev = reg.dir === 0 ? -prevRet * 0.3 : 0;

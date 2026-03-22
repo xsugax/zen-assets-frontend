@@ -915,7 +915,7 @@
 /* ═══ Mobile Chart & Fund Manager Fixes ═══ */
 @media (max-width: 768px) {
   /* Give chart more vertical space on phone */
-  .chart-wrap { height: 320px !important; }
+  .chart-wrap { height: 380px !important; }
 
   /* Processing overlay card — fit mobile screen */
   .fm-process-card {
