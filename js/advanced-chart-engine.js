@@ -562,7 +562,9 @@ const AdvancedChartEngine = (() => {
         if (price > fc.h) fc.h = price;
         if (price < fc.l) fc.l = price;
         fc.c = price;
-        fc.v += Math.abs(d.price - (d.prev || d.price)) * (Math.random() * 150 + 50);
+        // Volume: accumulate based on price movement + random noise
+        const priceDelta = Math.abs(d.price - (d.prev || d.price));
+        fc.v += (priceDelta > 0 ? priceDelta : price * 0.0001) * (Math.random() * 150 + 50);
       }
 
       const c = _formingCandles[containerId];

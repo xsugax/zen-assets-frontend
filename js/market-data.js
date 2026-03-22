@@ -341,85 +341,91 @@ const MarketData = (() => {
     };
     const intervalMs = intervalMap[period] || 300000;
 
-    // ── Look up asset ──────────────────────────────────────
     const asset = ASSETS.find(a => a.id === id);
     if (!asset) return [];
     const currentPrice = state[id]?.price || asset.price;
     const refPrice     = asset.price;
     const cat          = asset.cat || 'crypto';
 
-    // ── Stochastic parameters (per-asset unique) ────────────
-    let _assetHash = 0;
-    for (let c = 0; c < id.length; c++) _assetHash = ((_assetHash << 5) - _assetHash + id.charCodeAt(c)) | 0;
-    const assetMod = ((_assetHash & 0xFFFF) / 65536) * 0.5 - 0.25; // -0.25 to +0.25
+    // ═══ Per-asset+timeframe master RNG ═══════════════════
+    // This single seeded RNG drives ALL randomness for the chart shape,
+    // guaranteeing: different asset = different chart, different TF = different chart
+    const masterSeed = _hashSeed(id + '|' + period, 42, 9973);
+    const masterRng  = _mulberry32(masterSeed);
 
-    // ── Per-Asset-Timeframe Regime ──────────────────────────
-    // Hash (asset + timeframe) → pick one of 8 distinct chart "personalities"
-    // so BTC/5m looks COMPLETELY different from ETH/5m and BTC/1h
-    let _rHash = 0;
-    const _rStr = `${id}|${period}|rgm3`;
-    for (let c = 0; c < _rStr.length; c++) _rHash = ((_rHash << 5) - _rHash + _rStr.charCodeAt(c)) | 0;
-    const rSeed = ((_rHash >>> 0) % 10000) / 10000; // 0→1 deterministic
+    // ═══ Generate 4–7 trend PHASES ════════════════════════
+    // Each phase = a mini-trend (rally / selloff / consolidation).
+    // This creates the visible "rally → pullback → consolidation → breakout"
+    // structure that makes Binance charts look alive.
+    const phases = [];
+    let allocated = 0;
+    while (allocated < bars) {
+      const len = 10 + Math.floor(masterRng() * 35); // 10–44 bars per phase
+      const r   = masterRng();
+      // direction: -1 bear, 0 range, +1 bull — varied distribution
+      const dir = r < 0.38 ? 1 : r < 0.72 ? -1 : 0;
+      const mag = 0.04 + masterRng() * 0.14;          // 4–18% move per phase
+      const vol = 0.6  + masterRng() * 0.9;           // 0.6–1.5× vol multiplier
+      const actual = Math.min(len, bars - allocated);
+      phases.push({ start: allocated, end: allocated + actual, dir, mag, vol });
+      allocated += actual;
+    }
 
-    // 8 regimes — drift is TARGET TOTAL TREND % over the visible chart
-    // (auto-scales to any timeframe: 5m, 1h, 4h, 1D all look correct)
-    const _RGM = [
-      { drift:  16, volMul: 0.80, mom: 0.45 }, // Strong bull rally   (+16%)
-      { drift: -14, volMul: 0.85, mom: 0.40 }, // Strong bear selloff (-14%)
-      { drift:   7, volMul: 0.55, mom: 0.58 }, // Steady accumulation (+7%)
-      { drift:  -5, volMul: 0.60, mom: 0.52 }, // Slow distribution   (-5%)
-      { drift:   1, volMul: 1.60, mom: 0.12 }, // High-vol choppy range
-      { drift:  -1, volMul: 0.45, mom: 0.65 }, // Tight compression channel
-      { drift:  11, volMul: 1.10, mom: 0.30 }, // Volatile bull (+11% with big wicks)
-      { drift:  -9, volMul: 1.15, mom: 0.28 }, // Volatile bear (-9% with bounces)
-    ];
-    const regime = _RGM[Math.floor(rSeed * _RGM.length)];
+    // ═══ Base sigma from asset class ══════════════════════
+    const baseSigma = (_SIGMA[cat] || 0.60) * (0.85 + masterRng() * 0.40); // 0.85–1.25× per asset
 
-    const sigma    = (_SIGMA[cat] || 0.60) * (1 + assetMod * 0.4) * regime.volMul;
-    const momCoeff = regime.mom;
+    // ═══ Time geometry ════════════════════════════════════
     const candleSec = intervalMs / 1000;
-    const dt       = candleSec / _SECS_PER_YEAR;   // candle as year-fraction
-    // Convert target chart trend % to annualized mu (auto-scales with TF)
-    const totalChartYears = dt * bars;
-    const trendTarget = (regime.drift + assetMod * 4) / 100; // e.g. 16 → 0.16
-    const mu = trendTarget / (totalChartYears + 1e-12) + 0.5 * sigma * sigma;
-    const TICKS    = 30;                            // sub-ticks per candle
-    const dtTick   = dt / TICKS;
-    const subSigma = sigma * Math.sqrt(dtTick);
+    const dt        = candleSec / _SECS_PER_YEAR;
+    const TICKS     = 30;
+    const dtTick    = dt / TICKS;
 
-    // ── Time alignment: snap to real clock boundary ────────
+    // ═══ Time alignment ═══════════════════════════════════
     const now            = Date.now();
     const latestBoundary = Math.floor(now / intervalMs) * intervalMs;
 
-    // ── Step 1: Seeded candle-level log-returns (with momentum) ─
-    // Momentum autocorrelation makes consecutive candles trend in
-    // the same direction → produces real-looking rallies & selloffs
+    // ═══ Step 1: Generate log-returns per candle ══════════
+    // Each candle uses its own deterministic seed for noise,
+    // plus the phase drift for direction. Result: trending sequences
+    // with real-looking retracements.
     const candleMeta = [];
-    let prevZ = 0;
     for (let i = 0; i < bars; i++) {
       const candleTime = latestBoundary - (bars - 1 - i) * intervalMs;
-      const seed  = _hashSeed(id, candleTime, intervalMs);
-      const rng   = _mulberry32(seed);
-      const freshZ = _boxMuller(rng);
-      // Blend previous direction with fresh randomness → trending sequences
-      const z = momCoeff * prevZ + Math.sqrt(1 - momCoeff * momCoeff) * freshZ;
-      prevZ = z;
-      const logRet = (mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * z;
-      candleMeta.push({ logRet, rng, candleTime });
+      const seed = _hashSeed(id, candleTime, intervalMs);
+      const rng  = _mulberry32(seed);
+      const z    = _boxMuller(rng);
+
+      // Find which phase this candle belongs to
+      let phase = phases[phases.length - 1];
+      for (const p of phases) {
+        if (i >= p.start && i < p.end) { phase = p; break; }
+      }
+
+      // Phase drift: spread the target move evenly across phase bars
+      const phaseBars  = phase.end - phase.start;
+      const driftPerBar = (phase.dir * phase.mag) / phaseBars;
+      const sigma       = baseSigma * phase.vol;
+
+      // Log return = deterministic drift + stochastic noise
+      const logRet = driftPerBar + sigma * Math.sqrt(dt) * z * 0.6;
+      candleMeta.push({ logRet, rng, candleTime, sigma });
     }
 
-    // ── Step 2: Anchor — last candle close ≈ live price ────
+    // ═══ Step 2: Anchor last close ≈ live price ═══════════
     let cumLogReturn = 0;
     for (const cm of candleMeta) cumLogReturn += cm.logRet;
     let price = currentPrice * Math.exp(-cumLogReturn);
+    // Safety: if price went crazy, just start at currentPrice
+    if (!isFinite(price) || price <= 0) price = currentPrice * 0.9;
 
-    // ── Step 3: Forward pass — sub-tick aggregation ────────
+    // ═══ Step 3: Forward pass — build OHLCV candles ═══════
     const ohlcv = [];
     for (let i = 0; i < bars; i++) {
-      const { logRet, rng, candleTime } = candleMeta[i];
+      const { logRet, rng, candleTime, sigma } = candleMeta[i];
       const candleClose = price * Math.exp(logRet);
+      const subSigma    = sigma * Math.sqrt(dtTick);
 
-      // Brownian bridge: sub-ticks interpolate O→C with stochastic deviation
+      // Brownian bridge sub-ticks → realistic wicks
       const ticks = [price];
       for (let t = 1; t <= TICKS; t++) {
         const frac   = t / TICKS;
@@ -428,14 +434,13 @@ const MarketData = (() => {
         const dev    = Math.abs(target) * subSigma * z * Math.sqrt(1 - frac + 0.05);
         ticks.push(Math.max(target + dev, price * 0.85));
       }
-      ticks[ticks.length - 1] = candleClose; // force exact close
+      ticks[ticks.length - 1] = candleClose;
 
       const o = ticks[0];
       const c = ticks[ticks.length - 1];
       const h = Math.max(...ticks);
       const l = Math.min(...ticks);
 
-      // ── 3. Returns & Volume — correlated with |log-return| ──
       const absRet  = Math.abs(logRet);
       const baseVol = 200 + rng() * 800;
       const v = parseFloat((baseVol * (1 + absRet * 25) * (0.7 + rng() * 0.6)).toFixed(2));
@@ -449,7 +454,7 @@ const MarketData = (() => {
         v,
       });
 
-      price = candleClose; // next candle opens at this close
+      price = candleClose;
     }
 
     return ohlcv;
