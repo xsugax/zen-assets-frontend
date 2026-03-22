@@ -60,8 +60,8 @@ const MarketData = (() => {
   let   whaleTimer = null;
   const HISTORY_SIZE = 200;
 
-  // Volatility config per asset type (per-tick: controls forming candle movement speed)
-  const VOLS = { crypto: 0.0038, stocks: 0.0014, forex: 0.0005, commodities: 0.0020, indices: 0.0009, defi: 0.0055, etf: 0.0012 };
+  // Volatility config per asset type
+  const VOLS = { crypto: 0.0025, stocks: 0.0008, forex: 0.0003, commodities: 0.0012, indices: 0.0005, defi: 0.004, etf: 0.0007 };
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
@@ -337,113 +337,155 @@ const MarketData = (() => {
       'M15': 900000,  '15m': 900000,
       'H1': 3600000,  '1h': 3600000,
       'H4': 14400000, '4h': 14400000,
-      'D1': 86400000, '1d': 86400000,
+      'D1': 86400000, '1d': 86400000, '1D': 86400000,
     };
     const intervalMs = intervalMap[period] || 300000;
 
+    // ── Look up asset ──────────────────────────────────────
     const asset = ASSETS.find(a => a.id === id);
     if (!asset) return [];
     const currentPrice = state[id]?.price || asset.price;
     const refPrice     = asset.price;
     const cat          = asset.cat || 'crypto';
 
-    // ═══ Per-asset+timeframe master RNG ═══════════════════
-    // This single seeded RNG drives ALL randomness for the chart shape,
-    // guaranteeing: different asset = different chart, different TF = different chart
-    const masterSeed = _hashSeed(id + '|' + period, 42, 9973);
-    const masterRng  = _mulberry32(masterSeed);
+    // ── Per-asset deterministic personality ─────────────────
+    // Each asset gets a unique "DNA" that shapes its chart character
+    let _assetHash = 0;
+    for (let c = 0; c < id.length; c++) _assetHash = ((_assetHash << 5) - _assetHash + id.charCodeAt(c)) | 0;
+    _assetHash = Math.abs(_assetHash);
 
-    // ═══ Generate 4–7 trend PHASES ════════════════════════
-    // Each phase = a mini-trend (rally / selloff / consolidation).
-    // This creates the visible "rally → pullback → consolidation → breakout"
-    // structure that makes Binance charts look alive.
-    const phases = [];
-    let allocated = 0;
-    while (allocated < bars) {
-      const len = 10 + Math.floor(masterRng() * 35); // 10–44 bars per phase
-      const r   = masterRng();
-      // direction: -1 bear, 0 range, +1 bull — varied distribution
-      const dir = r < 0.38 ? 1 : r < 0.72 ? -1 : 0;
-      const mag = 0.04 + masterRng() * 0.14;          // 4–18% move per phase
-      const vol = 0.6  + masterRng() * 0.9;           // 0.6–1.5× vol multiplier
-      const actual = Math.min(len, bars - allocated);
-      phases.push({ start: allocated, end: allocated + actual, dir, mag, vol });
-      allocated += actual;
+    const sigma = (_SIGMA[cat] || 0.60);
+    const mu    = (_MU[cat]    || 0.05);
+    const candleSec = intervalMs / 1000;
+    const dt    = candleSec / _SECS_PER_YEAR;
+
+    // Per-asset personality traits (deterministic)
+    const dna = {
+      trendBias:    ((_assetHash % 200) / 200) * 2 - 1,           // -1..+1 macro bias
+      volatility:   0.70 + ((_assetHash % 137) / 137) * 0.60,     // 0.70–1.30 vol multiplier
+      momentum:     0.20 + ((_assetHash % 89) / 89) * 0.40,       // 0.20–0.60 autocorrelation
+      wickRatio:    0.25 + ((_assetHash % 61) / 61) * 0.55,       // 0.25–0.80 wick prominence
+      spikeProb:    0.03 + ((_assetHash % 41) / 41) * 0.08,       // 0.03–0.11 spike probability
+      regimeLen:    10 + (_assetHash % 30),                        // 10–39 base regime length
+    };
+
+    // ── Regime sequence (deterministic per asset+TF) ───────
+    // Creates trending, ranging, and reversal phases — like real markets
+    const regimeSeed = _hashSeed(id, intervalMs, 'regime');
+    const regimeRng  = _mulberry32(regimeSeed);
+    const regimes = [];
+    let totalDur = 0;
+    while (totalDur < bars + 30) {
+      const r = regimeRng();
+      // Direction weighted by asset's trend bias
+      const biasShift = dna.trendBias * 0.15;
+      const dir = r < (0.40 + biasShift) ? 1 : r < (0.72 + biasShift * 0.5) ? -1 : 0;
+      const duration = dna.regimeLen + Math.floor(regimeRng() * dna.regimeLen);
+      const strength = 0.25 + regimeRng() * 0.75;
+      const volBurst = regimeRng() < 0.25; // 25% of regimes have elevated vol
+      regimes.push({ dir, strength, duration, volBurst });
+      totalDur += duration;
     }
 
-    // ═══ Base sigma from asset class ══════════════════════
-    const baseSigma = (_SIGMA[cat] || 0.60) * (0.85 + masterRng() * 0.40); // 0.85–1.25× per asset
-
-    // ═══ Time geometry ════════════════════════════════════
-    const candleSec = intervalMs / 1000;
-    const dt        = candleSec / _SECS_PER_YEAR;
-    const TICKS     = 30;
-    const dtTick    = dt / TICKS;
-
-    // ═══ Time alignment ═══════════════════════════════════
-    const now            = Date.now();
+    // ── Time alignment ─────────────────────────────────────
+    const now = Date.now();
     const latestBoundary = Math.floor(now / intervalMs) * intervalMs;
 
-    // ═══ Step 1: Generate log-returns per candle ══════════
-    // Each candle uses its own deterministic seed for noise,
-    // plus the phase drift for direction. Result: trending sequences
-    // with real-looking retracements.
+    // ── Generate candle returns with regime + momentum ─────
     const candleMeta = [];
+    let regIdx = 0, regUsed = 0, prevRet = 0;
+
     for (let i = 0; i < bars; i++) {
       const candleTime = latestBoundary - (bars - 1 - i) * intervalMs;
       const seed = _hashSeed(id, candleTime, intervalMs);
       const rng  = _mulberry32(seed);
-      const z    = _boxMuller(rng);
 
-      // Find which phase this candle belongs to
-      let phase = phases[phases.length - 1];
-      for (const p of phases) {
-        if (i >= p.start && i < p.end) { phase = p; break; }
+      // Current regime
+      const reg = regimes[regIdx];
+      regUsed++;
+      if (regUsed >= reg.duration && regIdx < regimes.length - 1) {
+        regIdx++; regUsed = 0;
       }
 
-      // Phase drift: spread the target move evenly across phase bars
-      const phaseBars  = phase.end - phase.start;
-      const driftPerBar = (phase.dir * phase.mag) / phaseBars;
-      const sigma       = baseSigma * phase.vol;
+      // Regime-driven drift (trending/ranging)
+      const regDrift = reg.dir * reg.strength * sigma * dt * 2.5;
 
-      // Log return = deterministic drift + stochastic noise
-      const logRet = driftPerBar + sigma * Math.sqrt(dt) * z * 0.6;
-      candleMeta.push({ logRet, rng, candleTime, sigma });
+      // Stochastic noise
+      const z = _boxMuller(rng);
+      const isSpike = rng() < dna.spikeProb;
+      const noiseScale = isSpike ? (2.0 + rng() * 1.5) : (reg.volBurst ? 1.4 : 1.0);
+      const noise = sigma * Math.sqrt(dt) * z * dna.volatility * noiseScale;
+
+      // Momentum carry — autocorrelation with previous candle
+      const carry = prevRet * dna.momentum;
+
+      // Mean-reversion toward drift (range regimes snap back)
+      const meanRev = reg.dir === 0 ? -prevRet * 0.3 : 0;
+
+      const logRet = regDrift + noise + carry + meanRev;
+      prevRet = logRet;
+
+      candleMeta.push({ logRet, rng, candleTime, reg, regUsed, isSpike });
     }
 
-    // ═══ Step 2: Anchor last close ≈ live price ═══════════
+    // ── Anchor: last candle close ≈ live price ─────────────
     let cumLogReturn = 0;
     for (const cm of candleMeta) cumLogReturn += cm.logRet;
     let price = currentPrice * Math.exp(-cumLogReturn);
-    // Safety: if price went crazy, just start at currentPrice
-    if (!isFinite(price) || price <= 0) price = currentPrice * 0.9;
 
-    // ═══ Step 3: Forward pass — build OHLCV candles ═══════
+    // ── Forward pass: build realistic candle shapes ────────
     const ohlcv = [];
     for (let i = 0; i < bars; i++) {
-      const { logRet, rng, candleTime, sigma } = candleMeta[i];
+      const { logRet, rng, candleTime, reg, regUsed: ru, isSpike } = candleMeta[i];
       const candleClose = price * Math.exp(logRet);
-      const subSigma    = sigma * Math.sqrt(dtTick);
 
-      // Brownian bridge sub-ticks → realistic wicks
-      const ticks = [price];
-      for (let t = 1; t <= TICKS; t++) {
-        const frac   = t / TICKS;
-        const target = price + (candleClose - price) * frac;
-        const z      = _boxMuller(rng);
-        const dev    = Math.abs(target) * subSigma * z * Math.sqrt(1 - frac + 0.05);
-        ticks.push(Math.max(target + dev, price * 0.85));
+      const bodySize = Math.abs(candleClose - price);
+      const avgPrice = (price + candleClose) / 2;
+      const minWick  = avgPrice * sigma * Math.sqrt(dt) * 0.08;
+
+      // ── Candle type selection (deterministic per-candle) ──
+      const typeRoll = rng();
+      let wickUp, wickDown;
+
+      if (typeRoll < 0.06) {
+        // Doji: tiny body, long wicks — indecision
+        wickUp   = Math.max(bodySize * (2.5 + rng() * 4), minWick * 3);
+        wickDown = Math.max(bodySize * (2.5 + rng() * 4), minWick * 3);
+      } else if (typeRoll < 0.13) {
+        // Hammer / Hanging man: one huge wick, one tiny
+        if (rng() < 0.5) {
+          wickUp   = bodySize * (0.05 + rng() * 0.3);
+          wickDown = Math.max(bodySize * (1.8 + rng() * 3), minWick * 4);
+        } else {
+          wickUp   = Math.max(bodySize * (1.8 + rng() * 3), minWick * 4);
+          wickDown = bodySize * (0.05 + rng() * 0.3);
+        }
+      } else if (typeRoll < 0.22) {
+        // Marubozu: strong conviction — body dominates, tiny wicks
+        wickUp   = bodySize * rng() * 0.12;
+        wickDown = bodySize * rng() * 0.12;
+      } else if (isSpike) {
+        // Spike candle: one extreme wick (flash crash / pump)
+        const spikeDir = rng() < 0.5 ? 'up' : 'down';
+        wickUp   = spikeDir === 'up'   ? bodySize * (3 + rng() * 5) : bodySize * rng() * 0.3;
+        wickDown = spikeDir === 'down' ? bodySize * (3 + rng() * 5) : bodySize * rng() * 0.3;
+      } else {
+        // Normal candle: moderate wicks scaled by asset personality
+        wickUp   = Math.max(bodySize * (0.15 + rng() * dna.wickRatio * 1.8), minWick);
+        wickDown = Math.max(bodySize * (0.15 + rng() * dna.wickRatio * 1.8), minWick);
       }
-      ticks[ticks.length - 1] = candleClose;
 
-      const o = ticks[0];
-      const c = ticks[ticks.length - 1];
-      const h = Math.max(...ticks);
-      const l = Math.min(...ticks);
+      const o = price;
+      const c = candleClose;
+      const h = Math.max(o, c) + Math.max(wickUp, minWick);
+      const l = Math.min(o, c) - Math.max(wickDown, minWick);
 
-      const absRet  = Math.abs(logRet);
-      const baseVol = 200 + rng() * 800;
-      const v = parseFloat((baseVol * (1 + absRet * 25) * (0.7 + rng() * 0.6)).toFixed(2));
+      // ── Volume: spike on regime transitions + big moves ──
+      const absRet    = Math.abs(logRet);
+      const baseVol   = 200 + rng() * 800;
+      const transBoost = ru < 3 ? (2.0 + rng()) : 1.0; // regime change = volume spike
+      const spikeVol   = isSpike ? (2.5 + rng()) : 1.0;
+      const v = parseFloat((baseVol * (1 + absRet * 30) * transBoost * spikeVol * (0.7 + rng() * 0.6)).toFixed(2));
 
       ohlcv.push({
         t: candleTime,

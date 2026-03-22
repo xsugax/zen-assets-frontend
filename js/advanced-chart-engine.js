@@ -462,16 +462,6 @@ const AdvancedChartEngine = (() => {
     } catch {}
 
     try { updateDataSourceIndicator(symbol, isReal, timeframe, containerId); } catch {}
-
-    // Store last historical candle for forming-candle handoff
-    if (candles.length > 0) {
-      const last = candles[candles.length - 1];
-      _lastHistCandle[containerId] = {
-        candleTime: last.t,
-        t: Math.floor(last.t / 1000),
-        o: last.o, h: last.h, l: last.l, c: last.c, v: last.v || 0,
-      };
-    }
   }
 
   // ── Real-Time Updates ────────────────────────────────────
@@ -486,7 +476,6 @@ const AdvancedChartEngine = (() => {
   const klineWsConnections = {};
   const _simFeedHandlers   = {};  // per-container simulated feed cleanup
   const _formingCandles    = {};  // per-container forming candle state
-  const _lastHistCandle    = {};  // per-container last historical candle (for smooth handoff)
 
   const CRYPTO_SYMBOLS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','LINK','MATIC','UNI','AAVE']);
 
@@ -533,38 +522,21 @@ const AdvancedChartEngine = (() => {
 
       const fc = _formingCandles[containerId];
       if (!fc || fc.candleTime !== candleTime) {
-        // New candle period — check if we have historical data to inherit
-        const hist = _lastHistCandle[containerId];
-        if (hist && hist.candleTime === candleTime) {
-          // Continue building on the historical candle (no flat-line reset)
-          _formingCandles[containerId] = {
-            candleTime, t,
-            o: hist.o,
-            h: Math.max(hist.h, price),
-            l: Math.min(hist.l, price),
-            c: price,
-            v: hist.v,
-          };
-          delete _lastHistCandle[containerId];
-        } else {
-          // Truly new candle — open at previous close
-          const openPrice = fc ? fc.c : price;
-          _formingCandles[containerId] = {
-            candleTime, t,
-            o: openPrice,
-            h: Math.max(openPrice, price),
-            l: Math.min(openPrice, price),
-            c: price, v: 0,
-          };
-        }
+        // New candle opened — start fresh
+        const openPrice = fc ? fc.c : price; // open at previous close (no gaps)
+        _formingCandles[containerId] = {
+          candleTime, t,
+          o: openPrice,
+          h: Math.max(openPrice, price),
+          l: Math.min(openPrice, price),
+          c: price, v: 0,
+        };
       } else {
         // Same candle — extend H/L, update close
         if (price > fc.h) fc.h = price;
         if (price < fc.l) fc.l = price;
         fc.c = price;
-        // Volume: accumulate based on price movement + random noise
-        const priceDelta = Math.abs(d.price - (d.prev || d.price));
-        fc.v += (priceDelta > 0 ? priceDelta : price * 0.0001) * (Math.random() * 150 + 50);
+        fc.v += Math.abs(d.price - (d.prev || d.price)) * (Math.random() * 150 + 50);
       }
 
       const c = _formingCandles[containerId];
