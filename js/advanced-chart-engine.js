@@ -59,12 +59,13 @@ const AdvancedChartEngine = (() => {
 
   // ── Timeframe Configuration ─────────────────────────────
   const TIMEFRAMES = {
-    '1m':  { binance: '1m',  interval: 60000,     label: '1 Minute',  limit: 120 },  // 2 hours
-    '5m':  { binance: '5m',  interval: 300000,    label: '5 Minutes', limit: 150 },  // 12.5 hours
-    '15m': { binance: '15m', interval: 900000,    label: '15 Minutes', limit: 150 }, // ~37 hours
-    '1h':  { binance: '1h',  interval: 3600000,   label: '1 Hour',    limit: 168 },  // 7 days
-    '4h':  { binance: '4h',  interval: 14400000,  label: '4 Hours',   limit: 180 },  // 30 days
-    '1d':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 365 },  // 1 year
+    '1m':  { binance: '1m',  interval: 60000,     label: '1 Minute',  limit: 120 },
+    '5m':  { binance: '5m',  interval: 300000,    label: '5 Minutes', limit: 150 },
+    '15m': { binance: '15m', interval: 900000,    label: '15 Minutes', limit: 150 },
+    '1h':  { binance: '1h',  interval: 3600000,   label: '1 Hour',    limit: 168 },
+    '4h':  { binance: '4h',  interval: 14400000,  label: '4 Hours',   limit: 180 },
+    '1d':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 365 },
+    '1D':  { binance: '1d',  interval: 86400000,  label: '1 Day',     limit: 365 },
   };
 
   let currentTimeframe = '5m'; // Default to 5 minutes (better UX - shows more action)
@@ -288,10 +289,12 @@ const AdvancedChartEngine = (() => {
     const assetId  = symbol.split('/')[0];
     const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
-    const maxWait  = isCrypto ? 1500 : 2500; // Binance REST ~300ms, Yahoo proxy ~1-2s
+    const maxWait  = isCrypto ? 5000 : 8000; // generous timeout for Binance / Yahoo
 
     // Show loading badge while we wait for real data
     try { if (typeof ChartDataIndicator !== 'undefined') ChartDataIndicator.showLoading(containerId); } catch {}
+
+    let rendered = false;
 
     // ── Try real data first ────────────────────────────────
     if (typeof RealDataAdapter !== 'undefined') {
@@ -302,39 +305,43 @@ const AdvancedChartEngine = (() => {
           timeoutP,
         ]);
         if (real && real.length >= 5) {
-          // Clean render — real data, no visual swap later
-          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
-          return;
+          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
+          rendered = true;
         }
       } catch {}
     }
 
     // ── Fallback: simulated (only when real data truly failed) ──
-    // getOHLCV anchors to live price so current level is correct;
-    // only the historical path looks estimated.
-    let simCandles = [];
-    try {
-      if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
-        simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
-      }
-    } catch {}
+    if (!rendered) {
+      try {
+        let simCandles = [];
+        if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
+          simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
+        }
+        if (simCandles.length > 0) {
+          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
+          rendered = true;
+        }
+      } catch (e) { console.warn('[Chart] simulated fallback failed:', e.message); }
+    }
 
-    if (simCandles.length > 0) {
-      _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
+    // ── Safety: always clear the "Fetching…" badge ─────────
+    if (!rendered) {
+      try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
     }
 
     // ── Background retries — upgrade simulated → real once network recovers ──
-    let retryMs = 3000;
+    let retryMs = 4000;
     const tryUpgrade = async () => {
       if (typeof RealDataAdapter === 'undefined') return;
       try {
         const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
         if (real && real.length >= 5) {
-          _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
+          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
           return; // success — stop retrying
         }
       } catch {}
-      retryMs = Math.min(retryMs * 1.5, 15000); // exponential back-off, max 15s
+      retryMs = Math.min(retryMs * 1.5, 20000);
       setTimeout(tryUpgrade, retryMs);
     };
     setTimeout(tryUpgrade, retryMs);
@@ -389,7 +396,7 @@ const AdvancedChartEngine = (() => {
 
   // Render a candle dataset onto all chart series
   // Each series.setData call is independently guarded so one failure can't block others
-  function _renderCandles(candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, candles, symbol, isReal, timeframe) {
+  function _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, candles, symbol, isReal, timeframe) {
     const candleData = candles.map(c => ({
       time: Math.floor(c.t / 1000),
       open: c.o, high: c.h, low: c.l, close: c.c,
@@ -407,7 +414,7 @@ const AdvancedChartEngine = (() => {
     }));
 
     try { candleSeries.setData(candleData); }
-    catch (e) { console.error('[Chart] candleSeries.setData failed:', e.message); return; }
+    catch (e) { console.error('[Chart] candleSeries.setData failed:', e.message); }
 
     try { volumeSeries.setData(volumeData); }
     catch (e) { console.error('[Chart] volumeSeries.setData failed:', e.message); }
@@ -458,7 +465,7 @@ const AdvancedChartEngine = (() => {
       }
     } catch {}
 
-    try { updateDataSourceIndicator(symbol, isReal, timeframe); } catch {}
+    try { updateDataSourceIndicator(symbol, isReal, timeframe, containerId); } catch {}
   }
 
   // ── Real-Time Updates ────────────────────────────────────

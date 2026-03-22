@@ -12,9 +12,8 @@
 const APIProxy = (() => {
   'use strict';
 
-  const TIMEOUT_MS = 6000;
+  const TIMEOUT_MS = 8000;
 
-  // Abort-signal timeout helper
   function _timeoutFetch(url, options = {}) {
     const ctrl = new AbortController();
     const id   = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -26,23 +25,31 @@ const APIProxy = (() => {
   async function fetchBinance(endpoint) {
     const direct = `https://api.binance.com/api/v3${endpoint}`;
 
-    // 1. Direct fetch — works for Binance public REST in most browsers
+    // 1. Direct fetch — Binance public REST has CORS headers
     try {
       const r = await _timeoutFetch(direct);
       if (r.ok) return r;
     } catch (e) {
-      console.warn(`⚡ Binance direct failed, trying proxy: ${e.message}`);
+      console.warn(`⚡ Binance direct failed: ${e.message}`);
     }
 
-    // 2. corsproxy.io  (free, reliable, actively maintained)
+    // 2. Binance backup API domains
+    for (const host of ['api1.binance.com', 'api2.binance.com', 'api3.binance.com']) {
+      try {
+        const r = await _timeoutFetch(`https://${host}/api/v3${endpoint}`);
+        if (r.ok) return r;
+      } catch {}
+    }
+
+    // 3. corsproxy.io
     try {
       const r = await _timeoutFetch(`https://corsproxy.io/?url=${encodeURIComponent(direct)}`);
       if (r.ok) return r;
     } catch (e) {
-      console.warn(`⚡ corsproxy.io failed, trying allorigins: ${e.message}`);
+      console.warn(`⚡ corsproxy.io failed: ${e.message}`);
     }
 
-    // 3. allorigins (wraps in {contents})
+    // 4. allorigins
     try {
       const r = await _timeoutFetch(
         `https://api.allorigins.win/raw?url=${encodeURIComponent(direct)}`

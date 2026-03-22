@@ -534,15 +534,11 @@ const App = (() => {
     const symbol = _sym;
 
     // ── Destroy any stale chart instance first ──────────────
-    // Like unplugging and plugging back in — ensures a clean slate
-    // before the container's real dimensions are measured.
     if (typeof AdvancedChartEngine !== 'undefined') {
       try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
     }
 
     // ── Wait for two animation frames ──────────────────────
-    // The container needs at least one paint cycle to have its real
-    // clientWidth/clientHeight. Without this the chart can be 0px tall.
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     // Show loading badge AFTER the RAF so it appears on the real element
@@ -551,16 +547,22 @@ const App = (() => {
     }
 
     // ── Create chart ────────────────────────────────────────
-    if (typeof AdvancedChartEngine !== 'undefined') {
-      await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
-    } else {
-      await ChartEngine.createCandlestickChart('main-price-chart', [], symbol, _activeTimeframe);
+    try {
+      if (typeof AdvancedChartEngine !== 'undefined') {
+        await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
+      } else {
+        await ChartEngine.createCandlestickChart('main-price-chart', [], symbol, _activeTimeframe);
+      }
+    } catch (e) {
+      console.error('[initCharts] chart creation failed:', e.message);
     }
 
-    // Update indicator
-    if (typeof ChartDataIndicator !== 'undefined' && typeof RealDataAdapter !== 'undefined') {
-      const isReal = RealDataAdapter.isRealDataEnabled();
-      ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, _activeTimeframe);
+    // Always update indicator (clear "Fetching…" even on error)
+    if (typeof ChartDataIndicator !== 'undefined') {
+      try {
+        const isReal = typeof RealDataAdapter !== 'undefined' && RealDataAdapter.isRealDataEnabled();
+        ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, _activeTimeframe);
+      } catch {}
     }
 
     // Sentiment gauge
@@ -1073,18 +1075,21 @@ const App = (() => {
 
   // ── Refresh Dashboard Charts on Navigate Back ─────────────
   async function refreshDashboardCharts() {
-    // Wait for section to be visible + painted
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const symbol = _sym;
-    // Re-create main candlestick chart (may have been destroyed/hidden)
     if (typeof AdvancedChartEngine !== 'undefined') {
       try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
-      await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
+      try {
+        await AdvancedChartEngine.createLightweightChart('main-price-chart', symbol, _activeTimeframe);
+      } catch (e) { console.error('[refreshDash] chart failed:', e.message); }
     }
-    // Update chart badge
-    if (typeof ChartDataIndicator !== 'undefined' && typeof RealDataAdapter !== 'undefined') {
-      try { ChartDataIndicator.updateStatus('main-price-chart', RealDataAdapter.isRealDataEnabled(), symbol, _activeTimeframe); } catch {}
+    // Always clear badge
+    if (typeof ChartDataIndicator !== 'undefined') {
+      try {
+        const isReal = typeof RealDataAdapter !== 'undefined' && RealDataAdapter.isRealDataEnabled();
+        ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, _activeTimeframe);
+      } catch {}
     }
     // Refresh supporting charts
     ChartEngine.createSentimentGauge('sentiment-gauge', MarketData.getFearGreed().value);
@@ -2062,27 +2067,28 @@ const App = (() => {
         parent.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
-        // Get selected timeframe
         const timeframe = btn.dataset.tf;
         _activeTimeframe = timeframe;
         
-        // Show loading
         if (typeof ChartDataIndicator !== 'undefined') {
           ChartDataIndicator.showLoading('main-price-chart');
         }
         
-        // Reload chart with new timeframe using AdvancedChartEngine
         const symbol = _sym;
-        if (typeof AdvancedChartEngine !== 'undefined') {
-          AdvancedChartEngine.changeTimeframe('main-price-chart', symbol, timeframe);
-        } else {
-          await ChartEngine.createCandlestickChart('main-price-chart', [], symbol, timeframe);
-        }
+        try {
+          if (typeof AdvancedChartEngine !== 'undefined') {
+            AdvancedChartEngine.changeTimeframe('main-price-chart', symbol, timeframe);
+          } else {
+            await ChartEngine.createCandlestickChart('main-price-chart', [], symbol, timeframe);
+          }
+        } catch (e) { console.error('[TF change] failed:', e.message); }
         
-        // Update indicator
-        if (typeof ChartDataIndicator !== 'undefined' && typeof RealDataAdapter !== 'undefined') {
-          const isReal = RealDataAdapter.isRealDataEnabled();
-          ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, timeframe);
+        // Always clear badge
+        if (typeof ChartDataIndicator !== 'undefined') {
+          try {
+            const isReal = typeof RealDataAdapter !== 'undefined' && RealDataAdapter.isRealDataEnabled();
+            ChartDataIndicator.updateStatus('main-price-chart', isReal, symbol, timeframe);
+          } catch {}
         }
       });
     });
