@@ -71,8 +71,7 @@ const RealDataAdapter = (() => {
     // 1. Crypto — Binance WebSocket (real-time)
     initBinanceWebSocket();
 
-    // 2. Stocks / Forex / Commodities / Indices — REST polling
-    startNonCryptoPolling();
+    // 2. Non-crypto uses high-quality simulated data (no free CORS-enabled stock/forex API)
 
     // 3. Initial crypto snapshot
     fetchInitialCryptoData();
@@ -265,15 +264,21 @@ const RealDataAdapter = (() => {
   //  HISTORICAL OHLCV — Real Candle Data Per Asset
   // ═══════════════════════════════════════════════════════════
 
-  async function fetchHistoricalCandles(symbol, interval = '1h', limit = 100) {
-    // Crypto → Binance
-    if (CONFIG.cryptoIds[symbol]) {
-      return await fetchBinanceCandles(symbol, interval, limit);
-    }
-    // Stocks / Forex / Commodities / Indices → Yahoo
-    if (CONFIG.yahooSymbols[symbol]) {
-      return await fetchYahooCandles(symbol, interval, limit);
-    }
+  async function fetchHistoricalCandles(symbol, interval = '1h', limit = 120) {
+    // Non-crypto uses simulated — no free CORS-enabled source for stocks/forex
+    if (!CONFIG.cryptoIds[symbol]) return null;
+
+    // Crypto: Binance → CryptoCompare → CoinGecko (multi-source cascade)
+    const binance = await fetchBinanceCandles(symbol, interval, limit);
+    if (binance && binance.length >= 5) return binance;
+
+    const cc = await fetchCryptoCompareCandles(symbol, interval, limit);
+    if (cc && cc.length >= 5) return cc;
+
+    const cg = await fetchCoinGeckoCandles(symbol, interval, limit);
+    if (cg && cg.length >= 5) return cg;
+
+    console.warn(`⚠️ All live sources failed for ${symbol} — falling back to simulated`);
     return null;
   }
 
@@ -296,6 +301,68 @@ const RealDataAdapter = (() => {
       return candles;
     } catch (e) {
       console.warn(`❌ Binance candles failed for ${symbol}:`, e.message);
+      return null;
+    }
+  }
+
+  // ── CryptoCompare candles (backup #1) ──────────────────────
+  async function fetchCryptoCompareCandles(symbol, interval, limit) {
+    try {
+      const ccMap = {
+        '1m':  { ep: '/data/v2/histominute', agg: 1  },
+        '3m':  { ep: '/data/v2/histominute', agg: 3  },
+        '5m':  { ep: '/data/v2/histominute', agg: 5  },
+        '15m': { ep: '/data/v2/histominute', agg: 15 },
+        '30m': { ep: '/data/v2/histominute', agg: 30 },
+        '1h':  { ep: '/data/v2/histohour',   agg: 1  },
+        '2h':  { ep: '/data/v2/histohour',   agg: 2  },
+        '4h':  { ep: '/data/v2/histohour',   agg: 4  },
+        '6h':  { ep: '/data/v2/histohour',   agg: 6  },
+        '12h': { ep: '/data/v2/histohour',   agg: 12 },
+        '1d':  { ep: '/data/v2/histoday',    agg: 1  },
+        '3d':  { ep: '/data/v2/histoday',    agg: 3  },
+        '1w':  { ep: '/data/v2/histoday',    agg: 7  },
+      };
+      const cfg = ccMap[interval] || ccMap['1h'];
+      const endpoint = `${cfg.ep}?fsym=${symbol}&tsym=USD&limit=${limit}&aggregate=${cfg.agg}`;
+      console.log(`📡 CryptoCompare: ${symbol} ${interval}`);
+      const r = await APIProxy.fetchCryptoCompare(endpoint);
+      const data = await r.json();
+      const raw = data?.Data?.Data;
+      if (!Array.isArray(raw) || raw.length < 5) throw new Error('Empty');
+
+      const candles = raw
+        .filter(k => k.open > 0 && k.high > 0 && k.close > 0)
+        .map(k => ({ t: k.time * 1000, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volumefrom || 0 }));
+
+      if (candles.length < 5) throw new Error('Too few valid candles');
+      console.log(`✅ ${candles.length} CryptoCompare candles for ${symbol}`);
+      return candles;
+    } catch (e) {
+      console.warn(`❌ CryptoCompare candles failed for ${symbol}:`, e.message);
+      return null;
+    }
+  }
+
+  // ── CoinGecko OHLC candles (backup #2) ─────────────────────
+  async function fetchCoinGeckoCandles(symbol, interval, limit) {
+    try {
+      const cgId = CONFIG.cryptoIds[symbol];
+      if (!cgId) return null;
+      // CoinGecko auto-granularity: 1-2d→30m, 3-30d→4h, 31+→4d
+      const daysMap = { '1m':1, '5m':1, '15m':1, '30m':1, '1h':7, '2h':14, '4h':30, '1d':90, '1w':365 };
+      const days = daysMap[interval] || 7;
+      console.log(`📡 CoinGecko OHLC: ${cgId} days=${days}`);
+      const r = await APIProxy.fetchCoinGecko(`/coins/${cgId}/ohlc?vs_currency=usd&days=${days}`);
+      const data = await r.json();
+      if (!Array.isArray(data) || data.length < 5) throw new Error('Empty');
+
+      const candles = data.map(k => ({ t: k[0], o: k[1], h: k[2], l: k[3], c: k[4], v: 0 }));
+      if (candles.length > limit) return candles.slice(-limit);
+      console.log(`✅ ${candles.length} CoinGecko candles for ${symbol}`);
+      return candles;
+    } catch (e) {
+      console.warn(`❌ CoinGecko candles failed for ${symbol}:`, e.message);
       return null;
     }
   }

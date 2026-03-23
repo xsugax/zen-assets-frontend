@@ -1,111 +1,75 @@
 /* ════════════════════════════════════════════════════════════
-   api-proxy.js — CORS Proxy Wrapper for External APIs
+   api-proxy.js — Multi-Source API Proxy
    OmniVest AI / ZEN ASSETS
 
-   Strategy:
-   1. Try direct Binance REST (they have CORS headers for public endpoints)
-   2. Try corsproxy.io (reliable, maintained)
-   3. Try allorigins.win (public fallback)
-   All requests have a 6-second abort timeout so failures are fast.
+   Reliable live data with automatic failover:
+   ─ Binance REST  (5 mirror hosts, preference caching)
+   ─ CryptoCompare (free tier, CORS-enabled)
+   ─ CoinGecko     (free, CORS-enabled)
+   All requests abort at 6 s for fast failover.
 ════════════════════════════════════════════════════════════ */
 
 const APIProxy = (() => {
   'use strict';
 
-  const TIMEOUT_MS = 8000;
+  const TIMEOUT_MS = 6000;
 
-  function _timeoutFetch(url, options = {}) {
+  // Binance public REST — all mirrors support CORS for GET
+  const BINANCE_HOSTS = [
+    'https://api.binance.com',
+    'https://api1.binance.com',
+    'https://api2.binance.com',
+    'https://api3.binance.com',
+    'https://data-api.binance.vision',
+  ];
+
+  let _preferred = null;
+  let _preferredExpiry = 0;
+
+  function _timedFetch(url, ms = TIMEOUT_MS) {
     const ctrl = new AbortController();
-    const id   = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    return fetch(url, { ...options, signal: ctrl.signal })
-      .finally(() => clearTimeout(id));
+    const tid  = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(tid));
   }
 
-  // ── Binance REST (public endpoints support CORS directly) ──
+  // ── Binance (auto-failover across 5 mirrors) ──────────────
   async function fetchBinance(endpoint) {
-    const direct = `https://api.binance.com/api/v3${endpoint}`;
-
-    // 1. Direct fetch — Binance public REST has CORS headers
-    try {
-      const r = await _timeoutFetch(direct);
-      if (r.ok) return r;
-    } catch (e) {
-      console.warn(`⚡ Binance direct failed: ${e.message}`);
-    }
-
-    // 2. Binance backup API domains
-    for (const host of ['api1.binance.com', 'api2.binance.com', 'api3.binance.com']) {
+    // Fast path: reuse a host that worked recently (60 s cache)
+    if (_preferred && Date.now() < _preferredExpiry) {
       try {
-        const r = await _timeoutFetch(`https://${host}/api/v3${endpoint}`);
+        const r = await _timedFetch(`${_preferred}/api/v3${endpoint}`);
         if (r.ok) return r;
       } catch {}
+      _preferred = null;
     }
 
-    // 3. corsproxy.io
-    try {
-      const r = await _timeoutFetch(`https://corsproxy.io/?url=${encodeURIComponent(direct)}`);
-      if (r.ok) return r;
-    } catch (e) {
-      console.warn(`⚡ corsproxy.io failed: ${e.message}`);
+    for (const host of BINANCE_HOSTS) {
+      try {
+        const r = await _timedFetch(`${host}/api/v3${endpoint}`);
+        if (r.ok) {
+          _preferred = host;
+          _preferredExpiry = Date.now() + 60000;
+          console.log(`✅ Binance via ${host}`);
+          return r;
+        }
+      } catch {}
     }
-
-    // 4. allorigins
-    try {
-      const r = await _timeoutFetch(
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(direct)}`
-      );
-      if (r.ok) return r;
-    } catch (e) {
-      console.warn(`⚡ allorigins failed: ${e.message}`);
-    }
-
-    throw new Error(`All proxies failed for: ${endpoint}`);
+    throw new Error(`Binance: all ${BINANCE_HOSTS.length} hosts failed for ${endpoint}`);
   }
 
-  // ── Yahoo Finance (needs proxy, no CORS headers) ───────────
-  async function fetchYahoo(endpoint) {
-    const direct = `https://query1.finance.yahoo.com/v8/finance/chart${endpoint}`;
-
-    // 1. corsproxy.io
-    try {
-      const r = await _timeoutFetch(`https://corsproxy.io/?url=${encodeURIComponent(direct)}`);
-      if (r.ok) return r;
-    } catch (e) {
-      console.warn(`⚡ Yahoo corsproxy failed, trying allorigins: ${e.message}`);
-    }
-
-    // 2. allorigins
-    try {
-      const r = await _timeoutFetch(
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(direct)}`
-      );
-      if (r.ok) return r;
-    } catch {}
-
-    // 3. query2 mirror
-    try {
-      const mirror = `https://query2.finance.yahoo.com/v8/finance/chart${endpoint}`;
-      const r = await _timeoutFetch(`https://corsproxy.io/?url=${encodeURIComponent(mirror)}`);
-      if (r.ok) return r;
-    } catch {}
-
-    throw new Error(`Yahoo proxy failed: ${endpoint}`);
+  // ── CryptoCompare (free, CORS-enabled) ─────────────────────
+  async function fetchCryptoCompare(endpoint) {
+    const r = await _timedFetch(`https://min-api.cryptocompare.com${endpoint}`);
+    if (!r.ok) throw new Error(`CryptoCompare HTTP ${r.status}`);
+    return r;
   }
 
-  // Generic CORS-wrapped fetch (for any URL)
-  async function fetchWithCORS(url, options = {}) {
-    try {
-      const r = await _timeoutFetch(url, options);
-      if (r.ok) return r;
-    } catch {}
-    try {
-      const r = await _timeoutFetch(
-        `https://corsproxy.io/?url=${encodeURIComponent(url)}`, options
-      );
-      if (r.ok) return r;
-    } catch {}
-    throw new Error(`fetchWithCORS failed: ${url}`);
+  // ── CoinGecko (free, CORS-enabled) ─────────────────────────
+  async function fetchCoinGecko(endpoint) {
+    const r = await _timedFetch(`https://api.coingecko.com/api/v3${endpoint}`);
+    if (!r.ok) throw new Error(`CoinGecko HTTP ${r.status}`);
+    return r;
   }
 
-  return { fetchWithCORS, fetchBinance, fetchYahoo };
+  return { fetchBinance, fetchCryptoCompare, fetchCoinGecko, _timedFetch };
 })();
