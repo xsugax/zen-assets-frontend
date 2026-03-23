@@ -17,8 +17,9 @@ const RealDataAdapter = (() => {
     apis: {
       // Use CORS proxy for development (https://cors-anywhere.herokuapp.com or similar)
       // For production, deploy a backend proxy at your-domain.com/api/binance
-      binance:    'https://api.binance.com/api/v3',
-      binanceWs:  'wss://stream.binance.com:9443/ws',
+      binance:    'https://data-api.binance.vision/api/v3',
+      binanceWs:  'wss://data-stream.binance.vision/ws',
+      binanceWsFallback: 'wss://stream.binance.com:9443/ws',
       coingecko:  'https://api.coingecko.com/api/v3',
       // Yahoo Finance v8 chart API (public, no key)
       yahoo:      'https://query1.finance.yahoo.com/v8/finance/chart',
@@ -91,17 +92,24 @@ const RealDataAdapter = (() => {
 
     pairs.forEach(pair => {
       try {
-        const ws = new WebSocket(`${CONFIG.apis.binanceWs}/${pair}@ticker`);
+        const primaryUrl = `${CONFIG.apis.binanceWs}/${pair}@ticker`;
+        const ws = new WebSocket(primaryUrl);
         ws.onopen  = () => {
           console.log(`✅ WS OPENED: ${pair.toUpperCase()} — Ready for ticks`);
         };
         ws.onmessage = (e) => { try { processBinanceTicker(pair, JSON.parse(e.data)); } catch {} };
         ws.onerror = (err) => {
           console.error(`❌ WS ERROR on ${pair.toUpperCase()}: ${err.message}`);
-          // Track error in resilience engine
-          if (typeof ResilienceEngine !== 'undefined') {
-            ResilienceEngine.recordFailure('websocket', err);
-          }
+          // Try fallback WS host
+          try {
+            const fbWs = new WebSocket(`${CONFIG.apis.binanceWsFallback}/${pair}@ticker`);
+            fbWs.onopen = () => console.log(`✅ WS FALLBACK: ${pair.toUpperCase()}`);
+            fbWs.onmessage = (e) => { try { processBinanceTicker(pair, JSON.parse(e.data)); } catch {} };
+            fbWs.onclose = () => setTimeout(() => reconnectWS(pair), 5000);
+            wsConnections[pair] = fbWs;
+          } catch {}
+          if (typeof ResilienceEngine !== 'undefined') ResilienceEngine.recordFailure('websocket', err);
+        };
           startCryptoPollFallback(pair);
         };
         ws.onclose = () => {

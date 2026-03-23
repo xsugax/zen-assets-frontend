@@ -16,11 +16,11 @@ const APIProxy = (() => {
 
   // Binance public REST — all mirrors support CORS for GET
   const BINANCE_HOSTS = [
-    'https://api.binance.com',
+    'https://data-api.binance.vision',
     'https://api1.binance.com',
     'https://api2.binance.com',
     'https://api3.binance.com',
-    'https://data-api.binance.vision',
+    'https://api.binance.com',
   ];
 
   let _preferred = null;

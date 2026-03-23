@@ -313,7 +313,8 @@ const AdvancedChartEngine = (() => {
           const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
           if (real && real.length >= 5) {
             _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
-            console.log(`✅ [${assetId}] Upgraded to ${real.length} REAL candles`);
+            _realDataLoaded[containerId] = true;
+            console.log(`✅ [${assetId}] Upgraded to ${real.length} REAL candles — simulated feed disabled`);
             return true;
           }
         } catch (e) {
@@ -452,6 +453,7 @@ const AdvancedChartEngine = (() => {
   const klineWsConnections = {};
   const _simFeedHandlers   = {};  // per-container simulated feed cleanup
   const _formingCandles    = {};  // per-container forming candle state
+  const _realDataLoaded    = {};  // true once real candles rendered — blocks simulated feed
 
   const CRYPTO_SYMBOLS = new Set(['BTC','ETH','SOL','BNB','XRP','ADA','AVAX','LINK','MATIC','UNI','AAVE']);
 
@@ -490,6 +492,8 @@ const AdvancedChartEngine = (() => {
 
     const handler = (d) => {
       if (!d || isNaN(d.price)) return;
+      // Once real data loaded, stop simulated feed from updating candles
+      if (_realDataLoaded[containerId]) return;
       const price = d.price;
       const now = Date.now();
       // Current candle boundary (floor to interval)
@@ -531,14 +535,18 @@ const AdvancedChartEngine = (() => {
 
   function _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries) {
     const pair   = assetId.toLowerCase() + 'usdt';
-    const wsUrl  = `wss://stream.binance.com:9443/ws/${pair}@kline_${tf.binance}`;
+    const wsHosts = [
+      `wss://data-stream.binance.vision/ws/${pair}@kline_${tf.binance}`,
+      `wss://stream.binance.com:9443/ws/${pair}@kline_${tf.binance}`,
+    ];
+    let hostIdx  = 0;
     let retries  = 0;
     let lastUpdateTime = Date.now();
 
     function connect() {
       let ws;
       try {
-        ws = new WebSocket(wsUrl);
+        ws = new WebSocket(wsHosts[hostIdx]);
       } catch (err) {
         console.error(`❌ WebSocket creation failed for ${assetId}: ${err.message}`);
         _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 1000);
@@ -617,16 +625,17 @@ const AdvancedChartEngine = (() => {
 
       ws.onclose = () => {
         delete klineWsConnections[containerId];
-        console.warn(`😴 WS closed for ${assetId}`);
+        console.warn(`😴 WS closed for ${assetId} (host ${hostIdx})`);
         
         if (retries < 5) {
           retries++;
+          hostIdx = (hostIdx + 1) % wsHosts.length; // alternate host
           const delay = 2000 + (retries * 1000);
-          console.log(`♻️ Reconnecting ${assetId} in ${delay}ms (attempt ${retries}/5)`);
+          console.log(`♻️ Reconnecting ${assetId} via host ${hostIdx} in ${delay}ms (attempt ${retries}/5)`);
           setTimeout(connect, delay);
         } else {
-          console.warn(`📊 WS failed 5x for ${assetId} — using 500ms REST polling`);
-          _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 500);
+          console.warn(`📊 WS failed 5x for ${assetId} — using REST polling`);
+          _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 3000);
         }
       };
 
@@ -680,6 +689,7 @@ const AdvancedChartEngine = (() => {
       delete _simFeedHandlers[containerId];
     }
     delete _formingCandles[containerId];
+    delete _realDataLoaded[containerId];
   }
 
   // ── Data Source Indicator ────────────────────────────────
