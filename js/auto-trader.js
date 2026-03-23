@@ -400,8 +400,12 @@ const AutoTrader = (() => {
       ? strategy.longReason(symbol, rsi, macd.hist)
       : strategy.shortReason(symbol, rsi, macd.hist);
     
-    // Use real market price
-    const price = asset.price;
+    // Use real market price — live chart data first, MarketData fallback
+    let price = asset.price;
+    if (typeof RealDataAdapter !== 'undefined') {
+      const rp = RealDataAdapter.getPrice(symbol);
+      if (rp && rp > 0) price = rp;
+    }
     
     // Position size from wallet balance — only trade on funded, activated accounts
     if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.isActivated || !InvestmentReturns.isActivated()) {
@@ -493,16 +497,20 @@ const AutoTrader = (() => {
     });
 
     // ── Chart markers: draw entry arrow + SL/TP lines ──────
+    // Only mark the chart if the trade symbol matches the currently displayed chart
     try {
       if (typeof AdvancedChartEngine !== 'undefined') {
-        AdvancedChartEngine.addTradeMarker('main-price-chart', {
-          action: 'entry', side: signal.side,
-          price: signal.price, time: Date.now(),
-        });
-        AdvancedChartEngine.addTradePriceLines('main-price-chart', {
-          entryPrice: signal.price, sl: signal.sl, tp: signal.tp,
-          side: signal.side,
-        });
+        const chartSym = (typeof App !== 'undefined' && App.getActiveSymbol) ? App.getActiveSymbol() : null;
+        if (!chartSym || chartSym === signal.rawSymbol) {
+          AdvancedChartEngine.addTradeMarker('main-price-chart', {
+            action: 'entry', side: signal.side,
+            price: signal.price, time: Date.now(),
+          });
+          AdvancedChartEngine.addTradePriceLines('main-price-chart', {
+            entryPrice: signal.price, sl: signal.sl, tp: signal.tp,
+            side: signal.side,
+          });
+        }
       }
     } catch {}
     
@@ -579,10 +587,28 @@ const AutoTrader = (() => {
       const closeProb = Math.min(0.85, holdFraction * holdFraction); // quadratic curve
       if (Math.random() > closeProb) return;
 
-      // Calculate realized PnL using the expected outcome
+      // Calculate realized PnL using the expected outcome blended with live price movement
       const expectedPct = trade.expectedPnlPct || (trade.isWinner ? 1.2 : -0.3);
-      const pnlPct = expectedPct;
       const posValue = trade.entryPrice * trade.quantity;
+
+      // Get live price for blended exit
+      let liveExitPrice = trade.entryPrice;
+      const tradeAsset = trade.rawSymbol || trade.symbol.split('/')[0];
+      if (typeof RealDataAdapter !== 'undefined') {
+        const rp = RealDataAdapter.getPrice(tradeAsset);
+        if (rp && rp > 0) liveExitPrice = rp;
+      } else {
+        const ma = MarketData?.getAsset(tradeAsset);
+        if (ma) liveExitPrice = ma.price;
+      }
+
+      // Real price movement
+      const realPnlPct = trade.side === 'long'
+        ? ((liveExitPrice - trade.entryPrice) / trade.entryPrice) * 100
+        : ((trade.entryPrice - liveExitPrice) / trade.entryPrice) * 100;
+
+      // Blend: 35% real price movement + 65% expected outcome
+      const pnlPct = realPnlPct * 0.35 + expectedPct * 0.65;
       const pnl = posValue * (pnlPct / 100);
       const exitPrice = trade.entryPrice * (1 + (trade.side === 'long' ? pnlPct : -pnlPct) / 100);
 
@@ -628,14 +654,18 @@ const AutoTrader = (() => {
         reason: trade.closeReason,
       });
 
-      // Chart exit marker
+      // Chart exit marker — only if symbol matches active chart
       try {
         if (typeof AdvancedChartEngine !== 'undefined') {
-          AdvancedChartEngine.addTradeMarker('main-price-chart', {
-            action: 'exit', side: trade.side,
-            price: trade.exitPrice, time: Date.now(),
-            pnl: trade.pnl, pnlPct: trade.pnlPct,
-          });
+          const chartSym = (typeof App !== 'undefined' && App.getActiveSymbol) ? App.getActiveSymbol() : null;
+          const tradeSym = trade.rawSymbol || trade.symbol?.split('/')[0];
+          if (!chartSym || chartSym === tradeSym) {
+            AdvancedChartEngine.addTradeMarker('main-price-chart', {
+              action: 'exit', side: trade.side,
+              price: trade.exitPrice, time: Date.now(),
+              pnl: trade.pnl, pnlPct: trade.pnlPct,
+            });
+          }
         }
       } catch {}
 
@@ -778,19 +808,33 @@ const AutoTrader = (() => {
     
     container.innerHTML = activePositions.map(pos => {
       const trade = tradeHistory.find(t => t.id === pos.id && t.status === 'open');
-      const pnlClass = pos.pnl >= 0 ? 'profit' : 'loss';
       const sideClass = pos.side === 'long' ? 'long' : 'short';
       const sideIcon = pos.side === 'long' ? '📈' : '📉';
       const elapsed = trade ? Date.now() - trade.timestamp : 0;
       const durationStr = _formatDuration(elapsed);
       const stratIcon = trade?.strategyIcon || '🤖';
       const stratName = trade?.strategyName || 'AI Trade';
-      
-      // Update running PnL on the trade history entry
+
+      // Live price PnL — use RealDataAdapter first, fall back to MarketData
+      let liveCur = pos.cur;
       if (trade) {
-        trade.runningPnl = pos.pnl || 0;
-        trade.runningPnlPct = pos.pnlPct || 0;
+        const sym = trade.rawSymbol || trade.symbol?.split('/')[0];
+        if (typeof RealDataAdapter !== 'undefined') {
+          const rp = RealDataAdapter.getPrice(sym);
+          if (rp && rp > 0) liveCur = rp;
+        }
+        const livePnl = trade.side === 'long'
+          ? (liveCur - trade.entryPrice) * trade.quantity
+          : (trade.entryPrice - liveCur) * trade.quantity;
+        const livePnlPct = (livePnl / (trade.entryPrice * trade.quantity)) * 100;
+        pos.cur = liveCur;
+        pos.pnl = livePnl;
+        pos.pnlPct = livePnlPct;
+        trade.runningPnl = livePnl;
+        trade.runningPnlPct = livePnlPct;
       }
+
+      const pnlClass = pos.pnl >= 0 ? 'profit' : 'loss';
 
       // Emit manage step every ~12s (every 3rd updatePositionsList cycle)
       if (trade && (_manageCounter % 3 === 0)) {

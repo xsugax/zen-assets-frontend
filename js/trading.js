@@ -31,6 +31,8 @@ const Trading = (() => {
 
   // Copy trader execution engine — runs periodically
   let _copyTradeTimer = null;
+  const _activeCopyPositions = [];  // live tracked positions from copy traders
+  let _copyPnlTimer = null;
 
   function startCopyTradeEngine() {
     if (_copyTradeTimer) return;
@@ -39,74 +41,177 @@ const Trading = (() => {
       if (active.length === 0) return;
 
       active.forEach(trader => {
-        // Each active trader has a chance to execute a trade every interval
         const timeSinceLast = Date.now() - trader.lastTradeTime;
-        if (timeSinceLast < 40000) return; // Min 40s between trades per trader
+        if (timeSinceLast < 35000) return; // Min 35s between trades per trader
 
-        if (Math.random() < 0.3) { // 30% chance each tick
+        if (Math.random() < 0.35) { // 35% chance each tick
           executeCopyTrade(trader);
         }
       });
-    }, 15000); // Check every 15 seconds
+    }, 12000); // Check every 12 seconds
+
+    // Start live P&L tracker for copy positions — synced to chart ticks
+    if (!_copyPnlTimer) {
+      _copyPnlTimer = setInterval(() => _updateCopyPositionsPnL(), 2000);
+    }
+  }
+
+  function _getLivePrice(assetId) {
+    // Priority: RealDataAdapter (live) → MarketData (simulated fallback)
+    if (typeof RealDataAdapter !== 'undefined') {
+      const rp = RealDataAdapter.getPrice(assetId);
+      if (rp && rp > 0) return rp;
+    }
+    const asset = MarketData.getAllAssets().find(a => a.id === assetId);
+    return asset ? asset.price : null;
+  }
+
+  function _updateCopyPositionsPnL() {
+    // Update every active copy position with the latest live price
+    _activeCopyPositions.forEach(cp => {
+      const livePrice = _getLivePrice(cp.assetId);
+      if (!livePrice) return;
+      cp.currentPrice = livePrice;
+      cp.pnl = cp.side === 'long'
+        ? (livePrice - cp.entryPrice) * cp.quantity
+        : (cp.entryPrice - livePrice) * cp.quantity;
+      cp.pnlPct = ((cp.pnl / cp.positionValue) * 100);
+    });
   }
 
   function executeCopyTrade(trader) {
     const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'XRP/USD'];
     const sym = symbols[Math.floor(Math.random() * symbols.length)];
-    const asset = MarketData.getAllAssets().find(a => a.sym === sym || a.id === sym.split('/')[0]);
-    if (!asset) return;
+    const assetId = sym.split('/')[0];
+
+    // Use LIVE price from chart data
+    const livePrice = _getLivePrice(assetId);
+    if (!livePrice || livePrice <= 0) return;
 
     const side = Math.random() > 0.45 ? 'long' : 'short';
     const wr = parseFloat(trader.winRate) / 100;
-    // More wins than losses, but still realistic
     let outcomeRoll = Math.random();
     let outcome;
-    if (outcomeRoll < wr * 0.93) outcome = 'win'; // ~93% of winRate are wins
-    else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven'; // 5% break-even
-    else outcome = 'loss'; // rest are losses
+    if (outcomeRoll < wr * 0.93) outcome = 'win';
+    else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven';
+    else outcome = 'loss';
 
-    // Use 0.7-2.2% of copied balance (smaller trades)
+    // Position size: 0.7-2.2% of balance
     const tradePct = 0.007 + Math.random() * 0.015;
-
     let portfolioValue = 100000;
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
       if (snap.walletBalance > 0) portfolioValue = snap.walletBalance;
     }
     const tradeValue = portfolioValue * tradePct;
+    const quantity = tradeValue / livePrice;
 
-    // Calculate PnL
-    let pnl = 0;
-    if (outcome === 'win') {
-      pnl = tradeValue * (0.002 + Math.random() * 0.008); // 0.2%-1.0% win
-    } else if (outcome === 'loss') {
-      pnl = -(tradeValue * (0.003 + Math.random() * 0.009)); // 0.3%-1.2% loss
-    } else {
-      pnl = (Math.random() - 0.5) * tradeValue * 0.001; // break-even: -0.05% to +0.05%
-    }
+    // Calculate exit target based on outcome
+    let targetPnlPct;
+    if (outcome === 'win') targetPnlPct = 0.2 + Math.random() * 0.8;
+    else if (outcome === 'loss') targetPnlPct = -(0.3 + Math.random() * 0.9);
+    else targetPnlPct = (Math.random() - 0.5) * 0.1;
+
+    // Create a live-tracked position
+    const copyPos = {
+      id: `cp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      traderName: trader.name,
+      traderAvatar: trader.avatar,
+      sym, assetId, side,
+      entryPrice: livePrice,
+      currentPrice: livePrice,
+      quantity,
+      positionValue: tradeValue,
+      pnl: 0, pnlPct: 0,
+      targetPnlPct,
+      outcome,
+      openedAt: Date.now(),
+      holdTime: 25000 + Math.random() * 90000, // 25-115s hold
+    };
+    _activeCopyPositions.push(copyPos);
+
+    // Chart marker: entry arrow — only if symbol matches active chart
+    try {
+      if (typeof AdvancedChartEngine !== 'undefined') {
+        const chartSym = (typeof App !== 'undefined' && App.getActiveSymbol) ? App.getActiveSymbol() : null;
+        if (!chartSym || chartSym === assetId) {
+          AdvancedChartEngine.addTradeMarker('main-price-chart', {
+            action: 'entry', side,
+            price: livePrice, time: Date.now(),
+          });
+        }
+      }
+    } catch {}
+
+    trader.tradesExecuted++;
+    trader.lastTradeTime = Date.now();
+    trader.subscribers += Math.floor(Math.random() * 5 - 1);
+
+    _log(`COPY [${trader.name}] OPEN ${side.toUpperCase()} ${sym} @ $${livePrice.toFixed(2)} (${outcome})`);
+
+    // Schedule close based on hold time
+    setTimeout(() => _closeCopyPosition(copyPos, trader), copyPos.holdTime);
+  }
+
+  function _closeCopyPosition(cp, trader) {
+    const idx = _activeCopyPositions.indexOf(cp);
+    if (idx < 0) return;
+
+    // Final P&L from live price difference
+    const livePrice = _getLivePrice(cp.assetId) || cp.currentPrice;
+    let pnl = cp.side === 'long'
+      ? (livePrice - cp.entryPrice) * cp.quantity
+      : (cp.entryPrice - livePrice) * cp.quantity;
+
+    // Nudge toward expected outcome to keep win/loss ratio realistic
+    const targetPnl = cp.positionValue * (cp.targetPnlPct / 100);
+    pnl = pnl * 0.3 + targetPnl * 0.7; // blend 30% real, 70% expected
+
+    _activeCopyPositions.splice(idx, 1);
 
     // Credit/debit to wallet
     if (typeof InvestmentReturns !== 'undefined') {
       if (pnl > 0.01) {
-        InvestmentReturns.creditTradingProfit(pnl, { symbol: sym, side, source: `Copy: ${trader.name}` });
+        InvestmentReturns.creditTradingProfit(pnl, { symbol: cp.sym, side: cp.side, source: `Copy: ${trader.name}` });
       } else if (pnl < -0.01) {
-        InvestmentReturns.debitTradingLoss(Math.abs(pnl), { symbol: sym, side, source: `Copy: ${trader.name}` });
-      } // else: break-even, do nothing
+        InvestmentReturns.debitTradingLoss(Math.abs(pnl), { symbol: cp.sym, side: cp.side, source: `Copy: ${trader.name}` });
+      }
     }
 
     trader.totalCopied += Math.abs(pnl);
-    trader.tradesExecuted++;
-    trader.lastTradeTime = Date.now();
     trader.copiedBal += pnl;
 
-    // Live subscriber count fluctuation
-    trader.subscribers += Math.floor(Math.random() * 5 - 1);
+    // Chart marker: exit — only if symbol matches active chart
+    try {
+      if (typeof AdvancedChartEngine !== 'undefined') {
+        const chartSym = (typeof App !== 'undefined' && App.getActiveSymbol) ? App.getActiveSymbol() : null;
+        if (!chartSym || chartSym === cp.assetId) {
+          const pnlPct = cp.positionValue > 0 ? (pnl / cp.positionValue) * 100 : 0;
+          AdvancedChartEngine.addTradeMarker('main-price-chart', {
+            action: 'exit', side: cp.side,
+            price: livePrice, time: Date.now(),
+            pnl, pnlPct,
+          });
+        }
+      }
+    } catch {}
 
-    _log(`COPY [${trader.name}] ${side.toUpperCase()} ${sym} PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
+    // Toast notification
+    if (typeof createToast !== 'undefined') {
+      const icon = pnl >= 0 ? '✅' : '🔻';
+      createToast(
+        `${icon} Copy ${trader.name}: ${cp.sym}`,
+        `${cp.side.toUpperCase()} closed ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
+        pnl >= 0 ? 'success' : 'warning', 4000
+      );
+    }
+
+    _log(`COPY [${trader.name}] CLOSE ${cp.side.toUpperCase()} ${cp.sym} PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
   }
 
   function stopCopyTradeEngine() {
     if (_copyTradeTimer) { clearInterval(_copyTradeTimer); _copyTradeTimer = null; }
+    if (_copyPnlTimer) { clearInterval(_copyPnlTimer); _copyPnlTimer = null; }
   }
 
   // ── Strategies ───────────────────────────────────────────
@@ -237,5 +342,6 @@ const Trading = (() => {
     getPositions, getCopyTraders, getStrategies,
     getAuditLog, getOrderLog, calcFee, autoHedge,
     toggleCopyTrader,
+    getActiveCopyPositions() { return _activeCopyPositions; },
   };
 })();

@@ -1087,7 +1087,26 @@ const App = (() => {
   function renderDashCopyTraders() {
     const list = $('dash-copy-trade-list'); if (!list) return;
     const traders = Trading.getCopyTraders();
-    list.innerHTML = traders.map(t => {
+
+    // ── Live copy-trade positions strip ────────────────────
+    const copyPos = Trading.getActiveCopyPositions ? Trading.getActiveCopyPositions() : [];
+    let posHtml = '';
+    if (copyPos.length > 0) {
+      posHtml = '<div class="ct-live-positions">' +
+        copyPos.map(cp => {
+          const pCls = cp.pnl >= 0 ? 'up' : 'down';
+          const pSign = cp.pnl >= 0 ? '+' : '';
+          return `<div class="ct-live-pos ${pCls}">
+            <span class="ct-pos-sym">${cp.sym}</span>
+            <span class="ct-pos-side ct-${cp.side}">${cp.side.toUpperCase()}</span>
+            <span class="ct-pos-pnl ${pCls}">${pSign}$${cp.pnl.toFixed(2)}</span>
+            <span class="ct-pos-trader">${cp.traderAvatar || ''} ${cp.traderName}</span>
+          </div>`;
+        }).join('') +
+        '</div>';
+    }
+
+    list.innerHTML = posHtml + traders.map(t => {
       const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
       const btnCls = t.active ? 'btn-danger' : 'btn-primary';
       const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
@@ -3382,6 +3401,7 @@ const App = (() => {
     quickTrade, togglePlugin, installPlugin, uninstallPlugin,
     closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
     claimFundPool, claimAllFunds, claimDailyBonus,
+    getActiveSymbol() { return _sym; },
   };
 })();
 
