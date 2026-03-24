@@ -2419,6 +2419,7 @@ const App = (() => {
     _safeInit(_initTestimonialCarousel);
     _safeInit(_initTimeHorizonButtons);
     _safeInit(_initAITradeFeed);
+    _safeInit(_initScrollCounters);
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2672,6 +2673,79 @@ const App = (() => {
         });
       });
     });
+  }
+
+  // ── Scroll-Triggered Counter Animation ──────────────────────
+  function _initScrollCounters() {
+    const counters = document.querySelectorAll('.zen-counter');
+    if (!counters.length) return;
+
+    function animateValue(el) {
+      if (el.dataset.counted) return;
+      el.dataset.counted = '1';
+
+      const target   = parseFloat(el.dataset.countTo) || 0;
+      const prefix   = el.dataset.countPrefix || '';
+      const suffix   = el.dataset.countSuffix || '';
+      const decimals = parseInt(el.dataset.countDecimals, 10) || 0;
+      const useComma = el.dataset.countComma === 'true';
+      const duration = 2200;
+      const start    = performance.now();
+
+      // Easing: cubic ease-out for that "decelerating calculation" feel
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function formatNum(v) {
+        let s = v.toFixed(decimals);
+        if (useComma) {
+          const parts = s.split('.');
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          s = parts.join('.');
+        }
+        return prefix + s + suffix;
+      }
+
+      // Start with a subtle loading shimmer
+      el.classList.add('zen-counting');
+
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = easeOutCubic(progress);
+        const current = eased * target;
+        el.textContent = formatNum(current);
+
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          el.textContent = formatNum(target);
+          el.classList.remove('zen-counting');
+          el.classList.add('zen-counted');
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // Use IntersectionObserver to trigger when elements scroll into view
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Stagger start for grouped counters
+          const siblings = entry.target.closest('.login-live-counter, .wp-bars, .login-stat-bar');
+          if (siblings) {
+            const grouped = siblings.querySelectorAll('.zen-counter');
+            grouped.forEach((c, i) => {
+              setTimeout(() => animateValue(c), i * 300);
+            });
+          } else {
+            animateValue(entry.target);
+          }
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    counters.forEach(c => observer.observe(c));
   }
 
   // ── AI Trade Feed — simulated live executions ─────────────

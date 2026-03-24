@@ -81,6 +81,31 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Scroll-Triggered Counter Animations ────────────────── */
+.zen-counter {
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+.zen-counting {
+  background: linear-gradient(90deg, currentColor 40%, rgba(212,165,116,0.7) 50%, currentColor 60%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: zen-shimmer 1.5s ease-in-out infinite;
+}
+.zen-counted {
+  animation: zen-pop 0.5s ease forwards;
+}
+@keyframes zen-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes zen-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); text-shadow: 0 0 20px rgba(212,165,116,0.5); }
+  100% { transform: scale(1); text-shadow: none; }
+}
+
 /* ═══ SKIP LINK (ACCESSIBILITY) ══════════════════════════ */
 .skip-link {
   position: fixed; top: -100%; left: 50%; transform: translateX(-50%);
