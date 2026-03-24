@@ -2681,7 +2681,7 @@ const App = (() => {
     const dailyEl = document.getElementById('atf-daily-profit');
     if (!list) return;
 
-    const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD','MINING-BTC','MINING-ETH'];
+    const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD','NY-CORR','LDN-CORR'];
     const dirs = [['<i class="fa fa-arrow-up"></i> LONG','up'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-down"></i> SHORT','dn'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-up"></i> LONG','up']];
     let tradeCount = 2341;
     let dailyProfit = 8400000;
@@ -2689,11 +2689,11 @@ const App = (() => {
     function addTrade() {
       if (!document.getElementById('atf-list')) return;
       const sym = syms[Math.floor(Math.random() * syms.length)];
-      const isMining = sym.startsWith('MINING-');
-      const [dirText, dirClass] = isMining
-        ? ['<i class="fa fa-pickaxe"></i> YIELD', 'up']
+      const isCorridor = sym.endsWith('-CORR');
+      const [dirText, dirClass] = isCorridor
+        ? ['<i class="fa fa-bolt"></i> DEPLOY', 'up']
         : dirs[Math.floor(Math.random() * dirs.length)];
-      const isWin = isMining || dirClass === 'up' || Math.random() > 0.04;
+      const isWin = isCorridor || dirClass === 'up' || Math.random() > 0.04;
       const pl = isWin
         ? '+$' + Math.floor(2000 + Math.random() * 34000).toLocaleString()
         : '-$' + Math.floor(200 + Math.random() * 1200).toLocaleString();
