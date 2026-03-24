@@ -445,6 +445,7 @@ const UserAuth = (() => {
       return { ok: false, requiresVerification: true, userId: result.userId };
     }
     if (result.ok) {
+      _sendEmail('welcome', { email, fullName, tier, depositAmount: dep });
       return { ok: true, user: result.user };
     }
     return result;
@@ -737,7 +738,16 @@ const UserAuth = (() => {
   }
 
   async function requestWithdrawal(amount, method, address = '', notes = '') {
-    return _api('/wallet/withdraw', { method: 'POST', body: { amount, method, address, notes } });
+    const result = await _api('/wallet/withdraw', { method: 'POST', body: { amount, method, address, notes } });
+    if (result.ok) {
+      const session = getSession();
+      _sendEmail('withdrawal', {
+        email: session?.email || '',
+        fullName: session?.fullName || session?.email || '',
+        amount, status: 'pending', method,
+      });
+    }
+    return result;
   }
 
   async function claimEarnings(amount, pool = 'all') {
@@ -867,6 +877,17 @@ const UserAuth = (() => {
     return result;
   }
 
+  // ── Email Notification (fire-and-forget) ─────────────────
+  function _sendEmail(type, data) {
+    try {
+      fetch('/api/email/' + type, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(function () { /* silent — email is non-blocking */ });
+    } catch (e) { /* silent */ }
+  }
+
   // ── Init ─────────────────────────────────────────────────
   function init() {
     const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
@@ -949,6 +970,7 @@ const UserAuth = (() => {
     submitKYC, getKYCStatus,
     getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
+    sendEmailNotification: _sendEmail,
     TIERS,
   };
 })();

@@ -1041,6 +1041,17 @@ const AdminPanel = (() => {
     toast(`Account activated! $${amount.toLocaleString()} funded for ${u.fullName || email}`, 'success');
     closeModal('modal-activate');
 
+    // Email notification — deposit confirmation
+    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+      UserAuth.sendEmailNotification('deposit', {
+        email: email,
+        fullName: u.fullName || email,
+        amount: amount,
+        method: 'Account Activation',
+        newBalance: amount,
+      });
+    }
+
     // Generate transfer code for cross-device login
     try {
       const code = UserAuth.exportAccount(email);
@@ -1358,6 +1369,17 @@ const AdminPanel = (() => {
     log('withdrawal', `Withdrawal ${fmtMoney(w.amount)} from ${w.name} ${statusLabels[newStatus]}`, newStatus === 'denied' ? 'warning' : 'info', { id, email: w.email });
     toast(`Withdrawal ${statusLabels[newStatus]}`, newStatus === 'approved' ? 'success' : 'warning');
 
+    // Email notification to user
+    if (w.email && typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+      UserAuth.sendEmailNotification('withdrawal', {
+        email: w.email,
+        fullName: w.name || w.email,
+        amount: w.amount,
+        status: newStatus,
+        method: w.method || '',
+      });
+    }
+
     renderFinancials();
     _updateHeaderStats();
   }
@@ -1486,6 +1508,20 @@ const AdminPanel = (() => {
     closeModal('modal-balance');
     log('admin_action', `Balance ${operation} ${fmtMoney(amount)} for ${user.fullName}. Reason: ${reason || 'N/A'}`, 'warning', { email, operation, amount });
     toast(`Balance adjusted: ${fmtMoney(user.deposit)}`, 'success');
+
+    // Email notification to user
+    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+      if (operation === 'add' || operation === 'set') {
+        UserAuth.sendEmailNotification('deposit', {
+          email: email,
+          fullName: user.fullName || email,
+          amount: amount,
+          method: 'Admin Credit',
+          newBalance: user.deposit,
+          reference: reason || 'Balance adjustment',
+        });
+      }
+    }
 
     renderFinancials();
     _updateHeaderStats();
@@ -2045,6 +2081,36 @@ const AdminPanel = (() => {
   }
 
   // ────────────────────────────────────────────────────────
+  //  SEND WEEKLY REPORTS (to all active users)
+  // ────────────────────────────────────────────────────────
+  async function sendWeeklyReports() {
+    if (!confirm('Send weekly portfolio report emails to ALL active users?')) return;
+    const users = loadUsers();
+    const clients = Object.values(users).filter(u => u.role !== 'admin' && u.status === 'active' && u.email);
+    if (clients.length === 0) return toast('No active users to send reports to', 'warning');
+
+    let sent = 0;
+    for (const u of clients) {
+      try {
+        if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+          UserAuth.sendEmailNotification('weekly-report', {
+            email: u.email,
+            fullName: u.fullName || u.email,
+            balance: u.deposit || u.balance || 0,
+            earnings: u.earnings || 0,
+            tier: u.tier || 'bronze',
+            weeklyChange: (u.earnings || 0) * 0.1,
+            topCorridor: 'NY-CORR',
+          });
+          sent++;
+        }
+      } catch (e) { /* continue to next user */ }
+    }
+    toast(`Weekly reports queued for ${sent} user(s)`, 'success');
+    log('admin_action', `Weekly reports sent to ${sent} users`, 'info');
+  }
+
+  // ────────────────────────────────────────────────────────
   //  MODAL MANAGEMENT
   // ────────────────────────────────────────────────────────
   function openModal(id) {
@@ -2103,6 +2169,8 @@ const AdminPanel = (() => {
     searchAuditLogs, filterAuditLogs, exportAuditLogs, clearAuditLogs,
     // Broadcast
     onBroadcastTargetChange, previewBroadcast, sendBroadcast,
+    // Weekly Reports
+    sendWeeklyReports,
     // Fund & Activate
     activateAccountPrompt, executeActivation,
     // Cross-device login

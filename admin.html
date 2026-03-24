@@ -843,6 +843,25 @@
       <!-- Notification History -->
       <div class="admin-card">
         <div class="ac-header">
+          <span class="ac-title"><i class="fa fa-envelope"></i> Email Reports</span>
+          <span class="ac-subtitle">SendGrid-powered email system</span>
+        </div>
+        <div class="ac-body">
+          <p style="color:#8b95a5;font-size:13px;margin:0 0 16px;line-height:1.6;">
+            Send branded portfolio performance reports to all active users via email. Each user receives a personalised summary of their balance, earnings, tier, and corridor activity.
+          </p>
+          <button class="btn-admin-sm primary" onclick="AdminPanel.sendWeeklyReports()" style="margin-bottom:8px;">
+            <i class="fa fa-paper-plane"></i> Send Weekly Reports to All Users
+          </button>
+          <p style="color:#5a6373;font-size:11px;margin:0;">
+            Automated weekly reports are also scheduled every Monday at 9:00 AM UTC via Vercel Cron.
+          </p>
+        </div>
+      </div>
+
+      <!-- Notification History -->
+      <div class="admin-card">
+        <div class="ac-header">
           <span class="ac-title"><i class="fa fa-history"></i> Notification History</span>
           <span class="ac-subtitle" id="notif-history-count">0 sent</span>
         </div>

@@ -2,6 +2,13 @@
   "cleanUrls": true,
   "trailingSlash": false,
 
+  "crons": [
+    {
+      "path": "/api/email/weekly-report",
+      "schedule": "0 9 * * 1"
+    }
+  ],
+
   "redirects": [
     {
       "source": "/:path*",
