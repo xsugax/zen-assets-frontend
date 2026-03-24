@@ -11,11 +11,11 @@ const InvestmentReturns = (() => {
 
   // ── Membership Tiers ─────────────────────────────────────
   const TIERS = {
-    bronze:   { label: 'Bronze',   minAPY: 0.25,  maxAPY: 0.38,  color: '#cd7f32', icon: '🥉' },
-    silver:   { label: 'Silver',   minAPY: 0.38,  maxAPY: 0.52,  color: '#c0c0c0', icon: '🥈' },
-    gold:     { label: 'Gold',     minAPY: 0.52,  maxAPY: 0.72,  color: '#d4a574', icon: '🥇' },
-    platinum: { label: 'Platinum', minAPY: 0.72,  maxAPY: 0.95,  color: '#e5e4e2', icon: '💎' },
-    diamond:  { label: 'Diamond',  minAPY: 0.95,  maxAPY: 1.25,  color: '#b9f2ff', icon: '👑' },
+    bronze:   { label: 'Bronze',   minAPY: 0.55,  maxAPY: 0.78,  color: '#cd7f32', icon: '🥉' },
+    silver:   { label: 'Silver',   minAPY: 0.78,  maxAPY: 1.15,  color: '#c0c0c0', icon: '🥈' },
+    gold:     { label: 'Gold',     minAPY: 1.15,  maxAPY: 1.75,  color: '#d4a574', icon: '🥇' },
+    platinum: { label: 'Platinum', minAPY: 1.75,  maxAPY: 2.60,  color: '#e5e4e2', icon: '💎' },
+    diamond:  { label: 'Diamond',  minAPY: 2.60,  maxAPY: 4.00,  color: '#b9f2ff', icon: '👑' },
   };
 
   // ── State ────────────────────────────────────────────────

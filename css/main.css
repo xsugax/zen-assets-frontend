@@ -655,7 +655,11 @@ small { font-size: .8em; opacity: .7; display: block; }
   font-size: 14px; color: #9bb0c6; line-height: 1.7;
   margin: 0;
 }
-.lvp-hook strong { color: #ff6b81; font-weight: 700; }
+.lvp-hook strong { color: var(--gold); font-weight: 700; }
+.lvp-disclaimer {
+  font-size: 11px; color: rgba(155,176,198,0.5); margin-top: 12px;
+  font-style: italic;
+}
 
 /* Urgency Counter */
 .urgency-counter {

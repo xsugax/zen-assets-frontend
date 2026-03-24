@@ -2413,19 +2413,12 @@ const App = (() => {
     const loginForm = $('login-form');
     if (!loginForm) { proceedAfterLogin(); return; }
     
-    // ── Addictive Login Enhancements (wrapped for safety) ──
+    // ── Login Screen Enhancements ──
     const _safeInit = fn => { try { fn(); } catch(e) { console.warn('Login init error:', e.message); } };
     _safeInit(_initLoginParticles);
-    _safeInit(_initInflationCounter);
     _safeInit(_initTestimonialCarousel);
-    _safeInit(_initLiveCounterAnimation);
-    _safeInit(_initFOMOBanner);
     _safeInit(_initTimeHorizonButtons);
     _safeInit(_initAITradeFeed);
-    _safeInit(_initMarketPulse);
-    _safeInit(_initProofWall);
-    _safeInit(_initSocialProofPopups);
-    _safeInit(_initSinceArrived);
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2599,20 +2592,8 @@ const App = (() => {
   }
 
   // Inflation counter — shows how much money user is losing per second
-  function _initInflationCounter() {
-    const el = document.getElementById('inflation-counter');
-    if (!el) return;
-    const startTime = Date.now();
-    const lossPerSecond = 0.23; // ~$7.25M/year ÷ 365 ÷ 86400 for avg American
-    function tick() {
-      if (!document.getElementById('inflation-counter')) return;
-      const elapsed = (Date.now() - startTime) / 1000;
-      const lost = (elapsed * lossPerSecond).toFixed(2);
-      el.textContent = '$' + parseFloat(lost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      requestAnimationFrame(tick);
-    }
-    tick();
-  }
+  // Inflation counter — removed (element no longer exists)
+  function _initInflationCounter() { }
 
   // Testimonial carousel with auto-rotation
   function _initTestimonialCarousel() {
@@ -2639,177 +2620,11 @@ const App = (() => {
     }, 5000);
   }
 
-  // Live counter number animation (AUM, profit, investors)
-  function _initLiveCounterAnimation() {
-    const aumEl = document.getElementById('llc-aum');
-    const profitEl = document.getElementById('llc-profit');
-    const investorsEl = document.getElementById('llc-users');
-    if (!aumEl) return;
+  // Live counter — removed (simplified static display)
+  function _initLiveCounterAnimation() { }
 
-    let aum = 97293847412;
-    let profit = 284729100;
-    let investors = 18427;
-
-    setInterval(() => {
-      if (!document.getElementById('llc-aum')) return;
-      // Small random increments — scaled to $97B platform
-      aum += Math.floor(Math.random() * 250000 + 50000);
-      profit += Math.floor(Math.random() * 80000 + 20000);
-      investors += Math.floor(Math.random() * 3);
-
-      aumEl.textContent = '$' + aum.toLocaleString();
-      profitEl.textContent = '+$' + profit.toLocaleString();
-      investorsEl.textContent = investors.toLocaleString();
-    }, 3000);
-  }
-
-  // FOMO banner — dynamic urgency feed with seamless marquee
-  function _initFOMOBanner() {
-    const banner = document.querySelector('.fomo-banner');
-    const scroll = document.querySelector('.fomo-scroll');
-    if (!banner || !scroll) return;
-
-    if (window.__fomoTicker) clearInterval(window.__fomoTicker);
-
-    // Institutional-grade personas
-    const names = ['M. Krause', 'S. Thornton', 'D. Rowe', 'J. Whitfield', 'O. Mercer', 'E. Jensen', 'C. Hadley', 'R. Ashford', 'L. Beaumont', 'T. Vance'];
-
-    // Live state — mutates across renders
-    let liveCount    = 18427;
-    let totalFlow    = 4812000;
-    let diamondLeft  = 11;
-    let platinumLeft = 34;
-    let cycleMin     = 14;
-    let harvestMin   = 9;
-
-    const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
-    const money = n   => '$' + Math.round(n).toLocaleString();
-    const flowStr = () => totalFlow >= 1e6
-      ? '$' + (totalFlow / 1e6).toFixed(2) + 'M'
-      : money(totalFlow);
-
-    // HOOK 1 — LIFE MOMENTUM ("The activity effect")
-    // Every second, somewhere, money is moving. The platform never sleeps.
-    const momentumEvents = () => {
-      const deposit = 50000 + Math.random() * 950000;
-      const gain    = (2.8 + Math.random() * 9.4).toFixed(2);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-circle-check fomo-green"></i> ${pick(names)} entered position — <strong>${money(deposit)}</strong> deployed. Capital working <em>right now</em>.</span>`,
-        `<span class="fomo-item"><i class="fa fa-arrow-trend-up fomo-green"></i> ${pick(names)} portfolio up <strong>+${gain}%</strong> this week. Compounding in progress. No action taken.</span>`,
-        `<span class="fomo-item"><i class="fa fa-bolt fomo-gold"></i> ${pick(names)} reinvested <strong>${money(1200 + Math.random() * 48000)}</strong> in returns. Cycle extended. Clock restarted.</span>`,
-        `<span class="fomo-item"><i class="fa fa-signal fomo-green"></i> ${pick(names)} upgraded position. New tier locked. Compound rate adjusted upward — automatically.</span>`,
-      ]);
-    };
-
-    // HOOK 2 — PRIVATE ACCESS ("The inner-circle effect")
-    // You are watching a room you are not yet inside.
-    const innerCircleEvents = () => {
-      const insiders = 3 + Math.floor(Math.random() * 9);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-crown fomo-gold"></i> <strong>Diamond Tier — ${diamondLeft} of 50</strong> quarterly positions unfilled. Not open to the public.</span>`,
-        `<span class="fomo-item"><i class="fa fa-lock fomo-gold"></i> Platinum inner-circle: <strong>${platinumLeft} slots active.</strong> Priority reserved for referred &amp; returning capital only.</span>`,
-        `<span class="fomo-item"><i class="fa fa-user-secret fomo-slate"></i> Private yield-lock session: <strong>${pick(names)} and ${insiders} others</strong> are inside right now. Closed to new entries.</span>`,
-        `<span class="fomo-item"><i class="fa fa-shield-halved fomo-gold"></i> <strong>Closed cycle in progress.</strong> Top-tier holders executing. Standard queue resumes Monday.</span>`,
-      ]);
-    };
-
-    // HOOK 3 — ANTICIPATION ("The next-move effect")
-    // Something is always about to happen. Miss it and you wait another full cycle.
-    const anticipationEvents = () => {
-      cycleMin   = Math.max(2, cycleMin   - (Math.random() > 0.55 ? 1 : 0));
-      harvestMin = Math.max(1, harvestMin - (Math.random() > 0.5  ? 1 : 0));
-      const closeHrs = 2 + Math.floor(Math.random() * 10);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-stopwatch fomo-amber"></i> Next AI execution cycle: <strong>${cycleMin} min.</strong> Accounts not yet funded will miss this window entirely.</span>`,
-        `<span class="fomo-item"><i class="fa fa-clock fomo-amber"></i> Yield-harvest window opens in <strong>${harvestMin} min.</strong> Active positions qualify automatically. Idle capital does not.</span>`,
-        `<span class="fomo-item"><i class="fa fa-calendar-check fomo-gold"></i> Weekly compound lock-in closes in <strong>${closeHrs} hours.</strong> Returns that miss this window roll to next cycle — not your pocket.</span>`,
-        `<span class="fomo-item"><i class="fa fa-rocket fomo-green"></i> Portfolio rebalance at next market bell. <strong>Diamond holders pre-queued.</strong> Everyone else waits.</span>`,
-      ]);
-    };
-
-    // HOOK 4 — STATUS &amp; CONTROL ("Sovereign capital" language)
-    // Your money obeys you. You own the outcome.
-    const statusEvents = () => {
-      const portfolio = money(180000 + Math.random() * 4600000);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-gem fomo-gold"></i> ${pick(names)} — Diamond Tier. <strong>${portfolio}</strong> under sovereign-grade AI management. Full liquidity retained.</span>`,
-        `<span class="fomo-item"><i class="fa fa-chess-king fomo-gold"></i> ${pick(names)}: elite position held. Capital compounds autonomously. Zero manual intervention required.</span>`,
-        `<span class="fomo-item"><i class="fa fa-infinity fomo-green"></i> ${pick(names)}: <strong>"The AI executed 47 trades while I slept. I woke up richer."</strong></span>`,
-        `<span class="fomo-item"><i class="fa fa-trophy fomo-gold"></i> Top 3% return this week — all Diamond holders. <strong>The gap between tiers widens every single cycle.</strong></span>`,
-      ]);
-    };
-
-    // HOOK 5 — MICRO SIGNALS ("The alive-page effect")
-    // Tiny, real-time numbers that signal constant motion.
-    const microEvents = () => {
-      liveCount += Math.floor(Math.random() * 4);
-      totalFlow += 14000 + Math.random() * 39000;
-      const signals = 820 + Math.floor(Math.random() * 80);
-      const secs    = 8  + Math.floor(Math.random() * 40);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-signal fomo-green"></i> <strong>${liveCount.toLocaleString()}</strong> investors online. Capital compounding in real time. No pause.</span>`,
-        `<span class="fomo-item"><i class="fa fa-chart-line fomo-green"></i> <strong>${flowStr()}</strong> deployed this hour. AI systems operating at full capacity.</span>`,
-        `<span class="fomo-item"><i class="fa fa-wifi fomo-green"></i> AI heartbeat: <strong>${signals} signals processed</strong> in the last 90 seconds. Zero downtime recorded.</span>`,
-        `<span class="fomo-item"><i class="fa fa-circle fomo-live"></i> <strong>${pick(names)}</strong> position updated <strong>${secs}s ago.</strong> Return logged. Balance adjusted.</span>`,
-      ]);
-    };
-
-    // HOOK 6 — DISCIPLINE · TIMING · MONEY LOGIC
-    // The cold arithmetic that makes inaction feel criminal.
-    const disciplineEvents = () => {
-      const claimed = money(3800 + Math.random() * 96000);
-      const days    = 60 + Math.floor(Math.random() * 120);
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-calculator fomo-slate"></i> <strong>Money logic:</strong> capital not deployed today is money gifted to inflation tomorrow. There are no neutral positions.</span>`,
-        `<span class="fomo-item"><i class="fa fa-hourglass-half fomo-amber"></i> ${pick(names)} collected <strong>${claimed}</strong> in scheduled returns. Entry date: <strong>${days} days ago.</strong> Discipline paid.</span>`,
-        `<span class="fomo-item"><i class="fa fa-coins fomo-gold"></i> Every <strong>24-hour delay</strong> on a $250K account costs <strong>$178.08</strong> in compound growth. Every. Single. Day.</span>`,
-        `<span class="fomo-item"><i class="fa fa-scale-balanced fomo-slate"></i> <strong>The math:</strong> $500K at Diamond tier (75% annual) = <strong>$875,000 Year 1.</strong> Your bank offers 0.5%. You decide.</span>`,
-      ]);
-    };
-
-    // HOOK 7 — TOP-TIER SCARCITY ("Minimum to remaining Diamond / Platinum")
-    // The gap between tiers is structural. So is the countdown.
-    const scarcityEvents = () => {
-      diamondLeft  = Math.max(4, diamondLeft  - (Math.random() > 0.78 ? 1 : 0));
-      platinumLeft = Math.max(9, platinumLeft - (Math.random() > 0.82 ? 1 : 0));
-      return pick([
-        `<span class="fomo-item"><i class="fa fa-fire fomo-amber"></i> <strong>Diamond Tier:</strong> ${diamondLeft} of 50 Q1 positions open. Min. entry <strong>$500,000.</strong> Acceptance not guaranteed.</span>`,
-        `<span class="fomo-item"><i class="fa fa-hourglass-end fomo-amber"></i> <strong>Platinum:</strong> ${platinumLeft} slots. Min. <strong>$150,000.</strong> Q1 allocation window closes <strong>March 31.</strong></span>`,
-        `<span class="fomo-item"><i class="fa fa-arrow-up-right-dots fomo-green"></i> Top-tier distribution: Diamond accounts generating <strong>6.2× more</strong> than Silver this quarter alone.</span>`,
-        `<span class="fomo-item"><i class="fa fa-triangle-exclamation fomo-amber"></i> <strong>Bronze &amp; Silver: FULL.</strong> Gold ($50K+) · Platinum ($150K+) · Diamond ($500K+) — only tiers accepting capital this cycle.</span>`,
-      ]);
-    };
-
-    // Build one full ticker line — all 7 hooks in sequence
-    function buildFeedLine() {
-      const items = [
-        momentumEvents(),
-        innerCircleEvents(),
-        anticipationEvents(),
-        statusEvents(),
-        microEvents(),
-        disciplineEvents(),
-        scarcityEvents(),
-        momentumEvents(),  // repeat for seamless -50% CSS loop
-      ];
-      return items.join('<span class="fomo-sep">  ⚡  </span>');
-    }
-
-    function renderFeed() {
-      const line = buildFeedLine();
-      scroll.style.opacity = '0.2';
-      setTimeout(() => {
-        scroll.innerHTML = line + '<span class="fomo-sep">  ⚡  </span>' + line;
-        scroll.style.opacity = '1';
-      }, 180);
-    }
-
-    renderFeed();
-    window.__fomoTicker = setInterval(renderFeed, 10000);
-
-    banner.onmouseenter = () => { scroll.style.animationPlayState = 'paused'; };
-    banner.onmouseleave = () => { scroll.style.animationPlayState = 'running'; };
-  }
+  // FOMO banner — now shows market prices (no dynamic generation needed)
+  function _initFOMOBanner() { }
 
   function _showLoginError(msg) {
     // Use the dedicated error box if available, otherwise inline
@@ -2866,18 +2681,21 @@ const App = (() => {
     const dailyEl = document.getElementById('atf-daily-profit');
     if (!list) return;
 
-    const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD'];
-    const dirs = [['▲ LONG','up'],['▲ BUY','up'],['▼ SHORT','dn'],['▲ BUY','up'],['▲ BUY','up'],['▲ LONG','up']];
-    let tradeCount = 847;
-    let dailyProfit = 284729100;
+    const syms = ['BTC/USD','ETH/USD','BNB/USD','SOL/USD','NVDA','AAPL','TSLA','MSFT','AMZN','XRP/USD','ADA/USD','MINING-BTC','MINING-ETH'];
+    const dirs = [['<i class="fa fa-arrow-up"></i> LONG','up'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-down"></i> SHORT','dn'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-up"></i> BUY','up'],['<i class="fa fa-arrow-up"></i> LONG','up']];
+    let tradeCount = 2341;
+    let dailyProfit = 8400000;
 
     function addTrade() {
       if (!document.getElementById('atf-list')) return;
       const sym = syms[Math.floor(Math.random() * syms.length)];
-      const [dirText, dirClass] = dirs[Math.floor(Math.random() * dirs.length)];
-      const isWin = dirClass === 'up' || Math.random() > 0.07;
+      const isMining = sym.startsWith('MINING-');
+      const [dirText, dirClass] = isMining
+        ? ['<i class="fa fa-pickaxe"></i> YIELD', 'up']
+        : dirs[Math.floor(Math.random() * dirs.length)];
+      const isWin = isMining || dirClass === 'up' || Math.random() > 0.04;
       const pl = isWin
-        ? '+$' + Math.floor(800 + Math.random() * 18000).toLocaleString()
+        ? '+$' + Math.floor(2000 + Math.random() * 34000).toLocaleString()
         : '-$' + Math.floor(200 + Math.random() * 1200).toLocaleString();
       const row = document.createElement('div');
       row.className = 'atf-row ' + (isWin ? 'win' : 'loss');
@@ -2885,9 +2703,7 @@ const App = (() => {
       row.style.opacity = '0';
       list.insertBefore(row, list.firstChild);
       requestAnimationFrame(() => { row.style.transition = 'opacity 0.4s'; row.style.opacity = '1'; });
-      // Remove oldest if more than 8 rows
       while (list.children.length > 8) list.removeChild(list.lastChild);
-      // Update age of existing rows
       list.querySelectorAll('.atf-time').forEach((el, i) => {
         if (i === 0) return;
         const secs = (i * 14) + Math.floor(Math.random() * 8);
@@ -2896,152 +2712,23 @@ const App = (() => {
       tradeCount += Math.floor(Math.random() * 3) + 1;
       if (isWin) dailyProfit += Math.floor(800 + Math.random() * 8000);
       if (countEl) countEl.textContent = tradeCount.toLocaleString() + ' trades today';
-      if (dailyEl) dailyEl.textContent = '$' + dailyProfit.toLocaleString();
+      if (dailyEl) dailyEl.textContent = '$' + (dailyProfit / 1000000).toFixed(1) + 'M';
     }
 
     setInterval(() => { if (document.getElementById('atf-list')) addTrade(); }, 4500);
   }
 
-  // ── Market Pulse — ticking prices ────────────────────────
-  function _initMarketPulse() {
-    if (!document.getElementById('mp-btc')) return;
-    const assets = [
-      { id:'mp-btc', chId:'mp-btc-ch', price:97241, vol:180 },
-      { id:'mp-eth', chId:'mp-eth-ch', price:3847,  vol:12 },
-      { id:'mp-bnb', chId:'mp-bnb-ch', price:684,   vol:4 },
-      { id:'mp-nvda', chId:'mp-nvda-ch', price:142.80, vol:1.2 },
-      { id:'mp-aapl', chId:'mp-aapl-ch', price:217.64, vol:0.9 },
-      { id:'mp-sol',  chId:'mp-sol-ch',  price:189.30,  vol:3.2 },
-    ];
-    const signals = [
-      'STRONG BUY — 94.2% confidence on BTC/ETH',
-      'AI REBALANCING — Rotating into large-cap crypto',
-      'HIGH MOMENTUM — 7 long positions opened last 5 min',
-      'BULL SIGNAL — All 5 major indicators aligned',
-      'COMPOUND CYCLE — Profits auto-reinvesting now',
-    ];
-    let sigIdx = 0;
-    const sigEl = document.getElementById('mp-signal');
+  // Market Pulse — removed (prices shown in ticker bar)
+  function _initMarketPulse() { }
 
-    setInterval(() => {
-      assets.forEach(a => {
-        const el = document.getElementById(a.id);
-        const chEl = document.getElementById(a.chId);
-        if (!el) return;
-        const delta = (Math.random() - 0.48) * a.vol * 0.008;
-        a.price = Math.max(a.price * (1 + delta), 0.01);
-        const chPct = ((delta / (a.price / (1 + delta))) * 100);
-        const chStr = (chPct >= 0 ? '+' : '') + chPct.toFixed(2) + '%';
-        el.textContent = a.price > 1000 ? '$' + Math.round(a.price).toLocaleString()
-          : a.price > 10 ? '$' + a.price.toFixed(2)
-          : '$' + a.price.toFixed(4);
-        if (chEl) {
-          chEl.textContent = chStr;
-          chEl.className = 'mp-change ' + (chPct >= 0 ? 'up' : 'dn');
-        }
-      });
-      sigIdx = (sigIdx + 1) % signals.length;
-      if (sigEl && Math.random() > 0.7) sigEl.textContent = signals[sigIdx];
-    }, 2200);
-  }
+  // Proof Wall — removed
+  function _initProofWall() { }
 
-  // ── Proof Wall — occasionally adds a new withdrawal ──────
-  function _initProofWall() {
-    const totalEl = document.getElementById('pw-total-paid');
-    const latestEl = document.getElementById('pw-latest');
-    const latestAmtEl = document.getElementById('pw-latest-amount');
-    if (!totalEl) return;
-    const names = ['A██████ J.','R██████ N.','C██████ V.','E██████ S.','T██████ H.','P██████ L.'];
-    const tiers = [['gold','Gold'],['silver','Silver'],['platinum','Platinum'],['diamond','💎 Diamond']];
-    let totalPaid = 47284130;
-    let ticker = 0;
+  // Social Proof Popups — removed
+  function _initSocialProofPopups() { }
 
-    setInterval(() => {
-      if (!document.getElementById('pw-total-paid')) return;
-      totalPaid += Math.floor(5000 + Math.random() * 95000);
-      if (totalEl) totalEl.textContent = '$' + totalPaid.toLocaleString();
-      ticker++;
-      if (ticker % 4 === 0 && latestEl && latestAmtEl) {
-        const amt = Math.floor(8000 + Math.random() * 140000);
-        const name = names[Math.floor(Math.random() * names.length)];
-        const [tc, tl] = tiers[Math.floor(Math.random() * tiers.length)];
-        latestAmtEl.textContent = '$' + amt.toLocaleString();
-        latestEl.querySelector('.pw-name').textContent = name;
-        latestEl.querySelector('.pw-tier').className = 'pw-tier ' + tc;
-        latestEl.querySelector('.pw-tier').textContent = tl;
-        latestEl.style.animation = 'none';
-        requestAnimationFrame(() => { latestEl.style.animation = ''; });
-      }
-    }, 7000);
-  }
-
-  // ── Social Proof Popups ───────────────────────────────────
-  function _initSocialProofPopups() {
-    if (!document.querySelector('.login-brand-section')) return;
-    const events = [
-      { init:'MK', name:'Michael K.', action:'deposited <strong>$250,000</strong> — Gold Tier', time:'2 min ago' },
-      { init:'ST', name:'Sarah T.', action:'withdrew <strong>$47,283</strong> in returns', time:'5 min ago' },
-      { init:'JW', name:'James W.', action:'upgraded to <strong>Diamond Tier</strong>', time:'8 min ago' },
-      { init:'DR', name:'David R.', action:'just earned <strong>$127,480</strong> this week', time:'just now' },
-      { init:'OM', name:'Olivia M.', action:'started <strong>Platinum</strong> with $500K', time:'11 min ago' },
-      { init:'RN', name:'Robert N.', action:'reinvested <strong>$84,200</strong> in profits', time:'3 min ago' },
-      { init:'EJ', name:'Emily J.', action:'referred 3 friends — earned <strong>$8,400</strong>', time:'6 min ago' },
-      { init:'TH', name:'Thomas H.', action:'portfolio up <strong>+63%</strong> in 14 months', time:'just now' },
-      { init:'J\u2588', name:'Celebrity member', action:'quietly added <strong>$2,500,000</strong> — Diamond', time:'1 min ago' },
-      { init:'A\u2588', name:'A-list investor', action:'withdrew <strong>$1,840,000</strong> in returns', time:'4 min ago' },
-    ];
-    let idx = Math.floor(Math.random() * events.length);
-
-    function showPopup() {
-      if (!document.querySelector('.login-brand-section')) return;
-      if (document.querySelector('.login-screen.auth-mode')) return; // not during auth
-      const ev = events[idx % events.length];
-      idx++;
-      const el = document.createElement('div');
-      el.className = 'social-proof-popup';
-      el.innerHTML = `<div class="spp-inner"><div class="spp-avatar">${ev.init}</div><div class="spp-body"><div class="spp-name">${ev.name}</div><div class="spp-action">${ev.action}</div><div class="spp-time"><i class="fa fa-clock" style="margin-right:4px"></i>${ev.time}</div></div></div>`;
-      document.body.appendChild(el);
-      setTimeout(() => {
-        el.classList.add('sp-hiding');
-        setTimeout(() => el.remove(), 350);
-      }, 5500);
-    }
-
-    setTimeout(showPopup, 4000);
-    setInterval(showPopup, 22000);
-  }
-
-  // ── Since You Arrived Counter ────────────────────────────────
-  function _initSinceArrived() {
-    const earnedEl    = document.getElementById('sa-earned');
-    const tradesEl    = document.getElementById('sa-trades');
-    const membersEl   = document.getElementById('sa-new-members');
-    const barEl       = document.getElementById('sa-bar');
-    if (!earnedEl) return;
-
-    const pageLoadTime = Date.now();
-    // Platform earns ~$284M/day = ~$3,287/second across all investors
-    const earnPerSec   = 3287;
-    const tradesPerSec = 0.98; // ~1 trade/sec
-    const membersPerMin = 0.18; // ~11/hour
-
-    let maxBarSec = 300; // bar fills over 5 minutes
-
-    setInterval(() => {
-      const elapsed = (Date.now() - pageLoadTime) / 1000;
-      const earned  = Math.floor(elapsed * earnPerSec);
-      const trades  = Math.floor(elapsed * tradesPerSec);
-      const members = Math.floor(elapsed / 60 * membersPerMin * 60); // per minute calc
-
-      if (earnedEl) earnedEl.textContent = '$' + earned.toLocaleString();
-      if (tradesEl) tradesEl.textContent = trades.toLocaleString();
-      if (membersEl) membersEl.textContent = members.toLocaleString();
-      if (barEl) {
-        const pct = Math.min((elapsed / maxBarSec) * 100, 100);
-        barEl.style.width = pct + '%';
-      }
-    }, 1000);
-  }
+  // Since You Arrived Counter — removed
+  function _initSinceArrived() { }
 
   // ── Registration ─────────────────────────────────────────
   function initRegisterScreen() {

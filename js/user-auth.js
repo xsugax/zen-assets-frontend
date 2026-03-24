@@ -214,11 +214,11 @@ const UserAuth = (() => {
   _localStore.ensureAdmin();
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   minDeposit: 2000,    apyRange: '25–38%',  color: '#cd7f32', icon: 'fa-medal'  },
-    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '38–52%',  color: '#c0c0c0', icon: 'fa-award'  },
-    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '52–72%',  color: '#d4a574', icon: 'fa-trophy' },
-    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '72–95%',  color: '#e5e4e2', icon: 'fa-gem'    },
-    diamond:  { label: 'Diamond',  minDeposit: 1000000, apyRange: '95–125%', color: '#b9f2ff', icon: 'fa-crown'  },
+    bronze:   { label: 'Bronze',   minDeposit: 2000,    apyRange: '55–78%',   color: '#cd7f32', icon: 'fa-medal'  },
+    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '78–115%',  color: '#c0c0c0', icon: 'fa-award'  },
+    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '115–175%', color: '#d4a574', icon: 'fa-trophy' },
+    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '175–260%', color: '#e5e4e2', icon: 'fa-gem'    },
+    diamond:  { label: 'Diamond',  minDeposit: 2000000, apyRange: '260–400%', color: '#b9f2ff', icon: 'fa-crown'  },
   };
 
   // ── Local Cache Helpers ──────────────────────────────────
