@@ -1141,7 +1141,7 @@ small { font-size: .8em; opacity: .7; display: block; }
   margin-bottom: 24px;
 }
 
-/* ═══ Zen Returns Table (proper <table>) ═══ */
+/* ═══ Zen Returns Table ═══ */
 .zrt-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -1151,6 +1151,7 @@ small { font-size: .8em; opacity: .7; display: block; }
 }
 .zrt-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: separate;
   border-spacing: 0;
   font-family: var(--font-mono);
@@ -1162,36 +1163,39 @@ small { font-size: .8em; opacity: .7; display: block; }
 }
 .zrt-table th,
 .zrt-table td {
-  padding: 14px 12px;
+  padding: 14px 14px;
   text-align: center;
-  white-space: nowrap;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  vertical-align: middle;
 }
+/* Header row */
 .zrt-th-period {
-  text-align: left !important;
+  text-align: left;
   font-size: 11px;
   font-weight: 800;
   color: var(--slate-light);
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  background: rgba(10,14,22,0.85);
-  min-width: 100px;
+  background: rgba(10,14,22,0.9);
+  width: 110px;
+  white-space: nowrap;
 }
 .zrt-th {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  background: rgba(10,14,22,0.85);
+  letter-spacing: 0.5px;
+  background: rgba(10,14,22,0.9);
   color: var(--gold);
-  position: relative;
+  white-space: nowrap;
+  min-width: 100px;
 }
 .zrt-tier-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  margin-right: 6px;
+  margin-right: 5px;
   vertical-align: middle;
 }
 .zrt-apy {
@@ -1202,11 +1206,13 @@ small { font-size: .8em; opacity: .7; display: block; }
   margin-top: 3px;
   letter-spacing: 0;
 }
+/* Body cells */
 .zrt-period {
-  text-align: left !important;
+  text-align: left;
   font-size: 14px;
   font-weight: 700;
   color: #fff;
+  white-space: nowrap;
   padding-left: 16px;
 }
 .zrt-invested {
@@ -1223,24 +1229,26 @@ small { font-size: .8em; opacity: .7; display: block; }
 .zrt-cell:hover {
   background: rgba(212,165,116,0.08);
 }
-.zrt-cell.bronze { border-left: 3px solid #cd7f32; }
-.zrt-cell.silver { border-left: 3px solid #c0c0c0; }
-.zrt-cell.gold { border-left: 3px solid var(--gold); }
-.zrt-cell.platinum { border-left: 3px solid #e5e4e2; }
+.zrt-cell.bronze  { border-left: 3px solid #cd7f32; }
+.zrt-cell.silver  { border-left: 3px solid #c0c0c0; }
+.zrt-cell.gold    { border-left: 3px solid var(--gold); }
+.zrt-cell.platinum{ border-left: 3px solid #e5e4e2; }
 .zrt-cell.diamond { border-left: 3px solid #b9f2ff; }
 .zrt-amount {
   display: block;
   font-size: 13px;
   font-weight: 800;
   color: #fff;
+  white-space: nowrap;
 }
 .zrt-gain {
   display: block;
   font-size: 10px;
   font-weight: 600;
   color: var(--success);
-  margin-top: 2px;
+  margin-top: 3px;
 }
+/* Highlight row (10 Years) */
 tr.zrt-highlight {
   background: linear-gradient(135deg, rgba(212,165,116,0.12), rgba(95,179,142,0.08));
 }
@@ -1257,6 +1265,89 @@ tr.zrt-highlight .zrt-amount {
 /* Zebra striping */
 .zrt-table tbody tr:nth-child(even):not(.zrt-highlight) {
   background: rgba(255,255,255,0.015);
+}
+
+/* ── Mobile: card layout (<700px) ── */
+@media (max-width: 700px) {
+  .zrt-wrap {
+    border: none;
+    background: none;
+    overflow: visible;
+  }
+  .zrt-table {
+    min-width: 0;
+    display: block;
+  }
+  .zrt-table thead {
+    display: none;
+  }
+  .zrt-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .zrt-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: rgba(10,14,22,0.6);
+    border: 1px solid rgba(212,165,116,0.15);
+    border-radius: 10px;
+    padding: 16px 14px;
+  }
+  .zrt-table tbody tr.zrt-highlight {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, rgba(212,165,116,0.1), rgba(95,179,142,0.06));
+  }
+  .zrt-period {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 0 0 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(212,165,116,0.12);
+  }
+  .zrt-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 6px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+  }
+  .zrt-cell.bronze  { border-left-color: #cd7f32; }
+  .zrt-cell.silver  { border-left-color: #c0c0c0; }
+  .zrt-cell.gold    { border-left-color: var(--gold); }
+  .zrt-cell.platinum{ border-left-color: #e5e4e2; }
+  .zrt-cell.diamond { border-left-color: #b9f2ff; }
+  .zrt-cell::before {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    color: var(--slate);
+  }
+  .zrt-cell.bronze::before  { content: "BRONZE"; color: #cd7f32; }
+  .zrt-cell.silver::before  { content: "SILVER"; color: #c0c0c0; }
+  .zrt-cell.gold::before    { content: "GOLD"; color: var(--gold); }
+  .zrt-cell.platinum::before{ content: "PLATINUM"; color: #e5e4e2; }
+  .zrt-cell.diamond::before { content: "DIAMOND"; color: #b9f2ff; }
+  .zrt-amount {
+    font-size: 13px;
+  }
+  .zrt-gain {
+    font-size: 10px;
+  }
+  /* Diamond on last row alone, centered */
+  .zrt-table tbody tr td:last-child:nth-child(even) {
+    grid-column: 1 / -1;
+    max-width: 50%;
+    margin: 0 auto;
+  }
 }
 
 .ice-note {
@@ -1405,7 +1496,7 @@ tr.zrt-highlight .zrt-amount {
   .zrt-amount { font-size: 12px; }
   .ic-insights { grid-template-columns: 1fr; }
 }
-@media (max-width: 900px) {
+@media (max-width: 900px) and (min-width: 701px) {
   .zrt-wrap { border-radius: 8px; }
   .zrt-table th, .zrt-table td { padding: 8px 6px; }
   .zrt-amount { font-size: 11px; }
