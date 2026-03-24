@@ -34,11 +34,11 @@ const AdminPanel = (() => {
   const ADMIN_PASS  = 'ZenAdmin2026!';
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 5000,    apy: '15–22%', maxLev: '5x',  commission: 0.15 },
-    silver:   { label: 'Silver',   color: '#c0c0c0', minDeposit: 25000,   apy: '22–32%', maxLev: '10x', commission: 0.12 },
-    gold:     { label: 'Gold',     color: '#d4a574', minDeposit: 100000,  apy: '32–45%', maxLev: '25x', commission: 0.10 },
-    platinum: { label: 'Platinum', color: '#e5e4e2', minDeposit: 500000,  apy: '45–65%', maxLev: '50x', commission: 0.07 },
-    diamond:  { label: 'Diamond',  color: '#b9f2ff', minDeposit: 1000000, apy: '65–85%', maxLev: '100x',commission: 0.05 },
+    bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 5000,    apy: '25–38%', maxLev: '5x',  commission: 0.15 },
+    silver:   { label: 'Silver',   color: '#c0c0c0', minDeposit: 25000,   apy: '38–52%', maxLev: '10x', commission: 0.12 },
+    gold:     { label: 'Gold',     color: '#d4a574', minDeposit: 100000,  apy: '52–72%', maxLev: '25x', commission: 0.10 },
+    platinum: { label: 'Platinum', color: '#e5e4e2', minDeposit: 500000,  apy: '72–95%', maxLev: '50x', commission: 0.07 },
+    diamond:  { label: 'Diamond',  color: '#b9f2ff', minDeposit: 1000000, apy: '95–125%', maxLev: '100x',commission: 0.05 },
   };
 
   const ITEMS_PER_PAGE = 15;

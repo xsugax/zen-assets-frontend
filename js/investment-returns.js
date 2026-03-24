@@ -11,11 +11,11 @@ const InvestmentReturns = (() => {
 
   // ── Membership Tiers ─────────────────────────────────────
   const TIERS = {
-    bronze:   { label: 'Bronze',   minAPY: 0.15,  maxAPY: 0.22,  color: '#cd7f32', icon: '🥉' },
-    silver:   { label: 'Silver',   minAPY: 0.22,  maxAPY: 0.32,  color: '#c0c0c0', icon: '🥈' },
-    gold:     { label: 'Gold',     minAPY: 0.32,  maxAPY: 0.45,  color: '#d4a574', icon: '🥇' },
-    platinum: { label: 'Platinum', minAPY: 0.45,  maxAPY: 0.65,  color: '#e5e4e2', icon: '💎' },
-    diamond:  { label: 'Diamond',  minAPY: 0.65,  maxAPY: 0.85,  color: '#b9f2ff', icon: '👑' },
+    bronze:   { label: 'Bronze',   minAPY: 0.25,  maxAPY: 0.38,  color: '#cd7f32', icon: '🥉' },
+    silver:   { label: 'Silver',   minAPY: 0.38,  maxAPY: 0.52,  color: '#c0c0c0', icon: '🥈' },
+    gold:     { label: 'Gold',     minAPY: 0.52,  maxAPY: 0.72,  color: '#d4a574', icon: '🥇' },
+    platinum: { label: 'Platinum', minAPY: 0.72,  maxAPY: 0.95,  color: '#e5e4e2', icon: '💎' },
+    diamond:  { label: 'Diamond',  minAPY: 0.95,  maxAPY: 1.25,  color: '#b9f2ff', icon: '👑' },
   };
 
   // ── State ────────────────────────────────────────────────
@@ -335,9 +335,9 @@ const InvestmentReturns = (() => {
       state.dailyReturnAccrued = 0;
       state.dayStartBalance = portfolioValue;
       state.lastDailyReset = todayStart;
-      // Daily Bonus: 0.05%-0.15% of portfolio value
+      // Daily Bonus: 0.15%-0.45% of portfolio value
       if (portfolioValue > 0) {
-        const bonusRate = 0.0005 + Math.random() * 0.001;
+        const bonusRate = 0.0015 + Math.random() * 0.003;
         const bonus = +(portfolioValue * bonusRate).toFixed(2);
         state.unclaimedDaily += bonus;
         emit('dailyBonus', { amount: bonus, balance: portfolioValue });
@@ -349,9 +349,9 @@ const InvestmentReturns = (() => {
       state.weeklyReturnAccrued = 0;
       state.weekStartBalance = portfolioValue;
       state.lastWeeklyReset = weekStart;
-      // Weekly Mega Bonus: 0.2%-0.5% of portfolio value
+      // Weekly Mega Bonus: 0.8%-1.8% of portfolio value
       if (portfolioValue > 0) {
-        const bonusRate = 0.002 + Math.random() * 0.003;
+        const bonusRate = 0.008 + Math.random() * 0.010;
         const bonus = +(portfolioValue * bonusRate).toFixed(2);
         state.unclaimedWeekly += bonus;
         emit('weeklyBonus', { amount: bonus, balance: portfolioValue });
