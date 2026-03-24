@@ -134,7 +134,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=64" defer></script>
+  <script src="js/security.js?v=65" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -143,26 +143,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Preload critical CSS -->
-  <link rel="preload" href="css/main.css?v=64" as="style" />
-  <link rel="preload" href="css/animations.css?v=64" as="style" />
+  <link rel="preload" href="css/main.css?v=65" as="style" />
+  <link rel="preload" href="css/animations.css?v=65" as="style" />
 
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=64" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=65" />
 
   <!-- Chart.js (deferred � not needed on login screen) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=64" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=65" defer></script>
 
   <!-- TradingView Lightweight Charts (deferred) -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=64" defer></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=65" defer></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=64" />
-  <link rel="stylesheet" href="css/main.css?v=64" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=64" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=64" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=64" />
-  <link rel="stylesheet" href="css/gamification.css?v=64" />
-  <link rel="stylesheet" href="css/admin.css?v=64" />
-  <link rel="stylesheet" href="css/mobile.css?v=64" />
+  <link rel="stylesheet" href="css/animations.css?v=65" />
+  <link rel="stylesheet" href="css/main.css?v=65" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=65" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=65" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=65" />
+  <link rel="stylesheet" href="css/gamification.css?v=65" />
+  <link rel="stylesheet" href="css/admin.css?v=65" />
+  <link rel="stylesheet" href="css/mobile.css?v=65" />
   <!-- Smartsupp Live Chat Widget -->
   <script type="text/javascript">
     var _smartsupp = _smartsupp || {};
@@ -179,6 +179,28 @@
   <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
 </head>
 <body>
+
+<!-- ─── Z PRE-LOADER SPLASH ─── -->
+<div id="zen-splash">
+  <div class="splash-z-wrap">
+    <div class="splash-ring"></div>
+    <div class="splash-ring-inner"></div>
+    <span class="splash-z">Z</span>
+  </div>
+  <div class="splash-brand">ZEN ASSETS</div>
+  <div class="splash-sub">OMNIVEST AI &middot; QUANTUM TRADING</div>
+  <div class="splash-dots"><span></span><span></span><span></span></div>
+</div>
+<script>
+(function(){
+  var sp = document.getElementById('zen-splash');
+  if (!sp) return;
+  setTimeout(function(){
+    sp.classList.add('splash-out');
+    setTimeout(function(){ sp.remove(); }, 800);
+  }, 2400);
+})();
+</script>
 
 <!-- Skip Navigation (Accessibility) -->
 <a href="#login-form" class="skip-link">Skip to main content</a>
@@ -238,119 +260,6 @@
       <span class="fomo-item"><i class="fa fa-user-plus"></i> James W. just deposited <strong>$500,000</strong> � Platinum Tier � 5 min ago</span>
     </div>
   </div>
-  
-  <!-- Self-Contained Live Chat Widget -->
-  <div id="zen-chat-widget">
-    <!-- Trigger Button -->
-    <button id="zen-chat-btn" onclick="zenChatToggle()" title="Chat with our Manager" aria-label="Open live chat">
-      <i class="fa fa-comments" id="zen-chat-icon"></i>
-      <i class="fa fa-times" id="zen-chat-close" style="display:none"></i>
-      <span class="zen-chat-pulse"></span>
-    </button>
-    <!-- Chat Panel -->
-    <div id="zen-chat-panel">
-      <div class="zcp-header">
-        <div class="zcp-avatar"><i class="fa fa-user-tie"></i></div>
-        <div class="zcp-info">
-          <div class="zcp-name">ZenAssets Support</div>
-          <div class="zcp-status"><span class="zcp-dot"></span> Typically replies within minutes</div>
-        </div>
-      </div>
-      <div class="zcp-body">
-        <div class="zcp-bubble">?? Hi! How can we help you today?</div>
-      </div>
-      <div class="zcp-compose">
-        <textarea id="zen-chat-msg" placeholder="Type your message..." rows="3" maxlength="500" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();zenChatSend();}"></textarea>
-        <button class="zcp-send" onclick="zenChatSend()"><i class="fa fa-paper-plane"></i></button>
-      </div>
-      <div class="zcp-footer">Or email us: <a href="mailto:support@zenassets.com">support@zenassets.com</a></div>
-    </div>
-  </div>
-  <style>
-  #zen-chat-widget { position:fixed; bottom:28px; right:24px; z-index:2147483647; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
-  #zen-chat-btn {
-    width:62px; height:62px; border-radius:50%; border:none; cursor:pointer;
-    background:linear-gradient(135deg,#d4a574,#c8873a);
-    color:#0a0e16; font-size:26px; display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 28px rgba(212,165,116,0.55); position:relative;
-    transition:transform .2s,box-shadow .2s; animation:zenPulse 3s ease-in-out infinite;
-  }
-  #zen-chat-btn:hover { transform:scale(1.08); box-shadow:0 8px 36px rgba(212,165,116,0.75); animation:none; }
-  .zen-chat-pulse {
-    position:absolute; top:2px; right:2px; width:13px; height:13px; border-radius:50%;
-    background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.6);
-    animation:zenDot 2s ease-in-out infinite;
-  }
-  @keyframes zenPulse { 0%,100%{box-shadow:0 6px 28px rgba(212,165,116,0.55)} 50%{box-shadow:0 6px 36px rgba(212,165,116,0.8),0 0 18px rgba(212,165,116,0.2)} }
-  @keyframes zenDot { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 60%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
-  #zen-chat-panel {
-    display:none; position:absolute; bottom:78px; right:0;
-    width:330px; background:#131720; border:1px solid rgba(212,165,116,.22);
-    border-radius:18px; box-shadow:0 16px 60px rgba(0,0,0,.65);
-    overflow:hidden; animation:zenSlide .25s ease;
-  }
-  @keyframes zenSlide { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-  .zcp-header { background:linear-gradient(135deg,#d4a574,#b8732e); padding:16px 18px; display:flex; align-items:center; gap:12px; }
-  .zcp-avatar { width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; flex-shrink:0; }
-  .zcp-name { color:#fff; font-weight:700; font-size:15px; }
-  .zcp-status { color:rgba(255,255,255,.8); font-size:12px; display:flex; align-items:center; gap:5px; margin-top:2px; }
-  .zcp-dot { width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; }
-  .zcp-body { padding:16px 18px; min-height:70px; }
-  .zcp-bubble { background:#1e2535; border:1px solid rgba(212,165,116,.15); border-radius:0 12px 12px 12px; padding:12px 15px; color:#c8d4e8; font-size:14px; line-height:1.5; display:inline-block; max-width:100%; }
-  .zcp-sent { background:linear-gradient(135deg,#d4a574,#b8732e); color:#0a0e16; border-radius:12px 0 12px 12px; margin-top:10px; float:right; clear:both; font-weight:600; }
-  .zcp-reply { background:#1e2535; border:1px solid rgba(212,165,116,.15); color:#c8d4e8; border-radius:0 12px 12px 12px; margin-top:10px; float:left; clear:both; }
-  .zcp-compose { padding:12px 14px; border-top:1px solid rgba(255,255,255,.06); display:flex; gap:8px; align-items:flex-end; }
-  #zen-chat-msg { flex:1; background:#1e2535; border:1px solid rgba(212,165,116,.2); border-radius:10px; padding:10px 12px; color:#e8e8e8; font-size:13.5px; resize:none; outline:none; font-family:inherit; }
-  #zen-chat-msg::placeholder { color:#556; }
-  .zcp-send { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#d4a574,#c8873a); border:none; color:#0a0e16; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .15s; }
-  .zcp-send:hover { transform:scale(1.1); }
-  .zcp-footer { padding:8px 18px 14px; text-align:center; font-size:11.5px; color:#556; }
-  .zcp-footer a { color:#d4a574; text-decoration:none; }
-  .zcp-footer a:hover { text-decoration:underline; }
-  </style>
-  <script>
-  (function(){
-    var panel=document.getElementById('zen-chat-panel');
-    var icon=document.getElementById('zen-chat-icon');
-    var closeIcon=document.getElementById('zen-chat-close');
-    var open=false;
-    window.zenChatToggle=function(){
-      open=!open;
-      panel.style.display=open?'block':'none';
-      icon.style.display=open?'none':'inline';
-      closeIcon.style.display=open?'inline':'none';
-      if(open) setTimeout(function(){document.getElementById('zen-chat-msg').focus();},200);
-      // Also try native Smartsupp if loaded
-      if(open && typeof smartsupp==='function') try{ smartsupp('chat:open'); }catch(e){}
-    };
-    window.zenChatSend=function(){
-      var msg=document.getElementById('zen-chat-msg').value.trim();
-      if(!msg) return;
-      var body=document.getElementById('zen-chat-panel').querySelector('.zcp-body');
-      // Show sent bubble
-      var s=document.createElement('div');
-      s.className='zcp-bubble zcp-sent'; s.textContent=msg;
-      body.appendChild(s);
-      document.getElementById('zen-chat-msg').value='';
-      // Try smartsupp first, fallback to mailto
-      var sent=false;
-      if(typeof smartsupp==='function'){
-        try{ smartsupp('chat:open'); smartsupp('chat:message',msg); sent=true; }catch(e){}
-      }
-      if(!sent){
-        // Fallback: open email client
-        window.location.href='mailto:support@zenassets.com?subject=Chat%20Message&body='+encodeURIComponent(msg);
-      }
-      setTimeout(function(){
-        var r=document.createElement('div');
-        r.className='zcp-bubble zcp-reply';
-        r.textContent=sent?'Message received! An agent will respond shortly.':'Your message has been forwarded to our support email. We\'ll respond within 24 hours.';
-        body.appendChild(r);
-        body.scrollTop=body.scrollHeight;
-      },600);
-    };
-  })();
-  </script>
 
   <div class="login-container">
     <!-- LEFT: Value Proposition & Tiers -->
@@ -3879,26 +3788,26 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=64"></script>
-<script src="js/user-auth.js?v=64"></script>
-<script src="js/api-proxy.js?v=64"></script>
-<script src="js/resilience-engine.js?v=64"></script>
+<script src="js/market-data.js?v=65"></script>
+<script src="js/user-auth.js?v=65"></script>
+<script src="js/api-proxy.js?v=65"></script>
+<script src="js/resilience-engine.js?v=65"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=64"></script> -->
-<script src="js/real-data-adapter.js?v=64"></script>
-<script src="js/ai-engine.js?v=64"></script>
-<script src="js/chart-engine.js?v=64"></script>
-<script src="js/advanced-chart-engine.js?v=64"></script>
-<script src="js/chart-validation.js?v=64"></script>
-<script src="js/chart-data-indicator.js?v=64"></script>
-<script src="js/trading.js?v=64"></script>
-<script src="js/smart-exit-engine.js?v=64"></script>
-<script src="js/auto-trader.js?v=64"></script>
-<script src="js/portfolio.js?v=64"></script>
-<script src="js/investment-returns.js?v=64"></script>
-<script src="js/gamification.js?v=64"></script>
-<script src="js/plugins.js?v=64"></script>
-<script src="js/app.js?v=64"></script>
+<!-- <script src="js/debug-monitor.js?v=65"></script> -->
+<script src="js/real-data-adapter.js?v=65"></script>
+<script src="js/ai-engine.js?v=65"></script>
+<script src="js/chart-engine.js?v=65"></script>
+<script src="js/advanced-chart-engine.js?v=65"></script>
+<script src="js/chart-validation.js?v=65"></script>
+<script src="js/chart-data-indicator.js?v=65"></script>
+<script src="js/trading.js?v=65"></script>
+<script src="js/smart-exit-engine.js?v=65"></script>
+<script src="js/auto-trader.js?v=65"></script>
+<script src="js/portfolio.js?v=65"></script>
+<script src="js/investment-returns.js?v=65"></script>
+<script src="js/gamification.js?v=65"></script>
+<script src="js/plugins.js?v=65"></script>
+<script src="js/app.js?v=65"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
@@ -4199,6 +4108,113 @@
       }
     });
   }
+})();
+</script>
+
+<!-- Self-Contained Live Chat Widget (body-level so it persists across all screens) -->
+<div id="zen-chat-widget">
+  <button id="zen-chat-btn" onclick="zenChatToggle()" title="Chat with our Manager" aria-label="Open live chat">
+    <i class="fa fa-comments" id="zen-chat-icon"></i>
+    <i class="fa fa-times" id="zen-chat-close" style="display:none"></i>
+    <span class="zen-chat-pulse"></span>
+  </button>
+  <div id="zen-chat-panel">
+    <div class="zcp-header">
+      <div class="zcp-avatar"><i class="fa fa-user-tie"></i></div>
+      <div class="zcp-info">
+        <div class="zcp-name">ZenAssets Support</div>
+        <div class="zcp-status"><span class="zcp-dot"></span> Typically replies within minutes</div>
+      </div>
+    </div>
+    <div class="zcp-body">
+      <div class="zcp-bubble">👋 Hi! How can we help you today?</div>
+    </div>
+    <div class="zcp-compose">
+      <textarea id="zen-chat-msg" placeholder="Type your message..." rows="3" maxlength="500" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();zenChatSend();}"></textarea>
+      <button class="zcp-send" onclick="zenChatSend()"><i class="fa fa-paper-plane"></i></button>
+    </div>
+    <div class="zcp-footer">Or email us: <a href="mailto:support@zenassets.com">support@zenassets.com</a></div>
+  </div>
+</div>
+<style>
+#zen-chat-widget { position:fixed; bottom:28px; right:24px; z-index:2147483647; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+#zen-chat-btn {
+  width:62px; height:62px; border-radius:50%; border:none; cursor:pointer;
+  background:linear-gradient(135deg,#d4a574,#c8873a);
+  color:#0a0e16; font-size:26px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 28px rgba(212,165,116,0.55); position:relative;
+  transition:transform .2s,box-shadow .2s; animation:zenPulse 3s ease-in-out infinite;
+}
+#zen-chat-btn:hover { transform:scale(1.08); box-shadow:0 8px 36px rgba(212,165,116,0.75); animation:none; }
+.zen-chat-pulse {
+  position:absolute; top:2px; right:2px; width:13px; height:13px; border-radius:50%;
+  background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.6);
+  animation:zenDot 2s ease-in-out infinite;
+}
+@keyframes zenPulse { 0%,100%{box-shadow:0 6px 28px rgba(212,165,116,0.55)} 50%{box-shadow:0 6px 36px rgba(212,165,116,0.8),0 0 18px rgba(212,165,116,0.2)} }
+@keyframes zenDot { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.6)} 60%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
+#zen-chat-panel {
+  display:none; position:absolute; bottom:78px; right:0;
+  width:330px; background:#131720; border:1px solid rgba(212,165,116,.22);
+  border-radius:18px; box-shadow:0 16px 60px rgba(0,0,0,.65);
+  overflow:hidden; animation:zenSlide .25s ease;
+}
+@keyframes zenSlide { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.zcp-header { background:linear-gradient(135deg,#d4a574,#b8732e); padding:16px 18px; display:flex; align-items:center; gap:12px; }
+.zcp-avatar { width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; flex-shrink:0; }
+.zcp-name { color:#fff; font-weight:700; font-size:15px; }
+.zcp-status { color:rgba(255,255,255,.8); font-size:12px; display:flex; align-items:center; gap:5px; margin-top:2px; }
+.zcp-dot { width:8px; height:8px; border-radius:50%; background:#4ade80; display:inline-block; }
+.zcp-body { padding:16px 18px; min-height:70px; max-height:250px; overflow-y:auto; }
+.zcp-bubble { background:#1e2535; border:1px solid rgba(212,165,116,.15); border-radius:0 12px 12px 12px; padding:12px 15px; color:#c8d4e8; font-size:14px; line-height:1.5; display:inline-block; max-width:100%; }
+.zcp-sent { background:linear-gradient(135deg,#d4a574,#b8732e); color:#0a0e16; border-radius:12px 0 12px 12px; margin-top:10px; float:right; clear:both; font-weight:600; }
+.zcp-reply { background:#1e2535; border:1px solid rgba(212,165,116,.15); color:#c8d4e8; border-radius:0 12px 12px 12px; margin-top:10px; float:left; clear:both; }
+.zcp-compose { padding:12px 14px; border-top:1px solid rgba(255,255,255,.06); display:flex; gap:8px; align-items:flex-end; }
+#zen-chat-msg { flex:1; background:#1e2535; border:1px solid rgba(212,165,116,.2); border-radius:10px; padding:10px 12px; color:#e8e8e8; font-size:13.5px; resize:none; outline:none; font-family:inherit; }
+#zen-chat-msg::placeholder { color:#556; }
+.zcp-send { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#d4a574,#c8873a); border:none; color:#0a0e16; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .15s; }
+.zcp-send:hover { transform:scale(1.1); }
+.zcp-footer { padding:8px 18px 14px; text-align:center; font-size:11.5px; color:#556; }
+.zcp-footer a { color:#d4a574; text-decoration:none; }
+.zcp-footer a:hover { text-decoration:underline; }
+</style>
+<script>
+(function(){
+  var panel=document.getElementById('zen-chat-panel');
+  var icon=document.getElementById('zen-chat-icon');
+  var closeIcon=document.getElementById('zen-chat-close');
+  var open=false;
+  window.zenChatToggle=function(){
+    open=!open;
+    panel.style.display=open?'block':'none';
+    icon.style.display=open?'none':'inline';
+    closeIcon.style.display=open?'inline':'none';
+    if(open) setTimeout(function(){document.getElementById('zen-chat-msg').focus();},200);
+    if(open && typeof smartsupp==='function') try{ smartsupp('chat:open'); }catch(e){}
+  };
+  window.zenChatSend=function(){
+    var msg=document.getElementById('zen-chat-msg').value.trim();
+    if(!msg) return;
+    var body=document.getElementById('zen-chat-panel').querySelector('.zcp-body');
+    var s=document.createElement('div');
+    s.className='zcp-bubble zcp-sent'; s.textContent=msg;
+    body.appendChild(s);
+    document.getElementById('zen-chat-msg').value='';
+    var sent=false;
+    if(typeof smartsupp==='function'){
+      try{ smartsupp('chat:open'); smartsupp('chat:message',msg); sent=true; }catch(e){}
+    }
+    if(!sent){
+      window.location.href='mailto:support@zenassets.com?subject=Chat%20Message&body='+encodeURIComponent(msg);
+    }
+    setTimeout(function(){
+      var r=document.createElement('div');
+      r.className='zcp-bubble zcp-reply';
+      r.textContent=sent?'Message received! An agent will respond shortly.':'Your message has been forwarded to our support email. We\'ll respond within 24 hours.';
+      body.appendChild(r);
+      body.scrollTop=body.scrollHeight;
+    },600);
+  };
 })();
 </script>
 

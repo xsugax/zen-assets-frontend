@@ -32,6 +32,12 @@
   --orange:      #d48954;
   --blue-accent: #5285c7;
 
+  /* Accent aliases (used across components) */
+  --cyan:    #d4a574;     /* mapped to gold for unified broker branding */
+  --purple:  #8b5cf6;
+  --success: #5fb38e;
+  --danger:  #d65d5d;
+
   /* Glass effects */
   --glass-bg:     rgba(26, 32, 41, 0.80);
   --glass-border: rgba(212, 165, 116, 0.15);
@@ -223,6 +229,89 @@ small { font-size: .8em; opacity: .7; display: block; }
 .bm-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bm-label { font-size: 9px; color: #4a5568; letter-spacing: 2px; }
 .bm-val { font-size: 15px; color: var(--gold); font-weight: 700; }
+
+/* ═══════════════════════════════════════════════════════
+   Z PRE-LOADER — SPLASH SCREEN (shows before login)
+═══════════════════════════════════════════════════════ */
+#zen-splash {
+  position: fixed; inset: 0; z-index: 999999;
+  background: #06080d;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  gap: 18px;
+  transition: opacity .7s ease, visibility .7s ease;
+}
+#zen-splash.splash-out {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+.splash-z-wrap {
+  position: relative;
+  width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+}
+.splash-ring {
+  position: absolute; inset: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--gold);
+  border-right-color: rgba(212,165,116,.3);
+  border-radius: 50%;
+  animation: splashSpin 1.2s linear infinite;
+}
+.splash-ring-inner {
+  position: absolute; inset: 12px;
+  border: 1.5px solid transparent;
+  border-bottom-color: var(--gold-bright);
+  border-left-color: rgba(230,184,135,.3);
+  border-radius: 50%;
+  animation: splashSpin 1.8s linear infinite reverse;
+}
+.splash-z {
+  font-family: var(--font-brand, 'Space Grotesk', sans-serif);
+  font-size: 54px; font-weight: 900;
+  color: var(--gold, #d4a574);
+  text-shadow: 0 0 30px rgba(212,165,116,.5), 0 0 60px rgba(212,165,116,.2);
+  animation: splashZPulse 2s ease-in-out infinite;
+  position: relative; z-index: 2;
+}
+.splash-brand {
+  font-family: var(--font-brand, 'Space Grotesk', sans-serif);
+  font-size: 18px; font-weight: 700;
+  letter-spacing: 8px;
+  color: #fff;
+  opacity: 0;
+  animation: splashFadeUp .6s ease .4s forwards;
+}
+.splash-sub {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px; letter-spacing: 3px;
+  color: rgba(212,165,116,.7);
+  opacity: 0;
+  animation: splashFadeUp .5s ease .7s forwards;
+}
+.splash-dots {
+  display: flex; gap: 8px;
+  margin-top: 6px;
+}
+.splash-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold, #d4a574);
+  opacity: .3;
+  animation: splashDot 1.2s ease-in-out infinite;
+}
+.splash-dots span:nth-child(2) { animation-delay: .2s; }
+.splash-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes splashSpin { to { transform: rotate(360deg); } }
+@keyframes splashZPulse {
+  0%,100% { text-shadow: 0 0 20px rgba(212,165,116,.4), 0 0 50px rgba(212,165,116,.15); }
+  50%     { text-shadow: 0 0 35px rgba(212,165,116,.7), 0 0 70px rgba(212,165,116,.3); }
+}
+@keyframes splashFadeUp {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes splashDot {
+  0%,100% { opacity:.3; transform:scale(1); }
+  50%     { opacity:1; transform:scale(1.4); }
+}
 
 /* ═══════════════════════════════════════════════════════
    LOGIN SCREEN - ADDICTIVE WEALTH ENGINE
@@ -1971,15 +2060,15 @@ small { font-size: .8em; opacity: .7; display: block; }
 .brand-pill {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 12px 4px 4px;
-  background: rgba(0,212,255,.06);
-  border: 1px solid rgba(0,212,255,.15);
+  background: rgba(212,165,116,.06);
+  border: 1px solid rgba(212,165,116,.18);
   border-radius: 30px;
 }
 .brand-hex {
   width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  background: linear-gradient(135deg, var(--gold), var(--amber));
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-brand); font-weight: 900; font-size: 14px; color: #fff;
+  font-family: var(--font-brand); font-weight: 900; font-size: 14px; color: #0a0e16;
 }
 .brand-main {
   font-family: var(--font-brand); font-size: 12px; font-weight: 700;
@@ -1987,7 +2076,7 @@ small { font-size: .8em; opacity: .7; display: block; }
   display: block;
 }
 .brand-tagline {
-  font-size: 8px; letter-spacing: 2px; color: var(--cyan);
+  font-size: 8px; letter-spacing: 2px; color: var(--gold);
   display: block; font-family: var(--font-mono);
 }
 
@@ -2177,10 +2266,10 @@ small { font-size: .8em; opacity: .7; display: block; }
   transition: var(--t-fast);
   margin-bottom: 2px;
 }
-.nav-item:hover { background: rgba(0,212,255,.06); }
+.nav-item:hover { background: rgba(212,165,116,.06); }
 .nav-item.active {
-  background: rgba(0,212,255,.1);
-  border: 1px solid rgba(0,212,255,.2);
+  background: rgba(212,165,116,.08);
+  border: 1px solid rgba(212,165,116,.18);
 }
 .nav-item.active .ni-label { color: #fff; }
 .nav-item.active .ni-icon { color: var(--cyan); }
@@ -2216,8 +2305,8 @@ small { font-size: .8em; opacity: .7; display: block; }
   position: relative; margin: 8px 12px;
   height: 80px; display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-md);
-  background: rgba(0,212,255,.04);
-  border: 1px solid rgba(0,212,255,.1);
+  background: rgba(212,165,116,.04);
+  border: 1px solid rgba(212,165,116,.12);
   overflow: hidden;
 }
 .ai-orb-ring {
@@ -2225,11 +2314,11 @@ small { font-size: .8em; opacity: .7; display: block; }
   animation: orb-breathe 3s ease-in-out infinite;
 }
 .ai-orb-ring.outer {
-  width: 60px; height: 60px; border: 1px solid rgba(0,212,255,.25);
+  width: 60px; height: 60px; border: 1px solid rgba(212,165,116,.25);
   animation: orb-spin-out 8s linear infinite;
 }
 .ai-orb-ring.inner {
-  width: 40px; height: 40px; border: 1px dashed rgba(0,255,136,.35);
+  width: 40px; height: 40px; border: 1px dashed rgba(95,179,142,.35);
   animation: orb-spin-in 5s linear infinite;
 }
 .ai-orb-center {
