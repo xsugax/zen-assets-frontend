@@ -144,6 +144,61 @@ if (document.readyState === 'loading') {
   AuthManager.init();
 }
 
+// ── Cross-Device Account Import ─────────────────────────────
+// Handles ?import= URL parameter (magic link from admin)
+(function _checkURLImport() {
+  function run() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('import');
+    if (!code || typeof UserAuth === 'undefined') return;
+    const result = UserAuth.importAccount(code);
+    if (result.ok) {
+      // Clean the URL
+      const clean = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', clean);
+      // Show confirmation then focus on login
+      setTimeout(() => {
+        alert('Account imported successfully for ' + result.fullName + '!\n\nYou can now log in with your email and password.');
+        const emailInput = document.getElementById('login-email');
+        if (emailInput) { emailInput.value = result.email; emailInput.focus(); }
+      }, 300);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
+
+// Form handler for manual import
+function handleImportAccount(e) {
+  e.preventDefault();
+  const code = (document.getElementById('import-code-input') || {}).value || '';
+  const errEl = document.getElementById('import-error');
+  const okEl = document.getElementById('import-success');
+  const btn = document.getElementById('import-btn');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (okEl) { okEl.style.display = 'none'; }
+  if (!code.trim()) {
+    if (errEl) { errEl.textContent = 'Please paste your transfer code.'; errEl.style.display = ''; }
+    return false;
+  }
+  if (typeof UserAuth === 'undefined') {
+    if (errEl) { errEl.textContent = 'Auth system unavailable. Please refresh.'; errEl.style.display = ''; }
+    return false;
+  }
+  const result = UserAuth.importAccount(code);
+  if (result.ok) {
+    if (okEl) { okEl.innerHTML = '<i class="fa fa-check-circle"></i> Account imported for <strong>' + result.fullName + '</strong>! You can now close this and log in.'; okEl.style.display = ''; }
+    if (btn) { btn.innerHTML = '<i class="fa fa-check"></i> Imported!'; btn.disabled = true; }
+    // Pre-fill email
+    const emailInput = document.getElementById('login-email');
+    if (emailInput && result.email) emailInput.value = result.email;
+    setTimeout(() => { document.getElementById('import-account-modal').classList.remove('visible'); if (btn) { btn.innerHTML = '<i class="fa fa-download"></i> Import Account'; btn.disabled = false; } }, 2500);
+  } else {
+    if (errEl) { errEl.textContent = result.error || 'Import failed.'; errEl.style.display = ''; }
+  }
+  return false;
+}
+
 const App = (() => {
   'use strict';
 

@@ -214,11 +214,11 @@ const UserAuth = (() => {
   _localStore.ensureAdmin();
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   minDeposit: 5000,    apyRange: '15–22%',  color: '#cd7f32', icon: 'fa-medal'  },
-    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '22–32%',  color: '#c0c0c0', icon: 'fa-award'  },
-    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '32–45%',  color: '#d4a574', icon: 'fa-trophy' },
-    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '45–65%',  color: '#e5e4e2', icon: 'fa-gem'    },
-    diamond:  { label: 'Diamond',  minDeposit: 1000000, apyRange: '65–85%',  color: '#b9f2ff', icon: 'fa-crown'  },
+    bronze:   { label: 'Bronze',   minDeposit: 2000,    apyRange: '25–38%',  color: '#cd7f32', icon: 'fa-medal'  },
+    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '38–52%',  color: '#c0c0c0', icon: 'fa-award'  },
+    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '52–72%',  color: '#d4a574', icon: 'fa-trophy' },
+    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '72–95%',  color: '#e5e4e2', icon: 'fa-gem'    },
+    diamond:  { label: 'Diamond',  minDeposit: 1000000, apyRange: '95–125%', color: '#b9f2ff', icon: 'fa-crown'  },
   };
 
   // ── Local Cache Helpers ──────────────────────────────────
@@ -749,6 +749,53 @@ const UserAuth = (() => {
     return _api(`/wallet/transactions${qs ? '?' + qs : ''}`);
   }
 
+  // ── Account Transfer (cross-device login) ────────────────
+  // Generates a portable code containing user + investment data
+  // that can be imported on any device to enable login there.
+  function exportAccount(email) {
+    const user = _localStore.findByEmail(email);
+    if (!user) return null;
+    const payload = { v: 1, user: { ...user } };
+    // Include investment state if it exists
+    try {
+      const inv = JSON.parse(localStorage.getItem('zen_investment_' + email.toLowerCase()));
+      if (inv) payload.investment = inv;
+    } catch {}
+    try { return 'ZEN' + btoa(unescape(encodeURIComponent(JSON.stringify(payload)))); }
+    catch { return null; }
+  }
+
+  // Import an account from a transfer code onto this device
+  function importAccount(code) {
+    if (!code) return { ok: false, error: 'No transfer code provided.' };
+    code = code.trim();
+    if (code.startsWith('ZEN')) code = code.slice(3);
+    try {
+      const json = decodeURIComponent(escape(atob(code)));
+      const payload = JSON.parse(json);
+      if (!payload.user || !payload.user.email || !payload.user.id) {
+        return { ok: false, error: 'Invalid transfer code format.' };
+      }
+      const user = payload.user;
+      // Merge into local store (update if exists, insert if new)
+      const users = _localStore.getAll();
+      const idx = users.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
+      if (idx !== -1) {
+        users[idx] = { ...users[idx], ...user };
+      } else {
+        users.push(user);
+      }
+      _localStore.save(users);
+      // Import investment state if present
+      if (payload.investment) {
+        localStorage.setItem('zen_investment_' + user.email.toLowerCase(), JSON.stringify(payload.investment));
+      }
+      return { ok: true, email: user.email, fullName: user.fullName || user.email };
+    } catch {
+      return { ok: false, error: 'Failed to decode transfer code. Please check and try again.' };
+    }
+  }
+
   // ── Tier Upgrade Request ─────────────────────────────────
   async function requestUpgrade(newTier) {
     if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
@@ -901,6 +948,7 @@ const UserAuth = (() => {
     saveTrade, getTrades, getTradeStats,
     submitKYC, getKYCStatus,
     getStripePublishableKey, createStripeSession, redirectToStripe,
+    exportAccount, importAccount,
     TIERS,
   };
 })();

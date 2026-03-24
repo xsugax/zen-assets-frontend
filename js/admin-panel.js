@@ -34,7 +34,7 @@ const AdminPanel = (() => {
   const ADMIN_PASS  = 'ZenAdmin2026!';
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 5000,    apy: '25–38%', maxLev: '5x',  commission: 0.15 },
+    bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 2000,    apy: '25–38%', maxLev: '5x',  commission: 0.15 },
     silver:   { label: 'Silver',   color: '#c0c0c0', minDeposit: 25000,   apy: '38–52%', maxLev: '10x', commission: 0.12 },
     gold:     { label: 'Gold',     color: '#d4a574', minDeposit: 100000,  apy: '52–72%', maxLev: '25x', commission: 0.10 },
     platinum: { label: 'Platinum', color: '#e5e4e2', minDeposit: 500000,  apy: '72–95%', maxLev: '50x', commission: 0.07 },
@@ -731,6 +731,7 @@ const AdminPanel = (() => {
             <td class="actions-cell">
               <button class="act-btn" title="Edit" onclick="AdminPanel.openEditUser('${u.email}')"><i class="fa fa-edit"></i></button>
               <button class="act-btn green" title="Fund &amp; Activate" onclick="AdminPanel.activateAccountPrompt('${u.email}')"><i class="fa fa-rocket"></i></button>
+              <button class="act-btn" title="Share Login Code" onclick="AdminPanel.shareCode('${u.email}')" style="color:#0ff"><i class="fa fa-share-nodes"></i></button>
               <button class="act-btn ${u.status === 'active' ? 'warn' : 'green'}" title="${u.status === 'active' ? 'Suspend' : 'Reactivate'}" onclick="AdminPanel.toggleUserStatus('${u.email}')">
                 <i class="fa fa-${u.status === 'active' ? 'ban' : 'check'}"></i>
               </button>
@@ -1039,10 +1040,75 @@ const AdminPanel = (() => {
     log('admin_action', `Activated account for ${email}: $${amount.toLocaleString()}`, 'success', { email, amount });
     toast(`Account activated! $${amount.toLocaleString()} funded for ${u.fullName || email}`, 'success');
     closeModal('modal-activate');
+
+    // Generate transfer code for cross-device login
+    try {
+      const code = UserAuth.exportAccount(email);
+      if (code) {
+        const link = location.origin + '/?import=' + encodeURIComponent(code);
+        _showTransferCodeModal(u.fullName || email, code, link);
+      }
+    } catch (e) { console.warn('Transfer code generation failed:', e.message); }
+
     _cache.users = null;
     renderUsers();
     _updateHeaderStats();
   }
+
+  // Show transfer code after activation so admin can share with user
+  function _showTransferCodeModal(name, code, link) {
+    // Remove existing modal if any
+    let m = document.getElementById('modal-transfer-code');
+    if (m) m.remove();
+
+    m = document.createElement('div');
+    m.id = 'modal-transfer-code';
+    m.className = 'ap-modal visible';
+    m.innerHTML = `
+      <div class="ap-modal-content" style="max-width:560px">
+        <div class="ap-modal-header">
+          <h3><i class="fa fa-share-nodes"></i> Cross-Device Login — ${_esc(name)}</h3>
+          <button class="ap-modal-close" onclick="document.getElementById('modal-transfer-code').classList.remove('visible')">&times;</button>
+        </div>
+        <div class="ap-modal-body" style="text-align:left">
+          <p style="margin-bottom:12px;color:#ccc;">Share <strong>one</strong> of these with the user so they can log in from <em>any</em> device:</p>
+
+          <label style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;">Option 1 — Magic Link (paste into browser)</label>
+          <div style="position:relative;margin:6px 0 16px">
+            <input id="tc-link" readonly value="${_esc(link)}" style="width:100%;padding:10px 80px 10px 12px;background:#1a1a2e;border:1px solid #333;color:#d4a574;border-radius:8px;font-size:13px;font-family:monospace"/>
+            <button onclick="_copyField('tc-link')" style="position:absolute;right:4px;top:4px;bottom:4px;padding:0 14px;background:#d4a574;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Copy</button>
+          </div>
+
+          <label style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px;">Option 2 — Transfer Code (enter on login page)</label>
+          <div style="position:relative;margin:6px 0 16px">
+            <textarea id="tc-code" readonly rows="3" style="width:100%;padding:10px 80px 10px 12px;background:#1a1a2e;border:1px solid #333;color:#0f6;border-radius:8px;font-size:12px;font-family:monospace;resize:none;word-break:break-all">${_esc(code)}</textarea>
+            <button onclick="_copyField('tc-code')" style="position:absolute;right:4px;top:4px;padding:6px 14px;background:#d4a574;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Copy</button>
+          </div>
+
+          <div style="padding:10px 14px;background:rgba(212,165,116,0.08);border:1px solid rgba(212,165,116,0.2);border-radius:8px;font-size:13px;color:#bbb;">
+            <i class="fa fa-info-circle" style="color:#d4a574"></i>
+            The user opens the <strong>magic link</strong> in any browser, or clicks <strong>"Import Account"</strong> on the login page and pastes the transfer code. After import, they log in with their email &amp; password as normal.
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+
+  // Helper: copy input/textarea value
+  function _copyField(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+      toast('Copied to clipboard!', 'success');
+    }).catch(() => {
+      document.execCommand('copy');
+      toast('Copied!', 'success');
+    });
+  }
+
+  // Escape HTML for safe insertion
+  function _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   async function toggleUserStatus(email) {
     const users = loadUsers();
@@ -2039,6 +2105,16 @@ const AdminPanel = (() => {
     onBroadcastTargetChange, previewBroadcast, sendBroadcast,
     // Fund & Activate
     activateAccountPrompt, executeActivation,
+    // Cross-device login
+    shareCode: function(email) {
+      const users = loadUsers();
+      const u = users ? users[email.toLowerCase()] : null;
+      const name = u ? u.fullName || email : email;
+      const code = (typeof UserAuth !== 'undefined' && UserAuth.exportAccount) ? UserAuth.exportAccount(email) : null;
+      if (!code) return toast('Could not generate code for this account.', 'error');
+      const link = location.origin + '/?import=' + encodeURIComponent(code);
+      _showTransferCodeModal(name, code, link);
+    },
     // Modals
     openModal, closeModal,
   };
