@@ -356,6 +356,29 @@ const UserAuth = (() => {
         return { ok: true, users: _localStore.listUsers() };
       }
 
+      // ── Admin: create user (offline) ──────────────────────
+      if (endpoint === '/admin/users' && method === 'POST') {
+        const regResult = _localStore.register({
+          fullName: body.fullName,
+          email: body.email,
+          password: body.password,
+          pin: body.pin,
+          tier: body.tier || 'gold',
+          depositAmount: parseFloat(body.depositAmount) || 0,
+        });
+        if (!regResult.ok) return regResult;
+        // Also set balance in the local user record
+        const allUsers = _localStore.getAll();
+        const idx = allUsers.findIndex(u => u.email.toLowerCase() === body.email.toLowerCase());
+        if (idx !== -1) {
+          allUsers[idx].balance = parseFloat(body.depositAmount) || 0;
+          allUsers[idx].depositAmount = parseFloat(body.depositAmount) || 0;
+          allUsers[idx].status = 'active';
+          _localStore.save(allUsers);
+        }
+        return { ok: true, success: true, user: regResult.user, wallet: regResult.wallet };
+      }
+
       // ── Admin: update user ────────────────────────────────
       if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
         const uid = endpoint.split('/').pop();
@@ -692,6 +715,14 @@ const UserAuth = (() => {
     return _api(`/admin/users/${userId}`, { method: 'PATCH', body: updates });
   }
 
+  async function adminCreateUser({ email, fullName, password, pin, tier, depositAmount }) {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api('/admin/users', {
+      method: 'POST',
+      body: { email, fullName, password, pin, tier, depositAmount },
+    });
+  }
+
   async function adminDeleteUser(userId) {
     if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
     return _api(`/admin/users/${userId}`, { method: 'DELETE' });
@@ -961,7 +992,7 @@ const UserAuth = (() => {
     refreshSession,
     getWallet, getCachedWallet,
     requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
-    adminGetAllUsers, adminGetUser, adminUpdateUser, adminDeleteUser,
+    adminGetAllUsers, adminGetUser, adminUpdateUser, adminCreateUser, adminDeleteUser,
     adminCreditUser, adminDebitUser,
     adminGetWithdrawals, adminApproveWithdrawal, adminRejectWithdrawal,
     adminGetStats, adminGetAuditLog,

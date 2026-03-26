@@ -900,30 +900,74 @@ const AdminPanel = (() => {
   }
 
   async function saveUserEdit() {
-    const email     = $('edit-user-email').value;
+    const email     = ($('edit-user-email').value || '').trim();
+    if (!email) return toast('Email is required', 'error');
+
     const users     = loadUsers();
     const key       = email.toLowerCase();
-    if (!users[key]) return toast('User not found', 'error');
-
-    const user      = users[key];
+    const isNew     = !users || !users[key];
     const newTier   = $('edit-user-tier').value;
     const newStatus = $('edit-user-status').value;
-    const newName   = $('edit-user-name').value.trim() || user.fullName;
+    const newName   = $('edit-user-name').value.trim();
+    const newPin    = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
+    const newPwd    = $('edit-user-password') ? $('edit-user-password').value.trim() : '';
+    const deposit   = parseFloat($('edit-user-deposit').value) || 0;
 
-    const result = await UserAuth.adminUpdateUser(user.id, { status: newStatus, tier: newTier });
+    // ── CREATE NEW USER ──
+    if (isNew) {
+      if (!newName) return toast('Full name is required', 'error');
+      if (!newPwd || newPwd.length < 6) return toast('Password must be at least 6 characters', 'error');
+
+      const result = await UserAuth.adminCreateUser({
+        email, fullName: newName, password: newPwd,
+        pin: newPin || '', tier: newTier, depositAmount: deposit,
+      });
+      if (!result.ok && !result.success) return toast(result.error || 'Failed to create user', 'error');
+
+      closeModal('modal-user-edit');
+      log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
+      toast(`${newName} created successfully`, 'success');
+
+      // Refresh user list from API
+      await _loadApiData();
+      renderUsers();
+      _updateHeaderStats();
+      return;
+    }
+
+    // ── UPDATE EXISTING USER ──
+    const user = users[key];
+    const result = await UserAuth.adminUpdateUser(user.id, {
+      status: newStatus, tier: newTier,
+      balance: deposit || undefined,
+      depositAmount: deposit || undefined,
+    });
     if (!result.ok) return toast(result.error || 'Update failed', 'error');
 
     // Update local cache immediately for snappy UI
-    user.fullName = newName;
+    user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
 
     closeModal('modal-user-edit');
-    log('user_update', `Updated ${newName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
-    toast(`${newName} updated successfully`, 'success');
+    log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
+    toast(`${user.fullName} updated successfully`, 'success');
+
+    // ── Handle password reset ──
+    if (newPwd && newPwd.length >= 6) {
+      try {
+        const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+          ? 'http://localhost:4000/api' : 'https://api.zenassets.tech/api';
+        const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+        await fetch(`${API_BASE}/admin/users/${user.id}/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ password: newPwd }),
+        });
+      } catch (e) { /* best-effort */ }
+    }
 
     // ── Handle PIN set/reset via admin API ──
-    const newPin = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
     if (newPin) {
       if (!/^\d{4}$/.test(newPin)) {
         toast('PIN must be exactly 4 digits', 'error');
@@ -940,7 +984,7 @@ const AdminPanel = (() => {
           const pinRes = await resp.json();
           if (pinRes.success) {
             toast('PIN updated', 'success');
-            log('user_pin_set', `PIN set for ${newName} (${email})`, 'info', { email });
+            log('user_pin_set', `PIN set for ${user.fullName} (${email})`, 'info', { email });
           } else {
             toast(pinRes.error || 'PIN update failed', 'error');
           }
