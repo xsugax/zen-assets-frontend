@@ -481,12 +481,20 @@ const UserAuth = (() => {
       auth: false,
     });
 
-    // Live backend: requires email OTP verification before activating account
-    if (result.ok && result.requiresVerification) {
-      return { ok: false, requiresVerification: true, userId: result.userId };
+    // Backend now returns token directly (no OTP)
+    if (result.ok && result.token) {
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _persistAuth(result.token, session, result.wallet, false);
+      return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     if (result.ok) {
-      _sendEmail('welcome', { email, fullName, tier, depositAmount: dep });
       return { ok: true, user: result.user };
     }
     return result;
@@ -503,12 +511,7 @@ const UserAuth = (() => {
       auth: false,
     });
 
-    // Live backend: requires email OTP before issuing JWT
-    if (result.ok && result.requires_otp) {
-      _pendingRememberMe = rememberMe; // preserve choice across the OTP step
-      return { ok: false, requires_otp: true, userId: result.userId, message: result.message };
-    }
-
+    // Direct login — backend returns token immediately (no OTP)
     if (result.ok && result.token) {
       const session = {
         userId: result.user.id,

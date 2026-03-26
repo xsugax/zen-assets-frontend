@@ -2551,10 +2551,6 @@ const App = (() => {
 
       if (result.ok) {
         _dismissLoginScreen();
-      } else if (result.requires_otp) {
-        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
-        _showLoginOTPStep(email, result.userId, result.message);
-        return;
       } else {
         _showLoginError(result.error || 'Login failed.');
       }
@@ -2940,10 +2936,6 @@ const App = (() => {
       if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
-      } else if (result.requiresVerification) {
-        if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
-        _showRegisterOTPStep(email, result.userId);
-        return;
       } else {
         errBox.textContent = result.error;
         errBox.classList.add('visible');
