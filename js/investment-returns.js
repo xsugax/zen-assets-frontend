@@ -97,6 +97,14 @@ const InvestmentReturns = (() => {
     STORAGE_KEY = _getUserStorageKey();
     loadState();
 
+    // Sync tier from session (cross-device: ensures correct APY even on new device)
+    try {
+      if (typeof UserAuth !== 'undefined') {
+        const s = UserAuth.getSession();
+        if (s && s.tier && TIERS[s.tier]) state.tier = s.tier;
+      }
+    } catch (e) { /* ignore */ }
+
     // V2 Migration: Old system added earnings to BOTH walletBalance AND unclaimed pools.
     // New system: earnings only go to pools, claiming moves to wallet.
     // On first V2 load, zero out unclaimed pools (amounts already in walletBalance).
@@ -120,6 +128,67 @@ const InvestmentReturns = (() => {
       state.lastAccrualTick = Date.now();
       state._seeded = true;
       saveState();
+    }
+
+    // ── Cross-device bootstrap: sync wallet from API login data ──
+    // When a user logs in from a new device/country, their investment
+    // localStorage state won't exist yet. Pull the funded balance from
+    // the cached wallet (stored at login by UserAuth._persistAuth).
+    if (!state._adminActivated && state.walletBalance <= 0) {
+      try {
+        const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
+        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
+        if (amount > 0) {
+          const hoursBack = 2 + Math.random() * 3;
+          state.walletBalance    = amount;
+          state.initialDeposit   = amount;
+          state.dayStartBalance  = amount;
+          state.weekStartBalance = amount;
+          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
+          state.lastDailyReset   = startOfDay();
+          state.lastWeeklyReset  = startOfWeek();
+          state._adminActivated  = true;
+          state._seeded          = true;
+          state.unclaimedDaily   = 0;
+          state.unclaimedWeekly  = 0;
+          state.unclaimedTrading = 0;
+          state.unclaimedInterest = 0;
+          saveState();
+          console.log(`💰 Cross-device wallet bootstrap: $${amount.toFixed(2)}`);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    // ── Async API refresh fallback for cross-device login ──
+    // If cached wallet was empty (first page load before login completes),
+    // try an async API refresh and re-bootstrap once data arrives.
+    if (!state._adminActivated && state.walletBalance <= 0 &&
+        typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
+      UserAuth.refreshSession().then(() => {
+        if (state._adminActivated || state.walletBalance > 0) return;
+        const w = UserAuth.getCachedWallet();
+        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
+        if (amount > 0) {
+          const hoursBack = 2 + Math.random() * 3;
+          state.walletBalance    = amount;
+          state.initialDeposit   = amount;
+          state.dayStartBalance  = amount;
+          state.weekStartBalance = amount;
+          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
+          state.lastDailyReset   = startOfDay();
+          state.lastWeeklyReset  = startOfWeek();
+          state._adminActivated  = true;
+          state._seeded          = true;
+          state.unclaimedDaily   = 0;
+          state.unclaimedWeekly  = 0;
+          state.unclaimedTrading = 0;
+          state.unclaimedInterest = 0;
+          saveState();
+          _catchUpCompounding();
+          emit('balanceChanged', { balance: state.walletBalance });
+          console.log(`💰 Async API wallet bootstrap: $${amount.toFixed(2)}`);
+        }
+      }).catch(() => {});
     }
 
     // Catch up on missed compounding (if user was away)
