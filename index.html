@@ -1078,30 +1078,6 @@
 
         <div class="login-alt-actions">
           <button class="btn btn-ghost btn-full" onclick="showSSOInfo()"><i class="fa fa-building"></i> Enterprise SSO Login</button>
-          <button class="btn btn-ghost btn-full" onclick="document.getElementById('import-account-modal').classList.add('visible')" style="margin-top:8px"><i class="fa fa-download"></i> Import Account (Transfer Code)</button>
-        </div>
-
-        <!-- Import Account Modal -->
-        <div id="import-account-modal" class="import-account-overlay" onclick="if(event.target===this)this.classList.remove('visible')">
-          <div class="import-account-card">
-            <button class="import-close" onclick="document.getElementById('import-account-modal').classList.remove('visible')">&times;</button>
-            <div class="import-header">
-              <i class="fa fa-download" style="font-size:28px;color:#d4a574"></i>
-              <h3 style="margin:10px 0 4px;color:#fff">Import Your Account</h3>
-              <p style="color:#999;font-size:13px">Paste the transfer code your administrator sent you</p>
-            </div>
-            <form id="import-account-form" onsubmit="return handleImportAccount(event)">
-              <div class="form-group">
-                <label style="color:#ccc;font-size:13px"><i class="fa fa-key"></i> Transfer Code</label>
-                <textarea id="import-code-input" class="form-input" rows="4" placeholder="Paste your ZEN... transfer code here" required style="font-family:monospace;font-size:12px;resize:none;word-break:break-all"></textarea>
-              </div>
-              <div id="import-error" class="login-error" role="alert" style="display:none"></div>
-              <div id="import-success" style="display:none;padding:12px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.3);border-radius:8px;color:#0f6;font-size:13px;margin-bottom:12px;text-align:center"></div>
-              <button type="submit" class="btn btn-primary btn-full" id="import-btn">
-                <i class="fa fa-download"></i> Import Account
-              </button>
-            </form>
-          </div>
         </div>
 
         <!-- Platform Advantages -->
@@ -3950,7 +3926,7 @@
 <script src="js/investment-returns.js?v=68.7"></script>
 <script src="js/gamification.js?v=68.5"></script>
 <script src="js/plugins.js?v=68.5"></script>
-<script src="js/app.js?v=68.5"></script>
+<script src="js/app.js?v=68.9"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
