@@ -50,6 +50,13 @@ const MarketData = (() => {
     { id: 'MATIC', sym:'MATIC/USD',name: 'Polygon',    price: 0.7240,   cat: 'defi',      vol: 320e6,   mc: 6.7e9 },
     { id: 'UNI',   sym: 'UNI/USD', name: 'Uniswap',    price: 9.18,     cat: 'defi',      vol: 280e6,   mc: 5.5e9 },
     { id: 'AAVE',  sym: 'AAVE/USD',name: 'Aave',       price: 98.40,    cat: 'defi',      vol: 210e6,   mc: 1.4e9 },
+    // Private Stocks (ZEN exclusive)
+    { id: 'BOYER',    sym: 'BOYER',    name: 'Boyer Industries',  price: 420.00,  cat: 'private', vol: 2.1e6,  mc: 8.4e9 },
+    { id: 'NOVA',     sym: 'NOVA',     name: 'Nova Technologies', price: 185.50,  cat: 'private', vol: 1.8e6,  mc: 3.7e9 },
+    { id: 'AXIOM',    sym: 'AXIOM',    name: 'Axiom Capital',     price: 92.80,   cat: 'private', vol: 950e3,  mc: 1.9e9 },
+    // LLC Assets (production-based)
+    { id: 'ZENMINES', sym: 'ZENMINES', name: 'ZenMines LLC',      price: 340.00,  cat: 'llc',     vol: 580e3,  mc: 2.7e9 },
+    { id: 'ZENTECH',  sym: 'ZENTECH',  name: 'ZenTech LLC',       price: 275.00,  cat: 'llc',     vol: 420e3,  mc: 2.2e9 },
   ];
 
   // ── State ────────────────────────────────────────────────
@@ -61,7 +68,7 @@ const MarketData = (() => {
   const HISTORY_SIZE = 200;
 
   // Volatility config per asset type
-  const VOLS = { crypto: 0.0025, stocks: 0.0008, forex: 0.0003, commodities: 0.0012, indices: 0.0005, defi: 0.004, etf: 0.0007 };
+  const VOLS = { crypto: 0.0025, stocks: 0.0008, forex: 0.0003, commodities: 0.0012, indices: 0.0005, defi: 0.004, etf: 0.0007, private: 0.0015, llc: 0.0010 };
 
   // ── Init ─────────────────────────────────────────────────
   function init() {
@@ -310,11 +317,13 @@ const MarketData = (() => {
   const _SIGMA = {
     crypto: 1.80, stocks: 0.75, forex: 0.30,
     commodities: 0.65, indices: 0.50, defi: 2.40, etf: 0.60,
+    private: 0.90, llc: 0.55,
   };
   // Annualized drift μ by asset class
   const _MU = {
     crypto: 0.10, stocks: 0.08, forex: 0.00,
     commodities: 0.03, indices: 0.07, defi: 0.12, etf: 0.07,
+    private: 0.14, llc: 0.10,
   };
   const _SECS_PER_YEAR = 365.25 * 24 * 3600;
 

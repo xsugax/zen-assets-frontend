@@ -220,6 +220,7 @@ const App = (() => {
   let _marketFilter = 'all';
   let _confThreshold = 60;
   let _activeOrderType = 'market';
+  let _activeMarket = 'PUBLIC';
 
   // ── Boot Screen ───────────────────────────────────────────
   function runBoot() {
@@ -329,6 +330,12 @@ const App = (() => {
   // ── Init Data Engines ─────────────────────────────────────
   function initData() {
     MarketData.init();
+
+    // Initialize multi-market engine (PRIVATE + LLC asset simulation)
+    if (typeof MarketEngine !== 'undefined') {
+      MarketEngine.init();
+      console.log('🏛️ Multi-market engine ACTIVE (PUBLIC / PRIVATE / LLC)');
+    }
     
     // Initialize real data integration (WebSocket + REST)
     if (typeof RealDataAdapter !== 'undefined') {
@@ -634,6 +641,7 @@ const App = (() => {
     initNotifPanel();
     initOrderForm();
     initMarketControls();
+    initMarketSelector();
     initTerminalControls();
     initAnalyticsControls();
     initSignalControls();
@@ -1511,7 +1519,20 @@ const App = (() => {
   }
 
   function renderPositions() {
-    const { totalPnL, positions } = Trading.computePnL();
+    // Merge TradeEngine positions with legacy Trading positions
+    let positions, totalPnL;
+    if (typeof TradeEngine !== 'undefined') {
+      const te = TradeEngine.computePnL();
+      const legacy = Trading.computePnL();
+      // Avoid duplicates: TradeEngine positions already forward to Trading
+      positions = te.positions.length > 0 ? te.positions : legacy.positions;
+      totalPnL = te.positions.length > 0 ? te.totalPnL : legacy.totalPnL;
+    } else {
+      const r = Trading.computePnL();
+      positions = r.positions;
+      totalPnL = r.totalPnL;
+    }
+
     const container = $('open-positions'); if (!container) return;
     setText('pos-total-pnl', `${signPnl(totalPnL)}$${fmt(Math.abs(totalPnL), 2)}`);
     setClass('pos-total-pnl', clsPnl(totalPnL));
@@ -1528,8 +1549,9 @@ const App = (() => {
     container.innerHTML = positions.map(p => {
       const pnlCls = clsPnl(p.pnl);
       const sideColor = p.side === 'long' ? '#00ff88' : '#ff4757';
+      const mktBadge = p.market ? `<span class="pos-market-badge mkt-${p.market}">${p.market}</span>` : '';
       return `<div class="position-row">
-        <span class="pos-symbol">${p.sym}</span>
+        ${mktBadge}<span class="pos-symbol">${p.sym}</span>
         <span class="sig-dir-badge ${p.side === 'long' ? 'buy' : 'sell'}" style="background:${p.side==='long'?'rgba(0,255,136,.12)':'rgba(255,71,87,.12)'};color:${sideColor}">${p.side.toUpperCase()}</span>
         <span class="pos-qty">${p.qty}</span>
         <span class="pos-entry">@$${fmtPx(p.entry)}</span>
@@ -1585,6 +1607,83 @@ const App = (() => {
     // Auto-update entry price field
     const entryEl = $('order-entry');
     if (entryEl && !entryEl.dataset.manual) entryEl.value = fmtPx(a.price);
+  }
+
+  // ── Multi-Market Selector ─────────────────────────────────
+  function initMarketSelector() {
+    const selector = $('market-selector');
+    if (!selector) return;
+
+    selector.addEventListener('click', (e) => {
+      const tab = e.target.closest('.mkt-tab[data-market]');
+      if (!tab) return;
+      const market = tab.dataset.market;
+      if (market === _activeMarket) return;
+
+      _activeMarket = market;
+
+      // Update tab active states
+      selector.querySelectorAll('.mkt-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // Update info banner
+      _updateMarketBanner(market);
+
+      // Populate symbol selects for this market
+      _populateMarketSymbols(market);
+
+      // Switch chart to first asset of new market
+      const termSel = $('terminal-sym-select');
+      if (termSel && termSel.options.length > 0) {
+        _termSym = termSel.value;
+        _switchTerminalChart();
+      }
+
+      updateTerminalPrice();
+    });
+  }
+
+  function _updateMarketBanner(market) {
+    const banner = $('market-info-banner');
+    if (!banner) return;
+    const info = {
+      PUBLIC:  { icon: 'fa-globe',    text: '<b>Public Markets</b> — Regulated crypto assets with live market data feeds' },
+      PRIVATE: { icon: 'fa-lock',     text: '<b>Private Stocks</b> — Exclusive private equities, invitation-only access' },
+      LLC:     { icon: 'fa-building', text: '<b>LLC Assets</b> — Production-based holdings with yield-driven returns' },
+    };
+    const m = info[market] || info.PUBLIC;
+    banner.innerHTML = `<span class="mib-icon"><i class="fa ${m.icon}"></i></span><span class="mib-text">${m.text}</span>`;
+  }
+
+  function _populateMarketSymbols(market) {
+    if (typeof AssetRegistry === 'undefined') return;
+    const assets = AssetRegistry.getByMarket(market);
+
+    // Terminal sym select
+    const termSel = $('terminal-sym-select');
+    if (termSel) {
+      termSel.innerHTML = assets.map(a =>
+        `<option value="${a.id}">${a.sym}</option>`
+      ).join('');
+    }
+
+    // Order form sym select
+    const orderSel = $('order-symbol');
+    if (orderSel) {
+      orderSel.innerHTML = assets.map(a =>
+        `<option value="${a.sym}">${a.sym} — ${a.name}</option>`
+      ).join('');
+    }
+  }
+
+  async function _switchTerminalChart() {
+    const termSymbol = _termSym.split('/')[0];
+    const termTF = _chartTF.toLowerCase() || '5m';
+    if (typeof AdvancedChartEngine !== 'undefined') {
+      AdvancedChartEngine.changeTimeframe('terminal-chart', termSymbol, termTF);
+    } else {
+      await ChartEngine.createCandlestickChart('terminal-chart', [], termSymbol, termTF);
+    }
   }
 
   function initTerminalControls() {
@@ -1662,6 +1761,53 @@ const App = (() => {
     const qtyEl  = $('order-qty');     const qty  = qtyEl  ? parseFloat(qtyEl.value) || 0.01 : 0.01;
     const slEl   = $('order-sl');      const sl   = slEl   ? parseFloat(slEl.value)  : undefined;
     const tpEl   = $('order-tp');      const tp   = tpEl   ? parseFloat(tpEl.value)  : undefined;
+
+    // Resolve asset ID from symbol
+    const assetId = sym.split('/')[0];
+    const market = _activeMarket;
+
+    // Use TradeEngine for isolated market execution
+    if (typeof TradeEngine !== 'undefined') {
+      const result = TradeEngine.placeOrder({
+        market,
+        assetId,
+        side,
+        type: _activeOrderType,
+        qty,
+        sl,
+        tp,
+      });
+
+      if (result.error) {
+        showToast(`⚠️ ${result.error}`, 'warning');
+        return;
+      }
+
+      const pos = result.position;
+      const price = pos.entry;
+      const value = pos.value.toFixed(2);
+
+      // Auto-fill entry price display
+      const entryEl = $('order-entry');
+      if (entryEl) entryEl.value = fmtPx(price);
+
+      // Update AI risk panel
+      const arpText = $('arp-text');
+      if (arpText) {
+        const rr = ((pos.tp) - price) / (price - (pos.sl));
+        arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} [${market}] — Position value: $${value} — Risk managed.`;
+        const rrEl = $('rr-display');
+        if (rrEl) rrEl.textContent = Math.abs(rr).toFixed(1) + ':1';
+      }
+
+      showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(price)} ($${value}) — ${market} FILLED`, 'success');
+      addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} [${market}] @ $${fmtPx(price)}`);
+      if (typeof Gamification !== 'undefined') Gamification.trackTrade();
+      renderPositions();
+      return;
+    }
+
+    // Fallback: legacy Trading module
     const a      = MarketData.getAllAssets().find(x => x.sym === sym || x.id === sym);
     const price  = a ? a.price : 100;
     const value  = (qty * price).toFixed(2);
@@ -1674,22 +1820,11 @@ const App = (() => {
       tp: tp || price * (side === 'long' ? 1.04 : 0.96),
     });
 
-    // Auto-fill entry price display
     const entryEl = $('order-entry');
     if (entryEl) entryEl.value = price.toFixed(2);
 
-    // Update AI risk panel
-    const arpText = $('arp-text');
-    if (arpText) {
-      const rr = ((tp || price * 1.04) - price) / (price - (sl || price * 0.97));
-      arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} — Position value: $${value} — AI-suggested SL/TP applied — Risk managed.`;
-      const rrEl = $('rr-display');
-      if (rrEl) rrEl.textContent = Math.abs(rr).toFixed(1) + ':1';
-    }
-
     showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} ($${value}) — FILLED`, 'success');
     addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
-    // Gamification: track trade
     if (typeof Gamification !== 'undefined') Gamification.trackTrade();
     renderPositions();
   }
@@ -2363,13 +2498,20 @@ const App = (() => {
   function installPlugin(id)  { Plugins.installPlugin(id); renderPlugins(); showToast('Plugin installed!', 'success'); }
   function uninstallPlugin(id){ Plugins.uninstallPlugin(id); renderPlugins(); showToast('Plugin removed', 'info'); }
   function closePosition(posId){
-    const pos = Trading.closePosition(posId);
+    // Try TradeEngine first (multi-market), then fallback to legacy
+    let pos = null;
+    if (typeof TradeEngine !== 'undefined') {
+      pos = TradeEngine.closePosition(posId);
+    }
+    if (!pos) {
+      pos = Trading.closePosition(posId);
+    }
     renderPositions();
     if (pos) {
       const pnlStr = `${pos.pnl >= 0 ? '+' : ''}$${Math.abs(pos.pnl).toFixed(2)}`;
-      showToast(`Position closed: ${pos.sym} ${pos.side.toUpperCase()} → P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
-      addNotification(pos.pnl >= 0 ? 'fa-arrow-up' : 'fa-arrow-down', pos.pnl >= 0 ? 'ai' : 'whale', 'Position Closed:', ` ${pos.sym} ${pnlStr}`);
-      // Gamification: track profit
+      const mktTag = pos.market ? ` [${pos.market}]` : '';
+      showToast(`Position closed: ${pos.sym}${mktTag} ${pos.side.toUpperCase()} → P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
+      addNotification(pos.pnl >= 0 ? 'fa-arrow-up' : 'fa-arrow-down', pos.pnl >= 0 ? 'ai' : 'whale', 'Position Closed:', ` ${pos.sym}${mktTag} ${pnlStr}`);
       if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
     }
   }

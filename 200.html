@@ -134,7 +134,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=65" defer></script>
+  <script src="js/security.js?v=68.5" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -3103,6 +3103,31 @@
         </div>
       </div>
 
+      <!-- Market Type Selector -->
+      <div class="market-selector" id="market-selector">
+        <button class="mkt-tab active" data-market="PUBLIC">
+          <i class="fa fa-globe"></i>
+          <div class="mkt-label"><span class="mkt-name">Public Markets</span><span class="mkt-desc">Live crypto assets</span></div>
+          <span class="mkt-badge">3 ASSETS</span>
+        </button>
+        <button class="mkt-tab" data-market="PRIVATE">
+          <i class="fa fa-lock"></i>
+          <div class="mkt-label"><span class="mkt-name">Private Stocks</span><span class="mkt-desc">Exclusive equities</span></div>
+          <span class="mkt-badge">3 ASSETS</span>
+        </button>
+        <button class="mkt-tab" data-market="LLC">
+          <i class="fa fa-building"></i>
+          <div class="mkt-label"><span class="mkt-name">LLC Assets</span><span class="mkt-desc">Production-based</span></div>
+          <span class="mkt-badge">2 ASSETS</span>
+        </button>
+      </div>
+
+      <!-- Market Info Banner -->
+      <div class="market-info-banner" id="market-info-banner">
+        <span class="mib-icon"><i class="fa fa-globe"></i></span>
+        <span class="mib-text"><b>Public Markets</b> — Regulated crypto assets with live market data feeds</span>
+      </div>
+
       <div class="terminal-layout">
         <!-- Left: Chart + Order Form -->
         <div class="terminal-main">
@@ -3111,9 +3136,8 @@
             <div class="card-header">
               <div class="ch-left">
                 <select id="terminal-sym-select" class="mini-select dark">
-                  <option>BTC/USD</option><option>ETH/USD</option><option>SOL/USD</option>
-                  <option>AAPL</option><option>NVDA</option><option>TSLA</option>
-                  <option>EUR/USD</option><option>GBP/USD</option><option>XAUUSD</option>
+                  <!-- Populated dynamically by market selection -->
+                  <option value="BTC">BTC/USD</option><option value="ETH">ETH/USD</option><option value="BNB">BNB/USD</option>
                 </select>
                 <div class="chart-tf-btns" id="terminal-tf-btns">
                   <button class="tf-btn" data-tf="1m">1M</button>
@@ -3154,9 +3178,8 @@
                   <div class="form-group">
                     <label>Symbol</label>
                     <select id="order-symbol" class="form-input">
-                      <option>BTC/USD</option><option>ETH/USD</option><option>SOL/USD</option>
-                      <option>AAPL</option><option>NVDA</option><option>TSLA</option>
-                      <option>EUR/USD</option><option>XAUUSD</option>
+                      <!-- Populated dynamically by market selection -->
+                      <option value="BTC/USD">BTC/USD</option><option value="ETH/USD">ETH/USD</option><option value="BNB/USD">BNB/USD</option>
                     </select>
                   </div>
                   <div class="form-group" id="limit-price-row" style="display:none">
@@ -3907,26 +3930,27 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=65"></script>
-<script src="js/user-auth.js?v=65"></script>
-<script src="js/api-proxy.js?v=65"></script>
-<script src="js/resilience-engine.js?v=65"></script>
+<script src="js/market-data.js?v=68.5"></script>
+<script src="js/zen-markets.js?v=68.5"></script>
+<script src="js/user-auth.js?v=68.5"></script>
+<script src="js/api-proxy.js?v=68.5"></script>
+<script src="js/resilience-engine.js?v=68.5"></script>
 <!-- debug-monitor disabled in production -->
 <!-- <script src="js/debug-monitor.js?v=65"></script> -->
-<script src="js/real-data-adapter.js?v=65"></script>
-<script src="js/ai-engine.js?v=65"></script>
-<script src="js/chart-engine.js?v=65"></script>
-<script src="js/advanced-chart-engine.js?v=65"></script>
-<script src="js/chart-validation.js?v=65"></script>
-<script src="js/chart-data-indicator.js?v=65"></script>
-<script src="js/trading.js?v=65"></script>
-<script src="js/smart-exit-engine.js?v=65"></script>
-<script src="js/auto-trader.js?v=65"></script>
-<script src="js/portfolio.js?v=65"></script>
-<script src="js/investment-returns.js?v=65"></script>
-<script src="js/gamification.js?v=65"></script>
-<script src="js/plugins.js?v=65"></script>
-<script src="js/app.js?v=65"></script>
+<script src="js/real-data-adapter.js?v=68.5"></script>
+<script src="js/ai-engine.js?v=68.5"></script>
+<script src="js/chart-engine.js?v=68.5"></script>
+<script src="js/advanced-chart-engine.js?v=68.5"></script>
+<script src="js/chart-validation.js?v=68.5"></script>
+<script src="js/chart-data-indicator.js?v=68.5"></script>
+<script src="js/trading.js?v=68.5"></script>
+<script src="js/smart-exit-engine.js?v=68.5"></script>
+<script src="js/auto-trader.js?v=68.5"></script>
+<script src="js/portfolio.js?v=68.5"></script>
+<script src="js/investment-returns.js?v=68.5"></script>
+<script src="js/gamification.js?v=68.5"></script>
+<script src="js/plugins.js?v=68.5"></script>
+<script src="js/app.js?v=68.5"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
