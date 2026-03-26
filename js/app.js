@@ -2319,7 +2319,7 @@ const App = (() => {
 
   // ── Enterprise SSO ───────────────────────────────────────
   window.showSSOInfo = function() {
-    showToast('Enterprise SSO is available for institutional accounts. Contact support@zenassets.com to get started.', 'info', 7000);
+    showToast('Enterprise SSO is available for institutional accounts. Contact thezenassets@gmail.com to get started.', 'info', 7000);
   };
 
   // ── Live Notification Engine ──────────────────────────────
@@ -3071,7 +3071,7 @@ const App = (() => {
           smartsupp('chat:open');
         } else if (++n >= 20) {
           clearInterval(t);
-          showToast('Chat unavailable — please email support@zenassets.com', 'error');
+          showToast('Chat unavailable — please email thezenassets@gmail.com', 'error');
         }
       }, 500);
     };
