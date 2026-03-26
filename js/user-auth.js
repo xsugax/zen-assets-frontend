@@ -271,6 +271,10 @@ const UserAuth = (() => {
     }
   }
 
+  // ── Auth endpoints that MUST reach the server (no local fallback) ──
+  const AUTH_CRITICAL = ['/auth/login', '/auth/pin-login', '/auth/register',
+    '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp'];
+
   // ── API Helper — tries live API first, falls back to localStore ──
   async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
     const headers = { 'Content-Type': 'application/json' };
@@ -280,11 +284,15 @@ const UserAuth = (() => {
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
 
-    // ── Attempt live API with 2 s timeout ──────────────────
+    // Auth endpoints get 15 s; other reads get 2 s
+    const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
+    const timeoutMs = isCriticalAuth ? 15000 : 2000;
+
+    // ── Attempt live API ──────────────────
     let apiOk = false;
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 2000);
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
       clearTimeout(timer);
       const data = await resp.json();
@@ -295,7 +303,12 @@ const UserAuth = (() => {
       apiOk = true;
       return { ok: true, ...data };
     } catch (err) {
-      // Network error or timeout — fall through to local store
+      // For critical auth endpoints, return a clear network error — never fall back to local store
+      if (isCriticalAuth) {
+        console.error(`❌ AUTH API unreachable (${endpoint}):`, err.message);
+        return { ok: false, error: 'Unable to reach the server. Please check your internet connection and try again.' };
+      }
+      // Non-auth endpoints fall through to local store
       console.warn(`⚡ LOCAL STORE: API unavailable (${endpoint}) — using offline fallback`);
     }
 
