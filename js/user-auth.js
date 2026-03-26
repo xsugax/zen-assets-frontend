@@ -16,7 +16,7 @@ const UserAuth = (() => {
   // ── Configuration ────────────────────────────────────────
   const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? 'http://localhost:4000/api'
-    : 'https://api.zenassets.tech/api';
+    : 'https://zen-assets-backend.onrender.com/api';
 
   const STORAGE_SESSION  = 'zen_session';
   const STORAGE_TOKEN    = 'zen_token';
@@ -284,9 +284,9 @@ const UserAuth = (() => {
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
 
-    // Auth endpoints get 15 s; other reads get 2 s
+    // Auth endpoints get 45 s (Render cold-starts can take 30 s); other reads get 5 s
     const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
-    const timeoutMs = isCriticalAuth ? 15000 : 2000;
+    const timeoutMs = isCriticalAuth ? 45000 : 5000;
 
     // ── Attempt live API ──────────────────
     let apiOk = false;

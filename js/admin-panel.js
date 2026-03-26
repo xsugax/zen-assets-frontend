@@ -956,7 +956,7 @@ const AdminPanel = (() => {
     if (newPwd && newPwd.length >= 6) {
       try {
         const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-          ? 'http://localhost:4000/api' : 'https://api.zenassets.tech/api';
+          ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
         const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
         await fetch(`${API_BASE}/admin/users/${user.id}/reset-password`, {
           method: 'POST',
@@ -973,7 +973,7 @@ const AdminPanel = (() => {
       } else {
         try {
           const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-            ? 'http://localhost:4000/api' : 'https://api.zenassets.tech/api';
+            ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
           const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
           const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
             method: 'POST',
