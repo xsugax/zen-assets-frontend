@@ -9,6 +9,29 @@
 const InvestmentReturns = (() => {
   'use strict';
 
+  // ── Admin Pause Control ───────────────────────────────────
+  // Admin can pause profits per user via localStorage flag.
+  // When paused, accrual drops to ~1% (near-zero) and trading profit credits are blocked.
+  function _isAdminPaused() {
+    try {
+      const email = _getCurrentUserEmail();
+      if (!email) return false;
+      const raw = localStorage.getItem('zen_admin_controls_' + email);
+      if (!raw) return false;
+      const ctrl = JSON.parse(raw);
+      return !!ctrl.profitPaused;
+    } catch { return false; }
+  }
+  function _getCurrentUserEmail() {
+    try {
+      if (typeof UserAuth !== 'undefined') {
+        const s = UserAuth.getSession();
+        if (s && s.email) return s.email.toLowerCase();
+      }
+    } catch {}
+    return '';
+  }
+
   // ── Membership Tiers ─────────────────────────────────────
   const TIERS = {
     bronze:   { label: 'Bronze',   minAPY: 0.55,  maxAPY: 0.78,  color: '#cd7f32', icon: '🥉' },
@@ -232,6 +255,12 @@ const InvestmentReturns = (() => {
     const tier = TIERS[state.tier];
     if (!tier) return;
 
+    // Admin pause: if profit is paused, skip accrual almost entirely
+    if (_isAdminPaused()) {
+      state.lastAccrualTick = now;
+      return;
+    }
+
     // Check daily/weekly roll first
     checkDailyWeeklyReset();
 
@@ -290,6 +319,9 @@ const InvestmentReturns = (() => {
   // Called when auto-trader closes a profitable position
   function creditTradingProfit(amount, tradeInfo = {}) {
     if (!amount || amount <= 0) return;
+
+    // Admin pause: block trading profit credits entirely
+    if (_isAdminPaused()) return;
 
     // V2: Trading profits go to pending pool — NOT directly to walletBalance
     state.unclaimedTrading += amount;

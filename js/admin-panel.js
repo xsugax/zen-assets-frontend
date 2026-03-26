@@ -732,6 +732,7 @@ const AdminPanel = (() => {
               <button class="act-btn" title="Edit" onclick="AdminPanel.openEditUser('${u.email}')"><i class="fa fa-edit"></i></button>
               <button class="act-btn green" title="Fund &amp; Activate" onclick="AdminPanel.activateAccountPrompt('${u.email}')"><i class="fa fa-rocket"></i></button>
               <button class="act-btn" title="Share Login Code" onclick="AdminPanel.shareCode('${u.email}')" style="color:#0ff"><i class="fa fa-share-nodes"></i></button>
+              ${_renderPauseButtons(u.email)}
               <button class="act-btn ${u.status === 'active' ? 'warn' : 'green'}" title="${u.status === 'active' ? 'Suspend' : 'Reactivate'}" onclick="AdminPanel.toggleUserStatus('${u.email}')">
                 <i class="fa fa-${u.status === 'active' ? 'ban' : 'check'}"></i>
               </button>
@@ -1120,6 +1121,53 @@ const AdminPanel = (() => {
 
   // Escape HTML for safe insertion
   function _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // ── Admin God-Mode Controls (per-user trade & profit pause) ──
+  function _getAdminControls(email) {
+    try {
+      const raw = localStorage.getItem('zen_admin_controls_' + email.toLowerCase());
+      return raw ? JSON.parse(raw) : { tradingPaused: false, profitPaused: false };
+    } catch { return { tradingPaused: false, profitPaused: false }; }
+  }
+  function _setAdminControls(email, controls) {
+    localStorage.setItem('zen_admin_controls_' + email.toLowerCase(), JSON.stringify(controls));
+  }
+
+  function _renderPauseButtons(email) {
+    const ctrl = _getAdminControls(email);
+    const tPaused = ctrl.tradingPaused;
+    const pPaused = ctrl.profitPaused;
+    return `<button class="act-btn ${tPaused ? 'green' : 'warn'}" title="${tPaused ? 'Resume Trading' : 'Pause Trading'}" onclick="AdminPanel.toggleTradingPause('${email}')">
+                <i class="fa fa-${tPaused ? 'play' : 'pause'}"></i>
+              </button>
+              <button class="act-btn ${pPaused ? 'green' : 'warn'}" title="${pPaused ? 'Resume Profits' : 'Pause Profits'}" onclick="AdminPanel.toggleProfitPause('${email}')" style="color:${pPaused ? '#00ff88' : '#ff9f43'}">
+                <i class="fa fa-${pPaused ? 'dollar-sign' : 'hand'}"></i>
+              </button>`;
+  }
+
+  function toggleTradingPause(email) {
+    const ctrl = _getAdminControls(email);
+    ctrl.tradingPaused = !ctrl.tradingPaused;
+    _setAdminControls(email, ctrl);
+    const users = loadUsers();
+    const name = users[email.toLowerCase()]?.fullName || email;
+    const action = ctrl.tradingPaused ? 'PAUSED' : 'RESUMED';
+    log('admin_control', `Trading ${action} for ${name}`, ctrl.tradingPaused ? 'warning' : 'info', { email, control: 'trading', paused: ctrl.tradingPaused });
+    toast(`⚡ Trading ${action} for ${name}`, ctrl.tradingPaused ? 'warning' : 'success');
+    renderUsers();
+  }
+
+  function toggleProfitPause(email) {
+    const ctrl = _getAdminControls(email);
+    ctrl.profitPaused = !ctrl.profitPaused;
+    _setAdminControls(email, ctrl);
+    const users = loadUsers();
+    const name = users[email.toLowerCase()]?.fullName || email;
+    const action = ctrl.profitPaused ? 'PAUSED' : 'RESUMED';
+    log('admin_control', `Profits ${action} for ${name}`, ctrl.profitPaused ? 'warning' : 'info', { email, control: 'profit', paused: ctrl.profitPaused });
+    toast(`💰 Profits ${action} for ${name}`, ctrl.profitPaused ? 'warning' : 'success');
+    renderUsers();
+  }
 
   async function toggleUserStatus(email) {
     const users = loadUsers();
@@ -2155,6 +2203,7 @@ const AdminPanel = (() => {
     toggleUserSelect, toggleSelectAll, clearSelection,
     openEditUser, saveUserEdit, openCreateUser,
     toggleUserStatus, confirmDeleteUser,
+    toggleTradingPause, toggleProfitPause,
     bulkAction, exportUsers,
     // Financials
     processWithdrawal, filterLedger,

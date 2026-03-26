@@ -287,6 +287,15 @@ const TradeEngine = (() => {
   const _maxLog = 500;
 
   function placeOrder({ market, assetId, side, type, qty, sl, tp }) {
+    // Admin pause: block trades when admin has paused trading for this user
+    try {
+      const sess = typeof UserAuth !== 'undefined' ? UserAuth.getSession() : null;
+      if (sess && sess.email) {
+        const ctrl = JSON.parse(localStorage.getItem('zen_admin_controls_' + sess.email.toLowerCase()) || '{}');
+        if (ctrl.tradingPaused) return { error: 'Trading is temporarily paused by administrator' };
+      }
+    } catch {}
+
     const asset = AssetRegistry.getAsset(assetId);
     if (!asset) return { error: 'Asset not found' };
     if (asset.market !== market) return { error: 'Asset does not belong to selected market' };

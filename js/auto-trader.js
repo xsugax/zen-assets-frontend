@@ -318,6 +318,18 @@ const AutoTrader = (() => {
   // ── Evaluate Market & Place Trade ───────────────────────
   async function evaluateAndTrade() {
     if (!isRunning) return;
+
+    // Admin pause: block new trades when admin has paused trading for this user
+    try {
+      const sess = typeof UserAuth !== 'undefined' ? UserAuth.getSession() : null;
+      if (sess && sess.email) {
+        const ctrl = JSON.parse(localStorage.getItem('zen_admin_controls_' + sess.email.toLowerCase()) || '{}');
+        if (ctrl.tradingPaused) {
+          console.log('⏸️ Trading paused by admin — skipping');
+          return;
+        }
+      }
+    } catch {}
     
     // Check if we're at max positions
     activePositions = Trading?.getPositions() || [];
