@@ -2901,11 +2901,6 @@ const App = (() => {
       document.querySelectorAll('.tier-opt').forEach(o => o.classList.remove('selected'));
       el.classList.add('selected');
       el.querySelector('input[type="radio"]').checked = true;
-      // Update min deposit hint
-      const minMap = { bronze: 5000, silver: 25000, gold: 100000, platinum: 500000, diamond: 1000000 };
-      const tier = el.dataset.tier;
-      const depInput = $('reg-deposit');
-      if (depInput) { depInput.min = minMap[tier] || 5000; depInput.placeholder = (minMap[tier] || 5000).toLocaleString(); }
     };
 
     form.addEventListener('submit', async (e) => {
@@ -2919,7 +2914,6 @@ const App = (() => {
       const pin      = ($('reg-pin') || {}).value || '';
       const tierRadio = document.querySelector('input[name="reg-tier"]:checked');
       const tier     = tierRadio ? tierRadio.value : 'gold';
-      const deposit  = $('reg-deposit').value;
 
       if (typeof UserAuth === 'undefined') {
         errBox.textContent = 'Registration system unavailable. Please refresh the page.';
@@ -2932,7 +2926,7 @@ const App = (() => {
       const origHTML = btn ? btn.innerHTML : '';
       if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Creating account...'; btn.disabled = true; }
 
-      const result = await UserAuth.register({ fullName, email, password, tier, deposit, pin });
+      const result = await UserAuth.register({ fullName, email, password, tier, pin });
       if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
