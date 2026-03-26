@@ -3010,7 +3010,7 @@ const App = (() => {
     const resendEl = $(resendId);
     if (resendEl) { resendEl.style.pointerEvents = 'none'; resendEl.style.opacity = '0.4'; }
 
-    let seconds = 60;
+    let seconds = 5;
     if (timerEl) timerEl.textContent = ` (${seconds}s)`;
 
     const interval = setInterval(() => {

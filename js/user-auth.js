@@ -284,170 +284,169 @@ const UserAuth = (() => {
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
 
-    // Auth endpoints get 45 s (Render cold-starts can take 30 s); other reads get 5 s
     const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
-    const timeoutMs = isCriticalAuth ? 45000 : 5000;
 
-    // ── Attempt live API ──────────────────
-    let apiOk = false;
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
-      clearTimeout(timer);
-      const data = await resp.json();
-      if (!resp.ok) {
-        // Rate-limit at backend? surface the message directly
-        return { ok: false, status: resp.status, error: data.error || 'Request failed' };
-      }
-      apiOk = true;
-      return { ok: true, ...data };
-    } catch (err) {
-      // For critical auth endpoints, return a clear network error — never fall back to local store
-      if (isCriticalAuth) {
-        console.error(`❌ AUTH API unreachable (${endpoint}):`, err.message);
-        return { ok: false, error: 'Unable to reach the server. Please check your internet connection and try again.' };
-      }
-      // Non-auth endpoints fall through to local store
-      console.warn(`⚡ LOCAL STORE: API unavailable (${endpoint}) — using offline fallback`);
-    }
+    // Auth endpoints: try up to 3 times with increasing timeout (8s → 20s → 45s)
+    // Other endpoints: single attempt, 5s
+    const attempts = isCriticalAuth ? [8000, 20000, 45000] : [5000];
 
-    // ── LOCAL STORE FALLBACK (register / login / me / logout) ─
-    if (!apiOk) {
-      // ── Verify email OTP (local: auto-succeed, no real email in offline mode) ──
-      if (endpoint === '/auth/verify-email' && method === 'POST') {
-        const user = _localStore.findById(body.userId);
-        if (!user) return { ok: false, error: 'User not found.' };
-        const token = _makeToken(user.id);
-        const { passwordHash, ...safe } = user;
-        return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
-      }
-
-      // ── Verify login OTP (local: auto-succeed) ──
-      if (endpoint === '/auth/verify-login-otp' && method === 'POST') {
-        const user = _localStore.findById(body.userId);
-        if (!user) return { ok: false, error: 'User not found.' };
-        const token = _makeToken(user.id);
-        const { passwordHash, ...safe } = user;
-        return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
-      }
-
-      // ── Resend OTP (local: no-op) ──
-      if (endpoint === '/auth/resend-otp' && method === 'POST') {
-        return { ok: true, message: 'Code sent (offline mode).' };
-      }
-
-      // ── Register ──────────────────────────────────────────
-      if (endpoint === '/auth/register' && method === 'POST') {
-        return _localStore.register(body);
-      }
-
-      // ── Login ─────────────────────────────────────────────
-      if (endpoint === '/auth/login' && method === 'POST') {
-        return _localStore.login(body.email, body.password);
-      }
-
-      // ── PIN Login ─────────────────────────────────────────
-      if (endpoint === '/auth/pin-login' && method === 'POST') {
-        return _localStore.pinLogin(body.email, body.pin);
-      }
-
-      // ── Me / Session refresh ──────────────────────────────
-      if (endpoint === '/auth/me') {
-        const userId = _verifyLocalToken(token);
-        if (!userId) return { ok: false, status: 401, error: 'Session expired. Please log in again.' };
-        return _localStore.getUser(userId);
-      }
-
-      // ── Logout ────────────────────────────────────────────
-      if (endpoint === '/auth/logout') {
-        return { ok: true };
-      }
-
-      // ── Admin: list users ─────────────────────────────────
-      if (endpoint.startsWith('/admin/users') && method === 'GET') {
-        return { ok: true, users: _localStore.listUsers() };
-      }
-
-      // ── Admin: create user (offline) ──────────────────────
-      if (endpoint === '/admin/users' && method === 'POST') {
-        const regResult = _localStore.register({
-          fullName: body.fullName,
-          email: body.email,
-          password: body.password,
-          pin: body.pin,
-          tier: body.tier || 'gold',
-          depositAmount: parseFloat(body.depositAmount) || 0,
-        });
-        if (!regResult.ok) return regResult;
-        // Also set balance in the local user record
-        const allUsers = _localStore.getAll();
-        const idx = allUsers.findIndex(u => u.email.toLowerCase() === body.email.toLowerCase());
-        if (idx !== -1) {
-          allUsers[idx].balance = parseFloat(body.depositAmount) || 0;
-          allUsers[idx].depositAmount = parseFloat(body.depositAmount) || 0;
-          allUsers[idx].status = 'active';
-          _localStore.save(allUsers);
+    for (let i = 0; i < attempts.length; i++) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), attempts[i]);
+        const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
+        clearTimeout(timer);
+        const data = await resp.json();
+        if (!resp.ok) {
+          return { ok: false, status: resp.status, error: data.error || 'Request failed' };
         }
-        return { ok: true, success: true, user: regResult.user, wallet: regResult.wallet };
+        return { ok: true, ...data };
+      } catch (err) {
+        console.warn(`⚡ API attempt ${i + 1}/${attempts.length} failed (${endpoint}):`, err.message);
+        // If not last attempt, wait briefly then retry
+        if (i < attempts.length - 1) {
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
       }
-
-      // ── Admin: update user ────────────────────────────────
-      if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
-        const uid = endpoint.split('/').pop();
-        return _localStore.updateUser(uid, body);
-      }
-
-      // ── Admin: stats ──────────────────────────────────────
-      if (endpoint === '/admin/stats') {
-        const users = _localStore.listUsers();
-        return {
-          ok: true,
-          totalUsers: users.length,
-          activeUsers: users.filter(u => u.status === 'active').length,
-          totalDeposited: users.reduce((s, u) => s + (u.depositAmount || 0), 0),
-        };
-      }
-
-      // ── Admin: credit user ────────────────────────────────
-      if (endpoint.match(/^\/admin\/users\/[^/]+\/credit$/) && method === 'POST') {
-        const uid = endpoint.split('/')[3];
-        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-        const idx = allUsers.findIndex(u => u.id === uid);
-        if (idx === -1) return { ok: false, error: 'User not found.' };
-        const amt = parseFloat(body.amount) || 0;
-        allUsers[idx].balance = (allUsers[idx].balance || 0) + amt;
-        allUsers[idx].depositAmount = (allUsers[idx].depositAmount || 0) + amt;
-        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-        return { ok: true, balance: allUsers[idx].balance };
-      }
-
-      // ── Admin: debit user ─────────────────────────────────
-      if (endpoint.match(/^\/admin\/users\/[^/]+\/debit$/) && method === 'POST') {
-        const uid = endpoint.split('/')[3];
-        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-        const idx = allUsers.findIndex(u => u.id === uid);
-        if (idx === -1) return { ok: false, error: 'User not found.' };
-        const amt = parseFloat(body.amount) || 0;
-        allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
-        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-        return { ok: true, balance: allUsers[idx].balance };
-      }
-
-      // ── Admin: set PIN ────────────────────────────────────
-      if (endpoint.match(/^\/admin\/users\/[^/]+\/set-pin$/) && method === 'POST') {
-        const uid = endpoint.split('/')[3];
-        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-        const idx = allUsers.findIndex(u => u.id === uid);
-        if (idx === -1) return { ok: false, error: 'User not found.' };
-        allUsers[idx].pinHash = _simpleHash(body.pin);
-        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-        return { ok: true, success: true };
-      }
-
-      // ── Wallet / trades / KYC — return graceful empty ─────
-      return { ok: true, transactions: [], trades: [], balance: 0, totalDeposited: 0, earnings: 0 };
     }
+
+    // All API attempts failed — for auth endpoints, try local store as last resort
+    // (better than showing "server unreachable" which blocks the user entirely)
+    console.warn(`⚡ All API attempts failed (${endpoint}) — trying local fallback`);
+
+    // ── Verify email OTP (local: auto-succeed, no real email in offline mode) ──
+    if (endpoint === '/auth/verify-email' && method === 'POST') {
+      const user = _localStore.findById(body.userId);
+      if (!user) return { ok: false, error: 'User not found.' };
+      const token = _makeToken(user.id);
+      const { passwordHash, ...safe } = user;
+      return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
+    }
+
+    // ── Verify login OTP (local: auto-succeed) ──
+    if (endpoint === '/auth/verify-login-otp' && method === 'POST') {
+      const user = _localStore.findById(body.userId);
+      if (!user) return { ok: false, error: 'User not found.' };
+      const token = _makeToken(user.id);
+      const { passwordHash, ...safe } = user;
+      return { ok: true, token, user: safe, wallet: { totalDeposited: 0, balance: 0, earnings: 0, currency: 'USD' } };
+    }
+
+    // ── Resend OTP (local: no-op) ──
+    if (endpoint === '/auth/resend-otp' && method === 'POST') {
+      return { ok: true, message: 'Code sent (offline mode).' };
+    }
+
+    // ── Register ──────────────────────────────────────────
+    if (endpoint === '/auth/register' && method === 'POST') {
+      return _localStore.register(body);
+    }
+
+    // ── Login ─────────────────────────────────────────────
+    if (endpoint === '/auth/login' && method === 'POST') {
+      return _localStore.login(body.email, body.password);
+    }
+
+    // ── PIN Login ─────────────────────────────────────────
+    if (endpoint === '/auth/pin-login' && method === 'POST') {
+      return _localStore.pinLogin(body.email, body.pin);
+    }
+
+    // ── Me / Session refresh ──────────────────────────────
+    if (endpoint === '/auth/me') {
+      const userId = _verifyLocalToken(token);
+      if (!userId) return { ok: false, status: 401, error: 'Session expired. Please log in again.' };
+      return _localStore.getUser(userId);
+    }
+
+    // ── Logout ────────────────────────────────────────────
+    if (endpoint === '/auth/logout') {
+      return { ok: true };
+    }
+
+    // ── Admin: list users ─────────────────────────────────
+    if (endpoint.startsWith('/admin/users') && method === 'GET') {
+      return { ok: true, users: _localStore.listUsers() };
+    }
+
+    // ── Admin: create user (offline) ──────────────────────
+    if (endpoint === '/admin/users' && method === 'POST') {
+      const regResult = _localStore.register({
+        fullName: body.fullName,
+        email: body.email,
+        password: body.password,
+        pin: body.pin,
+        tier: body.tier || 'gold',
+        depositAmount: parseFloat(body.depositAmount) || 0,
+      });
+      if (!regResult.ok) return regResult;
+      const allUsers = _localStore.getAll();
+      const idx = allUsers.findIndex(u => u.email.toLowerCase() === body.email.toLowerCase());
+      if (idx !== -1) {
+        allUsers[idx].balance = parseFloat(body.depositAmount) || 0;
+        allUsers[idx].depositAmount = parseFloat(body.depositAmount) || 0;
+        allUsers[idx].status = 'active';
+        _localStore.save(allUsers);
+      }
+      return { ok: true, success: true, user: regResult.user, wallet: regResult.wallet };
+    }
+
+    // ── Admin: update user ────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
+      const uid = endpoint.split('/').pop();
+      return _localStore.updateUser(uid, body);
+    }
+
+    // ── Admin: stats ──────────────────────────────────────
+    if (endpoint === '/admin/stats') {
+      const users = _localStore.listUsers();
+      return {
+        ok: true,
+        totalUsers: users.length,
+        activeUsers: users.filter(u => u.status === 'active').length,
+        totalDeposited: users.reduce((s, u) => s + (u.depositAmount || 0), 0),
+      };
+    }
+
+    // ── Admin: credit user ────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/credit$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      const amt = parseFloat(body.amount) || 0;
+      allUsers[idx].balance = (allUsers[idx].balance || 0) + amt;
+      allUsers[idx].depositAmount = (allUsers[idx].depositAmount || 0) + amt;
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, balance: allUsers[idx].balance };
+    }
+
+    // ── Admin: debit user ─────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/debit$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      const amt = parseFloat(body.amount) || 0;
+      allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, balance: allUsers[idx].balance };
+    }
+
+    // ── Admin: set PIN ────────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/set-pin$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      allUsers[idx].pinHash = _simpleHash(body.pin);
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, success: true };
+    }
+
+    // ── Wallet / trades / KYC — return graceful empty ─────
+    return { ok: true, transactions: [], trades: [], balance: 0, totalDeposited: 0, earnings: 0 };
   }
 
   // ── Register (async) ────────────────────────────────────
