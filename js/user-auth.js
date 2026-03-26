@@ -439,8 +439,14 @@ const UserAuth = (() => {
 
   // ── Register (async) ────────────────────────────────────
   async function register({ fullName, email, password, tier, deposit, pin }) {
-    if (!fullName || !email || !password || !tier) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (fullName || '').trim();
+    if (!cleanName || !cleanEmail || !password || !tier) {
       return { ok: false, error: 'All fields are required.' };
+    }
+    // Real email validation — must have proper domain with real TLD
+    if (!/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(cleanEmail)) {
+      return { ok: false, error: 'Please enter a valid email address (e.g. name@gmail.com).' };
     }
     if (password.length < 6) {
       return { ok: false, error: 'Password must be at least 6 characters.' };
@@ -459,7 +465,7 @@ const UserAuth = (() => {
 
     const result = await _api('/auth/register', {
       method: 'POST',
-      body: { fullName, email, password, tier, depositAmount: dep, pin },
+      body: { fullName: cleanName, email: cleanEmail, password, tier, depositAmount: dep, pin },
       auth: false,
     });
 
@@ -475,7 +481,8 @@ const UserAuth = (() => {
   }
 
   // ── Login (async) ───────────────────────────────────────
-  async function login(email, password, rememberMe = false) {
+  async function login(emailRaw, password, rememberMe = false) {
+    const email = (emailRaw || '').trim().toLowerCase();
     if (!email || !password) return { ok: false, error: 'Email and password are required.' };
 
     const result = await _api('/auth/login', {
@@ -507,7 +514,8 @@ const UserAuth = (() => {
   }
 
   // ── PIN Login (async — skips OTP for quick access) ──────
-  async function pinLogin(email, pin, rememberMe = false) {
+  async function pinLogin(emailRaw, pin, rememberMe = false) {
+    const email = (emailRaw || '').trim().toLowerCase();
     if (!email || !pin) return { ok: false, error: 'Email and PIN are required.' };
     if (!/^\d{4}$/.test(pin)) return { ok: false, error: 'PIN must be exactly 4 digits.' };
 

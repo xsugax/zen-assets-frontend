@@ -2578,9 +2578,12 @@ const App = (() => {
 
     // OTP form submit
     const otpForm = $('login-otp-form');
+    let _loginOtpSubmitting = false;
     if (otpForm) {
       otpForm.onsubmit = async (ev) => {
         ev.preventDefault();
+        if (_loginOtpSubmitting) return;
+        _loginOtpSubmitting = true;
         const code = ($('login-otp-code') || {}).value || '';
         const btn  = otpForm.querySelector('button[type="submit"]');
         const orig = btn ? btn.innerHTML : '';
@@ -2593,6 +2596,7 @@ const App = (() => {
           _showLoginError(res.error || 'Invalid code. Please try again.');
           if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         }
+        _loginOtpSubmitting = false;
       };
     }
 
@@ -2913,8 +2917,8 @@ const App = (() => {
       const errBox = $('register-error');
       errBox.classList.remove('visible');
 
-      const fullName = $('reg-name').value;
-      const email    = $('reg-email').value;
+      const fullName = ($('reg-name').value || '').trim();
+      const email    = ($('reg-email').value || '').trim().toLowerCase();
       const password = $('reg-password').value;
       const pin      = ($('reg-pin') || {}).value || '';
       const tierRadio = document.querySelector('input[name="reg-tier"]:checked');
@@ -2964,9 +2968,12 @@ const App = (() => {
 
     // OTP form submit
     const otpForm = $('register-otp-form');
+    let _regOtpSubmitting = false;
     if (otpForm) {
       otpForm.onsubmit = async (ev) => {
         ev.preventDefault();
+        if (_regOtpSubmitting) return;
+        _regOtpSubmitting = true;
         const code = ($('register-otp-code') || {}).value || '';
         const btn  = otpForm.querySelector('button[type="submit"]');
         const orig = btn ? btn.innerHTML : '';
@@ -2981,6 +2988,7 @@ const App = (() => {
           if (errBox) { errBox.textContent = res.error || 'Invalid code. Please try again.'; errBox.classList.add('visible'); }
           if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         }
+        _regOtpSubmitting = false;
       };
     }
 
