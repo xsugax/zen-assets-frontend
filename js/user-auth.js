@@ -214,11 +214,11 @@ const UserAuth = (() => {
   _localStore.ensureAdmin();
 
   const TIERS = {
-    bronze:   { label: 'Bronze',   minDeposit: 2000,    apyRange: '55–78%',   color: '#cd7f32', icon: 'fa-medal'  },
-    silver:   { label: 'Silver',   minDeposit: 25000,   apyRange: '78–115%',  color: '#c0c0c0', icon: 'fa-award'  },
-    gold:     { label: 'Gold',     minDeposit: 100000,  apyRange: '115–175%', color: '#d4a574', icon: 'fa-trophy' },
-    platinum: { label: 'Platinum', minDeposit: 500000,  apyRange: '175–260%', color: '#e5e4e2', icon: 'fa-gem'    },
-    diamond:  { label: 'Diamond',  minDeposit: 2000000, apyRange: '260–400%', color: '#b9f2ff', icon: 'fa-crown'  },
+    bronze:   { label: 'Bronze',   apyRange: '55–78%',   color: '#cd7f32', icon: 'fa-medal'  },
+    silver:   { label: 'Silver',   apyRange: '78–115%',  color: '#c0c0c0', icon: 'fa-award'  },
+    gold:     { label: 'Gold',     apyRange: '115–175%', color: '#d4a574', icon: 'fa-trophy' },
+    platinum: { label: 'Platinum', apyRange: '175–260%', color: '#e5e4e2', icon: 'fa-gem'    },
+    diamond:  { label: 'Diamond',  apyRange: '260–400%', color: '#b9f2ff', icon: 'fa-crown'  },
   };
 
   // ── Local Cache Helpers ──────────────────────────────────
@@ -286,9 +286,8 @@ const UserAuth = (() => {
 
     const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
 
-    // Auth endpoints: try up to 3 times with increasing timeout (8s → 20s → 45s)
-    // Other endpoints: single attempt, 5s
-    const attempts = isCriticalAuth ? [8000, 20000, 45000] : [5000];
+    // All endpoints: single 5-second timeout (fast UX, local fallback on failure)
+    const attempts = [5000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
@@ -450,7 +449,7 @@ const UserAuth = (() => {
   }
 
   // ── Register (async) ────────────────────────────────────
-  async function register({ fullName, email, password, tier, deposit, pin }) {
+  async function register({ fullName, email, password, tier, pin }) {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanName = (fullName || '').trim();
     if (!cleanName || !cleanEmail || !password || !tier) {
@@ -469,15 +468,9 @@ const UserAuth = (() => {
     if (!TIERS[tier]) {
       return { ok: false, error: 'Invalid membership tier.' };
     }
-    const minDep = TIERS[tier].minDeposit;
-    const dep = parseFloat(deposit) || 0;
-    if (dep < minDep) {
-      return { ok: false, error: `${TIERS[tier].label} tier requires a minimum deposit of $${minDep.toLocaleString()}.` };
-    }
-
     const result = await _api('/auth/register', {
       method: 'POST',
-      body: { fullName: cleanName, email: cleanEmail, password, tier, depositAmount: dep, pin },
+      body: { fullName: cleanName, email: cleanEmail, password, tier, depositAmount: 0, pin },
       auth: false,
     });
 
@@ -492,6 +485,10 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, false);
+
+      // Also save to local store so login works if backend DB resets
+      try { _localStore.register({ fullName: cleanName, email: cleanEmail, password, tier, pin }); } catch {}
+
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     if (result.ok) {
@@ -523,6 +520,23 @@ const UserAuth = (() => {
       };
       _persistAuth(result.token, session, result.wallet, rememberMe);
       return { ok: true, user: result.user, session, wallet: result.wallet };
+    }
+
+    // If backend returned 401 (invalid credentials or DB wiped), try local store
+    if (!result.ok && (result.status === 401 || !result.status)) {
+      const localResult = _localStore.login(email, password);
+      if (localResult.ok) {
+        const session = {
+          userId: localResult.user.id,
+          email: localResult.user.email,
+          role: localResult.user.role,
+          tier: localResult.user.tier,
+          fullName: localResult.user.fullName,
+          loginAt: Date.now(),
+        };
+        _persistAuth(localResult.token, session, localResult.wallet, rememberMe);
+        return { ok: true, user: localResult.user, session, wallet: localResult.wallet };
+      }
     }
 
     return result;
