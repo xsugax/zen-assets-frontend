@@ -237,6 +237,21 @@ const UserAuth = (() => {
     listUsers() {
       return this.getAll().map(({ passwordHash, ...u }) => u);
     },
+
+    // ── delete user by id ──────────────────────────────────
+    deleteUser(id) {
+      const users = this.getAll();
+      const idx = users.findIndex(u => u.id === id);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      const removed = users.splice(idx, 1)[0];
+      this.save(users);
+      // Also clean up their investment + trade data
+      try {
+        localStorage.removeItem('zen_investment_' + removed.email);
+        localStorage.removeItem('autoTradeHistory_' + removed.email);
+      } catch {}
+      return { ok: true, message: 'User deleted.' };
+    },
   };
 
   // Purge old data on version change (clean start), then seed admin
@@ -316,8 +331,8 @@ const UserAuth = (() => {
 
     const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
 
-    // All endpoints: single 5-second timeout (fast UX, local fallback on failure)
-    const attempts = [5000];
+    // All endpoints: 12-second timeout (Render cold-start can take 8-10s)
+    const attempts = [12000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
@@ -461,6 +476,12 @@ const UserAuth = (() => {
       allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
       localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
       return { ok: true, balance: allUsers[idx].balance };
+    }
+
+    // ── Admin: delete user ─────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'DELETE') {
+      const uid = endpoint.split('/').pop();
+      return _localStore.deleteUser(uid);
     }
 
     // ── Admin: set PIN ────────────────────────────────────
