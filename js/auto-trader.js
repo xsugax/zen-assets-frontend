@@ -254,9 +254,11 @@ const AutoTrader = (() => {
     // Load trade history from per-user localStorage
     loadUserHistory();
     
-    // Auto-start if configured
-    if (CONFIG.enabled) {
+    // Only auto-start if account is funded by admin
+    if (CONFIG.enabled && typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && InvestmentReturns.isActivated()) {
       start();
+    } else {
+      console.log('⏸️ AutoTrader: Account not yet funded — waiting for admin activation');
     }
   }
 

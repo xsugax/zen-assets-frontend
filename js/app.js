@@ -1647,8 +1647,8 @@ const App = (() => {
     if (qslider && qval) {
       qslider.addEventListener('input', () => {
         qval.textContent = qslider.value + '%';
-        // Use wallet balance for position sizing
-        let balance = 100000;
+        // Use wallet balance for position sizing — $0 if unfunded
+        let balance = 0;
         if (typeof InvestmentReturns !== 'undefined') {
           const snap = InvestmentReturns.getSnapshot();
           if (snap.walletBalance > 0) balance = snap.walletBalance;

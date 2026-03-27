@@ -8,8 +8,8 @@ const Portfolio = (() => {
 
   const rand = (lo, hi) => lo + Math.random() * (hi - lo);
 
-  // ── Holdings ─────────────────────────────────────────────
-  let holdings = [
+  // ── Holdings (only populated when account is funded) ───
+  const _defaultHoldings = [
     { id: 'BTC',   sym: 'BTC/USD',  name: 'Bitcoin',   qty: 1.84,   avgEntry: 58200,  cat: 'crypto',    risk: 'high' },
     { id: 'ETH',   sym: 'ETH/USD',  name: 'Ethereum',  qty: 12.5,   avgEntry: 3120,   cat: 'crypto',    risk: 'high' },
     { id: 'SOL',   sym: 'SOL/USD',  name: 'Solana',    qty: 80,     avgEntry: 145,    cat: 'crypto',    risk: 'high' },
@@ -22,12 +22,22 @@ const Portfolio = (() => {
     { id: 'UNI',   sym: 'UNI/USD',  name: 'Uniswap',   qty: 600,    avgEntry: 7.80,   cat: 'defi',      risk: 'high' },
   ];
 
+  // Returns real holdings only if account is funded, else empty
+  function _getActiveHoldings() {
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && InvestmentReturns.isActivated()) {
+      return _defaultHoldings;
+    }
+    return []; // unfunded = no holdings
+  }
+
+  let holdings = [];
+
   // ── Wallet-Anchored Equity Curve ─────────────────────────
-  let _walletAnchor = 100000;
+  let _walletAnchor = 0;
   let _lastEquityUpdate = 0;
 
   const _equityHistory = (() => {
-    const curve = [100000];
+    const curve = [0];
     for (let i = 1; i < 90; i++) {
       // Realistic: sometimes up, sometimes down, mostly small moves
       let drift = 0.0003 + Math.random() * 0.0015; // +0.03% to +0.18% drift
@@ -45,6 +55,9 @@ const Portfolio = (() => {
   function computeMetrics() {
     const assets = MarketData.getAllAssets();
     const aMap = {}; assets.forEach(a => { aMap[a.id] = a; });
+
+    // Refresh holdings — only show positions when account is funded
+    holdings = _getActiveHoldings();
 
     // Get real wallet balance from InvestmentReturns
     let walletBalance = 0, initialDeposit = 0, todayPnL = 0, totalReturn = 0, totalPortfolioValue = 0;
@@ -71,12 +84,12 @@ const Portfolio = (() => {
       return { ...h, price: px, value: val, cost, pnl, pct: parseFloat(pct), aiScore: parseFloat(rand(62, 97).toFixed(1)), pct24h: a ? a.pct24h : 0 };
     });
 
-    // Portfolio value = total portfolio (wallet + unclaimed) — always increasing
-    const totalValue = totalPortfolioValue > 0 ? totalPortfolioValue : (walletBalance > 0 ? walletBalance : rawPortValue);
-    const totalPnL   = totalPortfolioValue > 0 ? totalPortfolioValue - initialDeposit : (walletBalance > 0 ? walletBalance - initialDeposit : rawPortValue - totalCost);
+    // Portfolio value — $0 for unfunded accounts, no fake fallback
+    const totalValue = totalPortfolioValue > 0 ? totalPortfolioValue : (walletBalance > 0 ? walletBalance : 0);
+    const totalPnL   = totalPortfolioValue > 0 ? totalPortfolioValue - initialDeposit : (walletBalance > 0 ? walletBalance - initialDeposit : 0);
     const totalPct   = totalPortfolioValue > 0 && initialDeposit > 0
       ? parseFloat(((totalPnL / initialDeposit) * 100).toFixed(2))
-      : totalCost > 0 ? parseFloat((((rawPortValue - totalCost) / totalCost) * 100).toFixed(2)) : 0;
+      : 0;
 
     const alloc = enriched.map(h => ({ label: h.name, pct: rawPortValue > 0 ? parseFloat(((h.value / rawPortValue) * 100).toFixed(1)) : 0 }));
 
@@ -104,7 +117,15 @@ const Portfolio = (() => {
 
     // Push equity point every 30s — positive trend tied to wallet growth
     const now = Date.now();
-    if (now - _lastEquityUpdate > 30000) {
+    if (now - _lastEquityUpdate > 30000 && walletBalance > 0) {
+      // Bootstrap equity curve when account gets funded (transition from $0)
+      const lastVal = _equityHistory[_equityHistory.length - 1];
+      if (lastVal <= 0 && walletBalance > 0) {
+        // Seed the curve with funded balance
+        _equityHistory.length = 0;
+        _equityHistory.push(walletBalance);
+        _walletAnchor = walletBalance;
+      }
       // Realistic: allow for small losses, volatility, and slower growth
       let base = totalPortfolioValue > 0 && _walletAnchor > 0
         ? (totalPortfolioValue / _walletAnchor - 1) * 0.0025
