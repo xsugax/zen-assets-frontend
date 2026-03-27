@@ -137,7 +137,7 @@
   </script>
 
   <!-- Security Module (must load early) -->
-  <script src="js/security.js?v=80" defer></script>
+  <script src="js/security.js?v=81" defer></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -146,40 +146,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- Preload critical CSS -->
-  <link rel="preload" href="css/main.css?v=80" as="style" />
-  <link rel="preload" href="css/animations.css?v=80" as="style" />
+  <link rel="preload" href="css/main.css?v=81" as="style" />
+  <link rel="preload" href="css/animations.css?v=81" as="style" />
 
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=80" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css?v=81" />
 
   <!-- Chart.js (deferred � not needed on login screen) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=80" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js?v=81" defer></script>
 
   <!-- TradingView Lightweight Charts (deferred) -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=80" defer></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=81" defer></script>
 
-  <link rel="stylesheet" href="css/animations.css?v=80" />
-  <link rel="stylesheet" href="css/main.css?v=80" />
-  <link rel="stylesheet" href="css/advanced-charts.css?v=80" />
-  <link rel="stylesheet" href="css/auto-trader.css?v=80" />
-  <link rel="stylesheet" href="css/investment-returns.css?v=80" />
-  <link rel="stylesheet" href="css/gamification.css?v=80" />
-  <link rel="stylesheet" href="css/admin.css?v=80" />
-  <link rel="stylesheet" href="css/mobile.css?v=80" />
+  <link rel="stylesheet" href="css/animations.css?v=81" />
+  <link rel="stylesheet" href="css/main.css?v=81" />
+  <link rel="stylesheet" href="css/advanced-charts.css?v=81" />
+  <link rel="stylesheet" href="css/auto-trader.css?v=81" />
+  <link rel="stylesheet" href="css/investment-returns.css?v=81" />
+  <link rel="stylesheet" href="css/gamification.css?v=81" />
+  <link rel="stylesheet" href="css/admin.css?v=81" />
+  <link rel="stylesheet" href="css/mobile.css?v=81" />
   <!-- Smartsupp Live Chat script -->
   <script type="text/javascript">
     var _smartsupp = _smartsupp || {};
     _smartsupp.key = 'f72cc578302b94a10463c6570ec97c8bb07d6a62';
-    _smartsupp.widgetOnInit = function(){
-      smartsupp('widget:hide');
-    };
     window.smartsupp||(function(d) {
       var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
       s=d.getElementsByTagName('script')[0];c=d.createElement('script');
       c.type='text/javascript';c.charset='utf-8';c.async=true;
       c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
     })(document);
-    smartsupp('on','widget',function(e){ if(e==='close') smartsupp('widget:hide'); });
+    smartsupp('chat:hide');
   </script>
 </head>
 <body>
@@ -3900,27 +3897,27 @@
 </div>
 
 <!-- Scripts -->
-<script src="js/market-data.js?v=80"></script>
-<script src="js/zen-markets.js?v=80"></script>
-<script src="js/user-auth.js?v=80"></script>
-<script src="js/api-proxy.js?v=80"></script>
-<script src="js/resilience-engine.js?v=80"></script>
+<script src="js/market-data.js?v=81"></script>
+<script src="js/zen-markets.js?v=81"></script>
+<script src="js/user-auth.js?v=81"></script>
+<script src="js/api-proxy.js?v=81"></script>
+<script src="js/resilience-engine.js?v=81"></script>
 <!-- debug-monitor disabled in production -->
-<!-- <script src="js/debug-monitor.js?v=80"></script> -->
-<script src="js/real-data-adapter.js?v=80"></script>
-<script src="js/ai-engine.js?v=80"></script>
-<script src="js/chart-engine.js?v=80"></script>
-<script src="js/advanced-chart-engine.js?v=80"></script>
-<script src="js/chart-validation.js?v=80"></script>
-<script src="js/chart-data-indicator.js?v=80"></script>
-<script src="js/trading.js?v=80"></script>
-<script src="js/smart-exit-engine.js?v=80"></script>
-<script src="js/auto-trader.js?v=80"></script>
-<script src="js/portfolio.js?v=80"></script>
-<script src="js/investment-returns.js?v=80"></script>
-<script src="js/gamification.js?v=80"></script>
-<script src="js/plugins.js?v=80"></script>
-<script src="js/app.js?v=80"></script>
+<!-- <script src="js/debug-monitor.js?v=81"></script> -->
+<script src="js/real-data-adapter.js?v=81"></script>
+<script src="js/ai-engine.js?v=81"></script>
+<script src="js/chart-engine.js?v=81"></script>
+<script src="js/advanced-chart-engine.js?v=81"></script>
+<script src="js/chart-validation.js?v=81"></script>
+<script src="js/chart-data-indicator.js?v=81"></script>
+<script src="js/trading.js?v=81"></script>
+<script src="js/smart-exit-engine.js?v=81"></script>
+<script src="js/auto-trader.js?v=81"></script>
+<script src="js/portfolio.js?v=81"></script>
+<script src="js/investment-returns.js?v=81"></script>
+<script src="js/gamification.js?v=81"></script>
+<script src="js/plugins.js?v=81"></script>
+<script src="js/app.js?v=81"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
@@ -4240,7 +4237,7 @@
   box-shadow:0 6px 28px rgba(212,165,116,0.55);
   transition:transform .2s,box-shadow .2s;
   animation:zenPulse 3s ease-in-out infinite;
-  touch-action:none; user-select:none;
+  user-select:none;
 }
 #zen-chat-btn:hover {
   transform:scale(1.08);
@@ -4268,7 +4265,7 @@
   var btn=document.getElementById('zen-chat-btn');
   if(!btn) return;
 
-  /* ── Open Smartsupp native chat (inline, no dependency on app.js) ── */
+  /* ── Open Smartsupp native chat ── */
   function openChat(){
     if(typeof smartsupp==='function'){
       smartsupp('chat:open');
@@ -4282,7 +4279,7 @@
 
   /* ── Draggable (touch + mouse) ── */
   var dragging=false, hasMoved=false, startX, startY, origX, origY;
-  var DRAG_THRESHOLD=6;
+  var DRAG_THRESHOLD=8;
 
   function pointerDown(e){
     var t=e.touches?e.touches[0]:e;
@@ -4305,8 +4302,9 @@
     btn.style.right='auto'; btn.style.bottom='auto';
   }
   function pointerUp(){
-    dragging=false;
-    if(!hasMoved) openChat();
+    var wasDragging=hasMoved;
+    dragging=false; hasMoved=false;
+    if(!wasDragging) openChat();
   }
 
   btn.addEventListener('mousedown',pointerDown);
@@ -4315,8 +4313,6 @@
   btn.addEventListener('touchstart',pointerDown,{passive:true});
   btn.addEventListener('touchmove',pointerMove,{passive:false});
   btn.addEventListener('touchend',pointerUp);
-
-  btn.addEventListener('click',function(e){ e.stopPropagation(); });
 })();
 </script>
 
