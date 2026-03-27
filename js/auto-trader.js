@@ -884,6 +884,12 @@ const AutoTrader = (() => {
   function updateTradeHistoryDisplay() {
     const container = document.getElementById('auto-trade-history');
     if (!container) return;
+
+    // Don't show trade history for unfunded accounts
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) {
+      container.innerHTML = '<div class="no-history">⏳ Account awaiting activation — trading begins after admin funding</div>';
+      return;
+    }
     
     const recent = tradeHistory.slice(0, 25);
     

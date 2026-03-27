@@ -59,6 +59,7 @@ const UserAuth = (() => {
   }
 
   // ── Local User Store ─────────────────────────────────────
+  const DATA_VERSION = 'v73_clean';
   const _localStore = {
     USERS_KEY: 'zen_users_db',
 
@@ -77,6 +78,34 @@ const UserAuth = (() => {
 
     findById(id) {
       return this.getAll().find(u => u.id === id) || null;
+    },
+
+    // Wipe stale user data when data version changes (fresh start)
+    purgeIfVersionChanged() {
+      const stored = localStorage.getItem('zen_data_version');
+      if (stored === DATA_VERSION) return;
+      console.log('🧹 Data version changed — purging old user data for fresh start');
+      // Remove all user-specific keys
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key === 'zen_users_db' ||
+          key.startsWith('zen_investment_') ||
+          key.startsWith('autoTradeHistory_') ||
+          key === 'autoTradeHistory' ||
+          key === 'zen_session' ||
+          key === 'zen_token' ||
+          key === 'zen_wallet' ||
+          key === 'zen_remember_me' ||
+          key.startsWith('zen_admin_')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      sessionStorage.clear();
+      localStorage.setItem('zen_data_version', DATA_VERSION);
     },
 
     // Seed built-in admin on first run
@@ -210,7 +239,8 @@ const UserAuth = (() => {
     },
   };
 
-  // Seed admin immediately
+  // Purge old data on version change (clean start), then seed admin
+  _localStore.purgeIfVersionChanged();
   _localStore.ensureAdmin();
 
   const TIERS = {

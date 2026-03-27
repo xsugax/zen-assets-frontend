@@ -314,6 +314,9 @@ const App = (() => {
         }
       }, 4000);
 
+      // Periodic overlay cleanup — prevent ghost shadows on mobile
+      setInterval(_cleanupStaleOverlays, 30000);
+
       // Also re-sync when window regains focus (user switches back from admin tab)
       window.addEventListener('focus', () => {
         if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.reloadFromStorage) {
@@ -448,8 +451,27 @@ const App = (() => {
     }
   }
 
+  // ── Cleanup stale overlays (prevents ghost black padding on mobile) ──
+  function _cleanupStaleOverlays() {
+    // Force-hide any stuck overlays/backdrops
+    ['#loading-screen', '.fm-claim-overlay', '.chart-loading'].forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.display = 'none';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      });
+    });
+    ['.modal-backdrop', '.search-overlay', '#mobile-more-menu'].forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.classList.remove('open', 'fm-overlay-active', 'fm-process-success');
+      });
+    });
+  }
+
   function navigate(name) {
     _section = name;
+    // Cleanup any stuck overlays on every navigation
+    _cleanupStaleOverlays();
     $$('.content-section').forEach(s => s.classList.remove('active'));
     $$('.nav-item').forEach(i  => i.classList.remove('active'));
     const sec = $(`section-${name}`);
