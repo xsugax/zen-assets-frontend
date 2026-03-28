@@ -253,6 +253,12 @@ const AutoTrader = (() => {
     
     // Load trade history from per-user localStorage
     loadUserHistory();
+
+    // Show compound stats immediately (balance + history stats)
+    _updateCompoundStats();
+
+    // Keep compound stats panel refreshed every 5 seconds
+    setInterval(_updateCompoundStats, 5000);
     
     // Only auto-start if account is funded by admin
     if (CONFIG.enabled && typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && InvestmentReturns.isActivated()) {
@@ -275,6 +281,9 @@ const AutoTrader = (() => {
     isRunning = true;
     console.log('🚀 AutoTrader: STARTING autonomous trading');
     console.log(`⚙️ Config: ${CONFIG.maxPositions} max positions, ${CONFIG.positionSizePercent}% per trade, ${CONFIG.tradeInterval}ms interval`);
+
+    // Show stats immediately on start
+    _updateCompoundStats();
     
     // Place first trade after a short delay
     setTimeout(() => evaluateAndTrade(), 2000);
@@ -772,9 +781,20 @@ const AutoTrader = (() => {
 
     const stats = getStatistics();
     const balance = _getCompoundBalance();
-    const sessionStart = _compoundTrail.length > 0 ? _compoundTrail[0].balance : balance;
-    const growth = sessionStart > 0 ? ((balance - sessionStart) / sessionStart) * 100 : 0;
-    const tradeCount = _compoundTrail.length;
+
+    // Trade count — use persisted history (compoundTrail resets on reload)
+    const tradeCount = stats.totalTrades || _compoundTrail.length;
+
+    // Growth — prefer session trail, fallback to investment snapshot
+    let growth = 0;
+    if (_compoundTrail.length > 0) {
+      const sessionStart = _compoundTrail[0].balance;
+      growth = sessionStart > 0 ? ((balance - sessionStart) / sessionStart) * 100 : 0;
+    } else if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.getSnapshot) {
+      const snap = InvestmentReturns.getSnapshot();
+      const init = snap.initialDeposit || 0;
+      growth = init > 0 ? ((balance - init) / init) * 100 : 0;
+    }
 
     // Show current tier trading profile
     let tierLabel = 'Gold';
