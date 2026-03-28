@@ -282,35 +282,81 @@ const AdminPanel = (() => {
   const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
     ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
 
-  // Wake up Render backend (cold-start) before heavy data calls
-  async function _wakeBackend() {
+  // Ensure admin has a REAL server token (not a local fallback token)
+  // This is critical: without a valid server token, all /admin/* calls fail
+  async function _ensureServerAuth() {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 35000);
-      const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
-      await fetch(`${API_BASE}/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      return true;
-    } catch { return false; }
+      toast('Connecting to server…', 'info', 8000);
+
+      // Step 1: Try current token — maybe it's already valid
+      const existingToken = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+      if (existingToken) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 35000);
+          const resp = await fetch(`${API_BASE}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${existingToken}` },
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          if (resp.ok) {
+            toast('Server connected', 'success', 2000);
+            return true; // token is valid on server
+          }
+        } catch { /* token invalid or server cold — continue to re-auth */ }
+      }
+
+      // Step 2: Re-authenticate with admin credentials to get a real server token
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 45000);
+        const resp = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASS }),
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.token) {
+            // Save the real server token
+            localStorage.setItem('zen_token', data.token);
+            sessionStorage.setItem('zen_token', data.token);
+            if (data.user) {
+              const session = {
+                userId: data.user.id, email: data.user.email,
+                role: data.user.role || 'admin', tier: data.user.tier,
+                fullName: data.user.fullName || data.user.full_name || 'Admin',
+                loginAt: Date.now(),
+              };
+              localStorage.setItem('zen_session', JSON.stringify(session));
+            }
+            toast('Server connected', 'success', 2000);
+            return true;
+          }
+        }
+      } catch { /* server not reachable */ }
+
+      toast('Server offline — showing cached data', 'warning', 4000);
+      return false;
+    } catch {
+      return false;
+    }
   }
 
-  let _backendAwake = false;
+  let _serverAuthenticated = false;
 
   async function _loadApiData() {
     try {
-      // First call: wake the backend so subsequent fetches don't all timeout
-      if (!_backendAwake) {
-        toast('Connecting to server…', 'info', 6000);
-        const awake = await _wakeBackend();
-        if (awake) {
-          _backendAwake = true;
+      // First call: authenticate with the real server so API calls work
+      if (!_serverAuthenticated) {
+        const authed = await _ensureServerAuth();
+        if (authed) {
+          _serverAuthenticated = true;
         } else {
           // Backend didn't respond — load from local store immediately
           _seedCacheFromLocalStore();
-          toast('Server offline — showing cached data', 'warning', 4000);
           return false;
         }
       }
