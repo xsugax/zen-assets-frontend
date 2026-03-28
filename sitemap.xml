@@ -7,7 +7,7 @@
   <!-- Home / Public Landing Page -->
   <url>
     <loc>https://zenassets.tech/</loc>
-    <lastmod>2025-06-26</lastmod>
+    <lastmod>2025-07-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -15,9 +15,17 @@
   <!-- Dashboard (authenticated SPA shell) -->
   <url>
     <loc>https://zenassets.tech/dashboard</loc>
-    <lastmod>2025-06-26</lastmod>
+    <lastmod>2025-07-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+
+  <!-- OG Image -->
+  <url>
+    <loc>https://zenassets.tech/og-image.png</loc>
+    <lastmod>2025-07-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
   </url>
 
 </urlset>
