@@ -297,6 +297,9 @@ const AdminPanel = (() => {
           fresh[norm.email] = norm;
         });
         _cache.users = fresh;
+
+        // Sync API users into local store so they persist offline
+        _syncUsersToLocalStore(usersRaw);
       } else if (!_cache.users || Object.keys(_cache.users).length === 0) {
         // No API data AND cache is empty — seed from local store as safety net
         _cache.users = {};
@@ -328,6 +331,54 @@ const AdminPanel = (() => {
       toast('Could not load data from server.', 'error');
       return false;
     }
+  }
+
+  // Sync API users into zen_users_db so they survive offline / cold-starts
+  function _syncUsersToLocalStore(apiUsers) {
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const localMap = {};
+      localUsers.forEach(u => { localMap[(u.email || '').toLowerCase()] = u; });
+
+      let changed = false;
+      apiUsers.forEach(au => {
+        const email = (au.email || '').toLowerCase();
+        if (!email || email === 'admin@zenassets.com') return;
+
+        if (localMap[email]) {
+          // Update existing local record with latest API data
+          const lu = localMap[email];
+          lu.fullName      = au.full_name || au.fullName || lu.fullName;
+          lu.status         = au.status   || lu.status;
+          lu.tier           = au.tier     || lu.tier;
+          lu.balance        = parseFloat(au.balance) || lu.balance || 0;
+          lu.depositAmount  = parseFloat(au.total_deposited) || parseFloat(au.depositAmount) || lu.depositAmount || 0;
+          lu.role           = au.role     || lu.role || 'user';
+          changed = true;
+        } else {
+          // New user from API — add to local store (no password, but visible in admin)
+          localUsers.push({
+            id:            au.id || ('u_api_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+            fullName:      au.full_name || au.fullName || au.email,
+            email:         email,
+            passwordHash:  au.passwordHash || '',
+            pinHash:       au.pinHash || null,
+            tier:          au.tier || 'bronze',
+            depositAmount: parseFloat(au.total_deposited) || parseFloat(au.depositAmount) || parseFloat(au.balance) || 0,
+            balance:       parseFloat(au.balance) || 0,
+            earnings:      parseFloat(au.earnings) || 0,
+            role:          au.role || 'user',
+            status:        au.status || 'active',
+            createdAt:     au.created_at || au.createdAt || new Date().toISOString(),
+          });
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        localStorage.setItem('zen_users_db', JSON.stringify(localUsers));
+      }
+    } catch (e) { /* graceful — don't break the panel */ }
   }
 
   // ────────────────────────────────────────────────────────
