@@ -225,16 +225,20 @@ const AdminPanel = (() => {
     return {
       id:              u.id,
       email,
-      fullName:        u.full_name || u.email || 'Unknown',
+      fullName:        u.full_name || u.fullName || u.email || 'Unknown',
       role:            u.role || 'user',
       status:          u.status || 'active',
       tier:            u.tier || 'bronze',
-      kycStatus:       u.kyc_status || 'unverified',
-      createdAt:       u.created_at ? new Date(u.created_at).getTime() : Date.now(),
-      lastLogin:       u.last_login ? new Date(u.last_login).getTime() : null,
-      deposit:         parseFloat(u.balance) || 0,          // current wallet balance
-      totalDeposited:  parseFloat(u.total_deposited) || 0,
-      tradeCount:      u.trade_count || 0,
+      kycStatus:       u.kyc_status || u.kycStatus || 'unverified',
+      createdAt:       u.created_at ? new Date(u.created_at).getTime()
+                     : u.createdAt  ? new Date(u.createdAt).getTime()
+                     : Date.now(),
+      lastLogin:       u.last_login  ? new Date(u.last_login).getTime()
+                     : u.lastLogin   ? new Date(u.lastLogin).getTime()
+                     : null,
+      deposit:         parseFloat(u.balance) || parseFloat(u.depositAmount) || 0,
+      totalDeposited:  parseFloat(u.total_deposited) || parseFloat(u.totalDeposited) || parseFloat(u.depositAmount) || 0,
+      tradeCount:      u.trade_count || u.tradeCount || 0,
     };
   }
 
@@ -285,12 +289,24 @@ const AdminPanel = (() => {
       ]);
 
       // Normalise users → dict keyed by email
-      _cache.users = {};
-      if (Array.isArray(usersRaw)) {
+      // IMPORTANT: only replace cache if we got data; keep previous data otherwise
+      if (Array.isArray(usersRaw) && usersRaw.length > 0) {
+        const fresh = {};
         usersRaw.forEach(u => {
           const norm = _normalizeUser(u);
-          _cache.users[norm.email] = norm;
+          fresh[norm.email] = norm;
         });
+        _cache.users = fresh;
+      } else if (!_cache.users || Object.keys(_cache.users).length === 0) {
+        // No API data AND cache is empty — seed from local store as safety net
+        _cache.users = {};
+        try {
+          const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+          localUsers.forEach(u => {
+            const norm = _normalizeUser(u);
+            if (norm.role !== 'admin') _cache.users[norm.email] = norm;
+          });
+        } catch (e) { /* graceful */ }
       }
 
       // Normalise withdrawals
