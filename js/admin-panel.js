@@ -279,8 +279,42 @@ const AdminPanel = (() => {
   // ────────────────────────────────────────────────────────
   //  API DATA LOADER
   // ────────────────────────────────────────────────────────
+  const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
+
+  // Wake up Render backend (cold-start) before heavy data calls
+  async function _wakeBackend() {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 35000);
+      const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+      await fetch(`${API_BASE}/admin/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      return true;
+    } catch { return false; }
+  }
+
+  let _backendAwake = false;
+
   async function _loadApiData() {
     try {
+      // First call: wake the backend so subsequent fetches don't all timeout
+      if (!_backendAwake) {
+        toast('Connecting to server…', 'info', 6000);
+        const awake = await _wakeBackend();
+        if (awake) {
+          _backendAwake = true;
+        } else {
+          // Backend didn't respond — load from local store immediately
+          _seedCacheFromLocalStore();
+          toast('Server offline — showing cached data', 'warning', 4000);
+          return false;
+        }
+      }
+
       const [usersRaw, withdrawalsRaw, statsRaw, auditRaw] = await Promise.all([
         UserAuth.adminGetAllUsers({ limit: 500 }),
         UserAuth.adminGetWithdrawals(),
@@ -328,9 +362,23 @@ const AdminPanel = (() => {
       return true;
     } catch (err) {
       console.error('AdminPanel: _loadApiData failed', err);
-      toast('Could not load data from server.', 'error');
+      _seedCacheFromLocalStore();
+      toast('Could not load data from server — showing cached data.', 'warning');
       return false;
     }
+  }
+
+  // Populate _cache.users from localStorage when API is unreachable
+  function _seedCacheFromLocalStore() {
+    if (_cache.users && Object.keys(_cache.users).length > 0) return; // already have data
+    _cache.users = {};
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      localUsers.forEach(u => {
+        const norm = _normalizeUser(u);
+        if (norm.role !== 'admin') _cache.users[norm.email] = norm;
+      });
+    } catch (e) { /* graceful */ }
   }
 
   // Sync API users into zen_users_db so they survive offline / cold-starts

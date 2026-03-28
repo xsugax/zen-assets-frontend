@@ -337,8 +337,12 @@ const UserAuth = (() => {
 
     const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
 
-    // All endpoints: 12-second timeout (Render cold-start can take 8-10s)
-    const attempts = [12000];
+    const isAdminEndpoint = endpoint.startsWith('/admin');
+
+    // Admin endpoints get longer timeout + retry (Render cold-start can take 20-30s)
+    // Auth-critical endpoints get a single generous attempt
+    // Other endpoints: 12s single attempt
+    const attempts = isAdminEndpoint ? [30000, 15000] : [12000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
