@@ -323,15 +323,17 @@ const AdminPanel = (() => {
             // Save the real server token
             localStorage.setItem('zen_token', data.token);
             sessionStorage.setItem('zen_token', data.token);
-            if (data.user) {
-              const session = {
-                userId: data.user.id, email: data.user.email,
-                role: data.user.role || 'admin', tier: data.user.tier,
-                fullName: data.user.fullName || data.user.full_name || 'Admin',
-                loginAt: Date.now(),
-              };
-              localStorage.setItem('zen_session', JSON.stringify(session));
-            }
+            // Always write admin session — we know this is admin (using admin creds)
+            const session = {
+              userId: data.user?.id || 'admin',
+              email: ADMIN_EMAIL,
+              role: 'admin',
+              tier: data.user?.tier || 'diamond',
+              fullName: data.user?.fullName || data.user?.full_name || 'Admin',
+              loginAt: Date.now(),
+            };
+            localStorage.setItem('zen_session', JSON.stringify(session));
+            sessionStorage.setItem('zen_session', JSON.stringify(session));
             toast('Server connected', 'success', 2000);
             return true;
           }
@@ -620,6 +622,17 @@ const AdminPanel = (() => {
         }
         log('login', 'Admin logged in', 'info');
         Cookie.set('session', { email, role: 'admin', loginAt: Date.now() }, 7);
+        // Force admin session into both stores so isAdmin() always returns true
+        const adminSession = {
+          userId: result.user?.id || result.session?.userId || 'admin',
+          email: email.toLowerCase(),
+          role: 'admin',
+          tier: result.user?.tier || 'diamond',
+          fullName: result.user?.fullName || 'Admin',
+          loginAt: Date.now(),
+        };
+        localStorage.setItem('zen_session', JSON.stringify(adminSession));
+        sessionStorage.setItem('zen_session', JSON.stringify(adminSession));
         _showApp();
       } catch (err) {
         if (errEl) { errEl.textContent = 'Server error. Please try again.'; errEl.style.display = 'block'; }
