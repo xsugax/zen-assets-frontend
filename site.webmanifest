@@ -1,7 +1,7 @@
 {
-  "name": "ZEN ASSETS",
-  "short_name": "ZEN",
-  "description": "AI Investment Platform — Automated Crypto & Stock Trading",
+  "name": "Zen Assets — AI Investment & Automated Trading",
+  "short_name": "Zen Assets",
+  "description": "Zen Assets — AI-powered investment platform with automated crypto and stock trading. Compound growth engine and tiered investment plans.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0e16",

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
           http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
@@ -7,25 +8,27 @@
   <!-- Home / Public Landing Page -->
   <url>
     <loc>https://zenassets.tech/</loc>
-    <lastmod>2025-07-16</lastmod>
+    <lastmod>2026-03-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://zenassets.tech/og-image.png</image:loc>
+      <image:title>Zen Assets — AI Investment and Automated Crypto Trading Platform</image:title>
+      <image:caption>Zen Assets AI-powered investment platform with automated crypto and stock trading, compound growth engine, and tiered investment plans</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://zenassets.tech/logo-square-512.png</image:loc>
+      <image:title>Zen Assets Logo</image:title>
+      <image:caption>Zen Assets official logo — AI investment and automated trading platform</image:caption>
+    </image:image>
   </url>
 
   <!-- Dashboard (authenticated SPA shell) -->
   <url>
     <loc>https://zenassets.tech/dashboard</loc>
-    <lastmod>2025-07-16</lastmod>
+    <lastmod>2026-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-  </url>
-
-  <!-- OG Image -->
-  <url>
-    <loc>https://zenassets.tech/og-image.png</loc>
-    <lastmod>2025-07-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
   </url>
 
 </urlset>
