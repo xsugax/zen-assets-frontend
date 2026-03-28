@@ -288,9 +288,12 @@ const AdminPanel = (() => {
     try {
       toast('Connecting to server…', 'info', 8000);
 
-      // Step 1: Try current token — maybe it's already valid
+      // Step 1: Check if current token belongs to admin (not a regular user)
       const existingToken = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
-      if (existingToken) {
+      const existingSession = (() => { try { return JSON.parse(localStorage.getItem('zen_session') || '{}'); } catch { return {}; } })();
+      const tokenIsAdmin = existingToken && existingSession.email === ADMIN_EMAIL && existingSession.role === 'admin';
+
+      if (tokenIsAdmin) {
         try {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 35000);
@@ -300,8 +303,15 @@ const AdminPanel = (() => {
           });
           clearTimeout(timer);
           if (resp.ok) {
+            // Admin token still valid — refresh session
+            const adminSession = {
+              userId: 'admin', email: ADMIN_EMAIL, role: 'admin',
+              tier: 'diamond', fullName: 'Admin', loginAt: Date.now(),
+            };
+            localStorage.setItem('zen_session', JSON.stringify(adminSession));
+            sessionStorage.setItem('zen_session', JSON.stringify(adminSession));
             toast('Server connected', 'success', 2000);
-            return true; // token is valid on server
+            return true;
           }
         } catch { /* token invalid or server cold — continue to re-auth */ }
       }
