@@ -166,6 +166,9 @@ const UserAuth = (() => {
     login(email, password) {
       const user = this.findByEmail(email);
       if (!user) return { ok: false, error: 'No account found with this email address.' };
+      if (user.status === 'suspended' || user.status === 'frozen' || user.status === 'blocked') {
+        return { ok: false, error: 'Your account has been suspended. Please contact support.' };
+      }
       if (user.passwordHash !== _simpleHash(password)) {
         return { ok: false, error: 'Incorrect password. Please try again.' };
       }
@@ -187,6 +190,9 @@ const UserAuth = (() => {
     pinLogin(email, pin) {
       const user = this.findByEmail(email);
       if (!user) return { ok: false, error: 'No account found with this email address.' };
+      if (user.status === 'suspended' || user.status === 'frozen' || user.status === 'blocked') {
+        return { ok: false, error: 'Your account has been suspended. Please contact support.' };
+      }
       if (!user.pinHash) return { ok: false, error: 'No PIN set for this account. Use password login.' };
       if (user.pinHash !== _simpleHash(pin)) {
         return { ok: false, error: 'Invalid PIN. Please try again.' };
@@ -561,6 +567,11 @@ const UserAuth = (() => {
 
     // Direct login — backend returns token immediately (no OTP)
     if (result.ok && result.token) {
+      // Block suspended/frozen/blocked users from logging in
+      const userStatus = (result.user.status || 'active').toLowerCase();
+      if (userStatus === 'suspended' || userStatus === 'frozen' || userStatus === 'blocked') {
+        return { ok: false, error: 'Your account has been suspended. Please contact support.' };
+      }
       const session = {
         userId: result.user.id,
         email: result.user.email,

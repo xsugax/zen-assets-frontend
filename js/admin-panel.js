@@ -947,6 +947,20 @@ const AdminPanel = (() => {
     user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
+    if (deposit) user.deposit = deposit;
+
+    // Also persist to local store so changes survive refreshes
+    try {
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.email.toLowerCase() === key);
+      if (idx !== -1) {
+        allUsers[idx].status = newStatus;
+        allUsers[idx].tier = newTier;
+        if (newName) allUsers[idx].fullName = newName;
+        if (deposit) { allUsers[idx].balance = deposit; allUsers[idx].depositAmount = deposit; }
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      }
+    } catch (e) { /* graceful */ }
 
     closeModal('modal-user-edit');
     log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
@@ -1045,6 +1059,19 @@ const AdminPanel = (() => {
     // Update user record via offline-safe API
     await UserAuth.adminUpdateUser(u.id, { depositAmount: amount, balance: amount, tier, status: 'active' });
 
+    // Also persist to local store so balance survives refreshes / offline
+    try {
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(x => x.email.toLowerCase() === email.toLowerCase());
+      if (idx !== -1) {
+        allUsers[idx].balance = amount;
+        allUsers[idx].depositAmount = amount;
+        allUsers[idx].tier = tier;
+        allUsers[idx].status = 'active';
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      }
+    } catch (e) { /* quota exceeded — graceful */ }
+
     // Also write the investment state directly so it takes effect on the user's next login
     // (works for same-device demos; cross-device requires the live backend)
     try {
@@ -1096,7 +1123,8 @@ const AdminPanel = (() => {
       });
     }
 
-    _cache.users = null;
+    // Refresh user data from API/local store (never set _cache.users to null)
+    await _loadApiData();
     renderUsers();
     _updateHeaderStats();
   }
@@ -1178,6 +1206,17 @@ const AdminPanel = (() => {
     if (!result.ok) return toast(result.error || 'Status update failed', 'error');
 
     user.status = newStatus;
+
+    // Persist to local store so status survives refreshes
+    try {
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.email.toLowerCase() === key);
+      if (idx !== -1) {
+        allUsers[idx].status = newStatus;
+        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      }
+    } catch (e) { /* graceful */ }
+
     log('user_update', `${newStatus === 'suspended' ? 'Suspended' : 'Activated'} ${user.fullName}`, newStatus === 'suspended' ? 'warning' : 'info', { email });
     toast(`${user.fullName} ${newStatus}`, newStatus === 'suspended' ? 'warning' : 'success');
     renderUsers();
