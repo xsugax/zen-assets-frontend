@@ -44,6 +44,69 @@ const AdminPanel = (() => {
   const ITEMS_PER_PAGE = 15;
 
   // ────────────────────────────────────────────────────────
+  //  COOKIE UTILITY (Secure, SameSite=Strict)
+  // ────────────────────────────────────────────────────────
+  const Cookie = {
+    _prefix: 'zen_adm_',
+    _secure: location.protocol === 'https:',
+
+    set(name, value, days = 7) {
+      const key = this._prefix + name;
+      const val = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      const d = new Date();
+      d.setTime(d.getTime() + days * 86400000);
+      let parts = [
+        encodeURIComponent(key) + '=' + encodeURIComponent(val),
+        'expires=' + d.toUTCString(),
+        'path=/',
+        'SameSite=Strict',
+      ];
+      if (this._secure) parts.push('Secure');
+      document.cookie = parts.join('; ');
+    },
+
+    get(name, fallback = null) {
+      const key = this._prefix + name;
+      const match = document.cookie.split('; ').find(c => c.startsWith(encodeURIComponent(key) + '='));
+      if (!match) return fallback;
+      const raw = decodeURIComponent(match.split('=').slice(1).join('='));
+      try { return JSON.parse(raw); } catch { return raw; }
+    },
+
+    remove(name) {
+      const key = this._prefix + name;
+      document.cookie = encodeURIComponent(key) + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
+    },
+
+    // Check if cookies are enabled
+    isEnabled() {
+      try {
+        document.cookie = '__zen_test=1; SameSite=Strict';
+        const ok = document.cookie.indexOf('__zen_test') !== -1;
+        document.cookie = '__zen_test=; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
+        return ok;
+      } catch { return false; }
+    },
+  };
+
+  // ────────────────────────────────────────────────────────
+  //  ADMIN PREFERENCES (cookie-backed)
+  // ────────────────────────────────────────────────────────
+  function _loadPrefs() {
+    return Cookie.get('prefs', {
+      lastTab: 'overview',
+      refreshInterval: 30,
+      itemsPerPage: ITEMS_PER_PAGE,
+      lastDataFetch: 0,
+    });
+  }
+
+  function _savePrefs(updates) {
+    const current = _loadPrefs();
+    Cookie.set('prefs', { ...current, ...updates }, 30);
+  }
+
+  // ────────────────────────────────────────────────────────
   //  STATE
   // ────────────────────────────────────────────────────────
   let currentTab        = 'overview';
@@ -320,6 +383,7 @@ const AdminPanel = (() => {
           return;
         }
         log('login', 'Admin logged in', 'info');
+        Cookie.set('session', { email, role: 'admin', loginAt: Date.now() }, 7);
         _showApp();
       } catch (err) {
         if (errEl) { errEl.textContent = 'Server error. Please try again.'; errEl.style.display = 'block'; }
@@ -328,11 +392,12 @@ const AdminPanel = (() => {
       }
     });
 
-    // Check if already logged in as admin
+    // Check if already logged in as admin (cookie + localStorage)
     if (typeof UserAuth !== 'undefined') {
       UserAuth.init();
       const session = UserAuth.getSession();
-      if (session && session.role === 'admin') {
+      const cookieSession = Cookie.get('session');
+      if ((session && session.role === 'admin') || (cookieSession && cookieSession.role === 'admin')) {
         _showApp();
       }
     }
@@ -348,6 +413,9 @@ const AdminPanel = (() => {
 
   function logout() {
     log('logout', 'Admin logged out', 'info');
+    Cookie.remove('session');
+    Cookie.remove('prefs');
+    Cookie.remove('data_ts');
     if (typeof UserAuth !== 'undefined') UserAuth.logout();
     location.reload();
   }
@@ -367,6 +435,9 @@ const AdminPanel = (() => {
     $$('.admin-tab').forEach(el => el.classList.remove('active'));
     const panel = $(`tab-${tab}`);
     if (panel) panel.classList.add('active');
+
+    // Persist last active tab to cookie
+    _savePrefs({ lastTab: tab });
 
     // Update breadcrumb
     const labels = {
@@ -417,20 +488,29 @@ const AdminPanel = (() => {
       });
     }
 
+    // Restore last active tab from cookie
+    const prefs = _loadPrefs();
+    const savedTab = prefs.lastTab || 'overview';
+
     // Load real data from API then render
     _loadApiData().then(() => {
+      Cookie.set('data_ts', Date.now(), 1);
       _updateHeaderStats();
-      renderOverview();
+      navigateTab(savedTab);
     });
 
-    // Refresh every 30 seconds
+    // Refresh interval (skip if data was fetched < 10s ago)
+    const interval = (prefs.refreshInterval || 30) * 1000;
     refreshTimer = setInterval(async () => {
+      const lastFetch = Cookie.get('data_ts', 0);
+      if (Date.now() - lastFetch < 10000) return; // skip if recently fetched
       await _loadApiData();
+      Cookie.set('data_ts', Date.now(), 1);
       _updateHeaderStats();
       if (currentTab === 'overview')   renderOverview();
       if (currentTab === 'users')      renderUsers();
       if (currentTab === 'financials') renderFinancials();
-    }, 30000);
+    }, interval);
   }
 
   // ────────────────────────────────────────────────────────
@@ -507,6 +587,7 @@ const AdminPanel = (() => {
 
   async function refreshDashboard() {
     await _loadApiData();
+    Cookie.set('data_ts', Date.now(), 1);
     _updateHeaderStats();
     _renderTab(currentTab);
     toast('Dashboard refreshed', 'success', 2000);
