@@ -1278,12 +1278,16 @@ const AdminPanel = (() => {
 
     // ── UPDATE EXISTING USER ──
     const user = users[key];
-    const result = await UserAuth.adminUpdateUser(user.id, {
-      status: newStatus, tier: newTier,
-      balance: deposit || undefined,
-      depositAmount: deposit || undefined,
-    });
-    if (!result.ok) return toast(result.error || 'Update failed', 'error');
+
+    // Try server update (best-effort — may fail for locally-seeded users)
+    try {
+      const result = await UserAuth.adminUpdateUser(user.id, {
+        status: newStatus, tier: newTier,
+        balance: deposit || undefined,
+        depositAmount: deposit || undefined,
+      });
+      if (!result.ok) console.warn('Server update failed (may be local-only user):', result.error);
+    } catch { /* server unreachable — continue with local update */ }
 
     // Update local cache immediately for snappy UI
     user.fullName = newName || user.fullName;
