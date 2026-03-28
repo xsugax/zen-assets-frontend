@@ -448,7 +448,7 @@ const AdminPanel = (() => {
           email: 'swanmanagement32@gmail.com',
           passwordHash: '',
           pinHash: null,
-          tier: 'gold',
+          tier: 'silver',
           depositAmount: 65000,
           balance: 65000,
           earnings: 0,
@@ -461,9 +461,19 @@ const AdminPanel = (() => {
 
       let changed = false;
       required.forEach(r => {
-        if (!emails.includes(r.email.toLowerCase())) {
+        const idx = emails.indexOf(r.email.toLowerCase());
+        if (idx === -1) {
           localUsers.push(r);
           changed = true;
+        } else {
+          // Fix tier/balance if previously seeded with wrong values
+          const existing = localUsers[idx];
+          if (existing.tier !== r.tier || existing.depositAmount !== r.depositAmount) {
+            existing.tier = r.tier;
+            existing.depositAmount = r.depositAmount;
+            existing.balance = r.balance;
+            changed = true;
+          }
         }
       });
 
@@ -485,7 +495,7 @@ const AdminPanel = (() => {
           fullName: 'Swan Management',
           email: 'swanmanagement32@gmail.com',
           password: 'SwanMgmt2025!',
-          tier: 'gold',
+          tier: 'silver',
           depositAmount: 65000,
         }).catch(() => {});
       }
