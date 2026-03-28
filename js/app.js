@@ -1137,14 +1137,17 @@ const App = (() => {
     }
 
     list.innerHTML = posHtml + traders.map(t => {
-      const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
-      const btnCls = t.active ? 'btn-danger' : 'btn-primary';
+      const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
+      const unlocked = Trading.canAccessCopyTrader(t.id);
+      const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
+      const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
       const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
-      return `<div class="ct-card ${t.active ? 'ct-active' : ''}">
+      return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!unlocked ? 'ct-locked' : ''}">
         <div class="ct-avatar">${t.avatar}</div>
         <div class="ct-info">
-          <b>${t.name}</b> ${liveTag}
+          <b>${t.name}</b> ${liveTag}${lockTag}
           <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
           ${tradesInfo}
         </div>
@@ -1532,15 +1535,18 @@ const App = (() => {
   function renderCopyTraders() {
     const list = $('copy-trade-list'); if (!list) return;
     list.innerHTML = Trading.getCopyTraders().map(t => {
-      const btnTxt = t.active ? '⏹ Stop' : '▶ Copy';
-      const btnCls = t.active ? 'btn-danger' : 'btn-primary';
+      const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
+      const unlocked = Trading.canAccessCopyTrader(t.id);
+      const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
+      const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
       const pnlClass = t.copiedBal >= 0 ? 'up' : 'down';
       const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
-      return `<div class="ct-card ${t.active ? 'ct-active' : ''}">
+      return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!unlocked ? 'ct-locked' : ''}">
         <div class="ct-avatar">${t.avatar}</div>
         <div class="ct-info">
-          <b>${t.name}</b> ${liveTag}
+          <b>${t.name}</b> ${liveTag}${lockTag}
           <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
           ${tradesInfo}
         </div>

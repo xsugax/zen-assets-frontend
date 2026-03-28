@@ -3557,6 +3557,18 @@ body:has(#sidebar.collapsed) #main-content { left: 64px; }
 .ct-stats { text-align: right; }
 .ct-stats small { color: #4a6080; font-size: 9px; font-family: var(--font-mono); display: block; }
 
+/* Locked copy traders (tier-gated) */
+.ct-card.ct-locked { opacity: .55; filter: grayscale(30%); }
+.ct-card.ct-locked:hover { border-color: rgba(255,165,0,.2); }
+.ct-lock-badge {
+  font-size: 8px; font-weight: 700; color: var(--orange);
+  margin-left: 6px; letter-spacing: .3px;
+}
+.btn.btn-disabled {
+  opacity: .5; cursor: not-allowed; pointer-events: auto;
+  background: rgba(255,255,255,.06); color: #6b7c96; border-color: rgba(255,255,255,.08);
+}
+
 /* Strategy Cards */
 .strategy-cards { display: flex; flex-direction: column; gap: 6px; }
 .strat-card {

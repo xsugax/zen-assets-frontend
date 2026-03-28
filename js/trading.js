@@ -22,11 +22,14 @@ const Trading = (() => {
   const orderLog = [];
 
   // ── Copy Traders (Live Trading) ───────────────────────────
+  // Tier order for comparison
+  const TIER_ORDER = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 };
+
   const copyTraders = [
-    { id: 'ct1', name: 'CryptoWolf',  avatar: '🐺', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: false, subscribers: 3841, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Momentum' },
-    { id: 'ct2', name: 'QuantEdge',   avatar: '⚡', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: false, subscribers: 2150, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Mean Reversion' },
-    { id: 'ct3', name: 'IronAlpha',   avatar: '🦾', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Breakout' },
-    { id: 'ct4', name: 'SilverDelta', avatar: '🔮', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: false, subscribers: 980,  copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Scalping' },
+    { id: 'ct4', name: 'SilverDelta', avatar: '🔮', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: false, subscribers: 980,  copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Scalping',       minTier: 'bronze' },
+    { id: 'ct2', name: 'QuantEdge',   avatar: '⚡', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: false, subscribers: 2150, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Mean Reversion', minTier: 'silver' },
+    { id: 'ct1', name: 'CryptoWolf',  avatar: '🐺', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: false, subscribers: 3841, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Momentum',       minTier: 'gold' },
+    { id: 'ct3', name: 'IronAlpha',   avatar: '🦾', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Breakout',       minTier: 'platinum' },
   ];
 
   // Copy trader execution engine — runs periodically
@@ -301,9 +304,36 @@ const Trading = (() => {
   function getCopyTraders()    { return copyTraders; }
   function getStrategies()     { return strategies; }
 
+  function _getUserTier() {
+    try {
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.getSnapshot) {
+        return InvestmentReturns.getSnapshot().tier || 'bronze';
+      }
+    } catch {}
+    return 'bronze';
+  }
+
+  function canAccessCopyTrader(id) {
+    const t = copyTraders.find(c => c.id === id);
+    if (!t) return false;
+    const userRank = TIER_ORDER[_getUserTier()] || 0;
+    const required = TIER_ORDER[t.minTier] || 0;
+    return userRank >= required;
+  }
+
   function toggleCopyTrader(id) {
     const t = copyTraders.find(c => c.id === id);
     if (!t) return;
+
+    // Tier gate — check before activation
+    if (!t.active && !canAccessCopyTrader(id)) {
+      const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
+      if (typeof createToast !== 'undefined') {
+        createToast('🔒 Tier Locked', `${t.name} requires ${tierLabels[t.minTier] || t.minTier} tier or higher`, 'warning', 4000);
+      }
+      return;
+    }
+
     t.active = !t.active;
     if (t.active) {
       t.copiedBal = 0;
@@ -341,7 +371,7 @@ const Trading = (() => {
     placeOrder, closePosition, computePnL,
     getPositions, getCopyTraders, getStrategies,
     getAuditLog, getOrderLog, calcFee, autoHedge,
-    toggleCopyTrader,
+    toggleCopyTrader, canAccessCopyTrader,
     getActiveCopyPositions() { return _activeCopyPositions; },
   };
 })();
