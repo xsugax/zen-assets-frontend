@@ -1287,9 +1287,8 @@ const AdminPanel = (() => {
 
     // ── Handle password reset ──
     if (newPwd && newPwd.length >= 6) {
+      // Update server (best-effort)
       try {
-        const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-          ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
         const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
         await fetch(`${API_BASE}/admin/users/${user.id}/reset-password`, {
           method: 'POST',
@@ -1297,6 +1296,17 @@ const AdminPanel = (() => {
           body: JSON.stringify({ password: newPwd }),
         });
       } catch (e) { /* best-effort */ }
+
+      // ALSO update local store so offline/fallback login works
+      try {
+        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        const idx = allUsers.findIndex(u => u.email.toLowerCase() === key);
+        if (idx !== -1) {
+          allUsers[idx].passwordHash = UserAuth.hashPassword(newPwd);
+          localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+        }
+      } catch { /* graceful */ }
+      toast('Password updated', 'success');
     }
 
     // ── Handle PIN set/reset via admin API ──
@@ -1305,8 +1315,6 @@ const AdminPanel = (() => {
         toast('PIN must be exactly 4 digits', 'error');
       } else {
         try {
-          const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-            ? 'http://localhost:4000/api' : 'https://zen-assets-backend.onrender.com/api';
           const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
           const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
             method: 'POST',
@@ -1325,7 +1333,7 @@ const AdminPanel = (() => {
           const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
           const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
           if (idx !== -1) {
-            allUsers[idx].pinHash = _hash(newPin);
+            allUsers[idx].pinHash = UserAuth.hashPassword(newPin);
             localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
             toast('PIN set (offline)', 'success');
           }

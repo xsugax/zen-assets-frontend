@@ -1105,6 +1105,7 @@ const UserAuth = (() => {
     getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
     sendEmailNotification: _sendEmail,
+    hashPassword: _simpleHash,
     TIERS,
   };
 })();
