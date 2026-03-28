@@ -1231,7 +1231,8 @@ const AdminPanel = (() => {
     $('edit-user-email').value = user.email;
     $('edit-user-name').value = user.fullName || '';
     $('edit-user-tier').value = user.tier || 'bronze';
-    $('edit-user-deposit').value = user.deposit || 0;
+    $('edit-user-deposit').value = '';  // Leave empty — enter TOP-UP amount only
+    $('edit-user-deposit').placeholder = `Current: $${(user.deposit || 0).toLocaleString()} — enter top-up amount`;
     $('edit-user-status').value = user.status || 'active';
     $('edit-user-earnings').value = user.earningsOverride || '';
     $('edit-user-password').value = '';
@@ -1279,12 +1280,16 @@ const AdminPanel = (() => {
     // ── UPDATE EXISTING USER ──
     const user = users[key];
 
+    // Deposit field = top-up amount (ADD to existing balance, don't replace)
+    const existingBalance = user.deposit || user.totalDeposited || 0;
+    const newTotalBalance = deposit ? existingBalance + deposit : existingBalance;
+
     // Try server update (best-effort — may fail for locally-seeded users)
     try {
       const result = await UserAuth.adminUpdateUser(user.id, {
         status: newStatus, tier: newTier,
-        balance: deposit || undefined,
-        depositAmount: deposit || undefined,
+        balance: newTotalBalance || undefined,
+        depositAmount: newTotalBalance || undefined,
       });
       if (!result.ok) console.warn('Server update failed (may be local-only user):', result.error);
     } catch { /* server unreachable — continue with local update */ }
@@ -1293,7 +1298,7 @@ const AdminPanel = (() => {
     user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
-    if (deposit) user.deposit = deposit;
+    if (deposit) { user.deposit = newTotalBalance; user.totalDeposited = newTotalBalance; }
 
     // Also persist to local store so changes survive refreshes
     try {
@@ -1303,10 +1308,24 @@ const AdminPanel = (() => {
         allUsers[idx].status = newStatus;
         allUsers[idx].tier = newTier;
         if (newName) allUsers[idx].fullName = newName;
-        if (deposit) { allUsers[idx].balance = deposit; allUsers[idx].depositAmount = deposit; }
+        if (deposit) { allUsers[idx].balance = newTotalBalance; allUsers[idx].depositAmount = newTotalBalance; }
         localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
       }
     } catch (e) { /* graceful */ }
+
+    // Update investment state so returns compound on the full balance
+    if (deposit) {
+      try {
+        const invKey = 'zen_investment_' + key;
+        let invState = {};
+        try { invState = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
+        invState.walletBalance = newTotalBalance;
+        invState.initialDeposit = invState.initialDeposit || existingBalance;
+        invState.dayStartBalance = newTotalBalance;
+        invState.weekStartBalance = invState.weekStartBalance || newTotalBalance;
+        localStorage.setItem(invKey, JSON.stringify(invState));
+      } catch { /* graceful */ }
+    }
 
     closeModal('modal-user-edit');
     log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
@@ -1394,7 +1413,11 @@ const AdminPanel = (() => {
     if (!u) return toast('User not found', 'error');
     $('activate-user-email').value = email;
     $('activate-user-name').textContent = u.fullName || email;
-    $('activate-amount').value = u.depositAmount || u.balance || '';
+    const existing = u.deposit || u.totalDeposited || u.balance || 0;
+    $('activate-amount').value = '';
+    $('activate-amount').placeholder = existing > 0
+      ? `Current: $${existing.toLocaleString()} — enter top-up amount`
+      : 'Enter deposit amount';
     const tierSel = $('activate-tier');
     if (tierSel) tierSel.value = u.tier || 'gold';
     openModal('modal-activate');
@@ -1402,32 +1425,37 @@ const AdminPanel = (() => {
 
   async function executeActivation() {
     const email = $('activate-user-email').value;
-    const amount = parseFloat($('activate-amount').value) || 0;
-    if (amount <= 0) return toast('Enter a valid deposit amount', 'error');
+    const topUp = parseFloat($('activate-amount').value) || 0;
+    if (topUp <= 0) return toast('Enter a valid deposit amount', 'error');
     const tier = ($('activate-tier') || {}).value || 'gold';
 
     const users = loadUsers();
     const u = users ? users[email.toLowerCase()] : null;
     if (!u) return toast('User not found', 'error');
 
+    // TOP-UP LOGIC: add to existing balance, don't replace
+    const existingBalance = u.deposit || u.totalDeposited || 0;
+    const newTotal = existingBalance + topUp;
+
     // Update user record via offline-safe API
-    await UserAuth.adminUpdateUser(u.id, { depositAmount: amount, balance: amount, tier, status: 'active' });
+    try {
+      await UserAuth.adminUpdateUser(u.id, { depositAmount: newTotal, balance: newTotal, tier, status: 'active' });
+    } catch { /* best-effort */ }
 
     // Also persist to local store so balance survives refreshes / offline
     try {
       const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
       const idx = allUsers.findIndex(x => x.email.toLowerCase() === email.toLowerCase());
       if (idx !== -1) {
-        allUsers[idx].balance = amount;
-        allUsers[idx].depositAmount = amount;
+        allUsers[idx].balance = newTotal;
+        allUsers[idx].depositAmount = newTotal;
         allUsers[idx].tier = tier;
         allUsers[idx].status = 'active';
         localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
       }
     } catch (e) { /* quota exceeded — graceful */ }
 
-    // Also write the investment state directly so it takes effect on the user's next login
-    // (works for same-device demos; cross-device requires the live backend)
+    // Update investment state — ADD top-up to existing walletBalance
     try {
       const invKey = 'zen_investment_' + email.toLowerCase();
       const now = Date.now();
@@ -1438,14 +1466,24 @@ const AdminPanel = (() => {
       // Merge with existing state (preserve trade history, returns, etc.)
       let existing = {};
       try { existing = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
-      // Set lastAccrualTick a few hours back so catch-up compounding
-      // produces visible initial returns on the user's first login
-      const hoursBack = 2 + Math.random() * 3; // 2–5 hours of "pre-seeded" returns
+
+      const prevWallet = existing.walletBalance || existingBalance;
+      const newWallet = prevWallet + topUp;
+
+      // Only set lastAccrualTick back on FIRST activation (not top-ups)
+      const isFirstActivation = !existing._adminActivated;
+      const hoursBack = isFirstActivation ? (2 + Math.random() * 3) : 0;
+
       const invState = {
         ...existing,
-        tier, walletBalance: amount, initialDeposit: amount,
-        dayStartBalance: amount, weekStartBalance: amount,
-        lastAccrualTick: now - hoursBack * 3600000, lastDailyReset: d.getTime(), lastWeeklyReset: wk.getTime(),
+        tier,
+        walletBalance: newWallet,
+        initialDeposit: existing.initialDeposit || existingBalance || topUp,
+        dayStartBalance: newWallet,
+        weekStartBalance: existing.weekStartBalance || newWallet,
+        lastAccrualTick: isFirstActivation ? (now - hoursBack * 3600000) : (existing.lastAccrualTick || now),
+        lastDailyReset: existing.lastDailyReset || d.getTime(),
+        lastWeeklyReset: existing.lastWeeklyReset || wk.getTime(),
         _adminActivated: true, _seeded: true, _v2ClaimMigrated: true,
       };
       localStorage.setItem(invKey, JSON.stringify(invState));
@@ -1454,16 +1492,21 @@ const AdminPanel = (() => {
     // Also update the user's cached wallet so login picks up the funded balance
     try {
       const walletKey = 'zen_wallet';
-      // Only update if the target user's session is the current cached session
       const cachedSession = JSON.parse(localStorage.getItem('zen_session') || sessionStorage.getItem('zen_session') || '{}');
       if (cachedSession.email && cachedSession.email.toLowerCase() === email.toLowerCase()) {
-        const wallet = { totalDeposited: amount, balance: amount, earnings: 0, currency: 'USD' };
+        const wallet = { totalDeposited: newTotal, balance: newTotal, earnings: 0, currency: 'USD' };
         localStorage.setItem(walletKey, JSON.stringify(wallet));
       }
     } catch {}
 
-    log('admin_action', `Activated account for ${email}: $${amount.toLocaleString()}`, 'success', { email, amount });
-    toast(`Account activated! $${amount.toLocaleString()} funded for ${u.fullName || email}`, 'success');
+    // Update local cache
+    u.deposit = newTotal;
+    u.totalDeposited = newTotal;
+    u.tier = tier;
+    u.status = 'active';
+
+    log('admin_action', `Top-up for ${email}: +$${topUp.toLocaleString()} (new total: $${newTotal.toLocaleString()})`, 'success', { email, topUp, newTotal });
+    toast(`$${topUp.toLocaleString()} added! New balance: $${newTotal.toLocaleString()} for ${u.fullName || email}`, 'success');
     closeModal('modal-activate');
 
     // Email notification — deposit confirmation
@@ -1471,9 +1514,9 @@ const AdminPanel = (() => {
       UserAuth.sendEmailNotification('deposit', {
         email: email,
         fullName: u.fullName || email,
-        amount: amount,
-        method: 'Account Activation',
-        newBalance: amount,
+        amount: topUp,
+        method: 'Account Top-Up',
+        newBalance: newTotal,
       });
     }
 
