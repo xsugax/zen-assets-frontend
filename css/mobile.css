@@ -1062,6 +1062,100 @@
   }
 }
 
+/* ═══ Portfolio Mobile — Holdings & Layout ═══════════ */
+@media (max-width: 1024px) {
+  /* Stack portfolio grid vertically */
+  .portfolio-layout {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* KPI items — 2 per row, no overflow */
+  .port-kpi-row {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    gap: 6px !important;
+    padding-bottom: 0 !important;
+  }
+  .port-kpi-item {
+    min-width: 0 !important;
+    flex: 1 1 calc(50% - 6px) !important;
+    padding: 8px 10px !important;
+  }
+  .pki-label { font-size: 8px !important; letter-spacing: 0.5px !important; }
+  .pki-value { font-size: 13px !important; }
+
+  /* Holdings table — remove min-width, allow scroll to actually fit */
+  .holdings-table {
+    min-width: unset !important;
+    font-size: 10px !important;
+  }
+  .holdings-table th {
+    padding: 6px 6px !important;
+    font-size: 8px !important;
+    letter-spacing: 0.5px !important;
+  }
+  .holdings-table td {
+    padding: 6px 6px !important;
+    font-size: 10px !important;
+  }
+
+  /* Allocation donut and Risk Heatmap */
+  .port-side .glass-card {
+    padding: 12px !important;
+  }
+  .risk-heatmap {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px !important;
+  }
+  .risk-cell {
+    padding: 6px !important;
+    font-size: 10px !important;
+  }
+
+  /* Section header — wrap buttons */
+  #section-portfolio .section-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  #section-portfolio .sh-right {
+    width: 100% !important;
+  }
+  #section-portfolio .sh-right .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Performance chart — shorter on mobile */
+  #port-perf-chart {
+    height: 160px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even tighter on small phones */
+  .port-kpi-item {
+    padding: 6px 8px !important;
+  }
+  .pki-value { font-size: 12px !important; }
+
+  /* Holdings: hide less-critical columns on tiny screens */
+  .holdings-table th:nth-child(3),
+  .holdings-table td:nth-child(3),
+  .holdings-table th:nth-child(8),
+  .holdings-table td:nth-child(8),
+  .holdings-table th:nth-child(9),
+  .holdings-table td:nth-child(9) {
+    display: none !important;
+  }
+
+  .risk-heatmap {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ── Small phone KPI tweaks ─────────────────────────── */
 @media (max-width: 480px) {
   .kpi-card {
