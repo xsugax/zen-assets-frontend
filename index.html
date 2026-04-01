@@ -245,6 +245,55 @@
       c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
     })(document);
   </script>
+  <!-- Make Smartsupp widget draggable -->
+  <script>
+  (function(){
+    function makeDraggable(el){
+      var ox,oy,sx,sy,dragging=false;
+      el.style.cursor='grab';
+      el.addEventListener('mousedown',function(e){
+        if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+        dragging=true;el.style.cursor='grabbing';
+        var r=el.getBoundingClientRect();
+        ox=e.clientX-r.left;oy=e.clientY-r.top;
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove',function(e){
+        if(!dragging)return;
+        var x=e.clientX-ox,y=e.clientY-oy;
+        x=Math.max(0,Math.min(window.innerWidth-60,x));
+        y=Math.max(0,Math.min(window.innerHeight-60,y));
+        el.style.left=x+'px';el.style.top=y+'px';
+        el.style.right='auto';el.style.bottom='auto';
+        el.style.transition='none';
+      });
+      document.addEventListener('mouseup',function(){
+        if(dragging){dragging=false;el.style.cursor='grab';el.style.transition='';}
+      });
+      el.addEventListener('touchstart',function(e){
+        if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+        var t=e.touches[0];var r=el.getBoundingClientRect();
+        ox=t.clientX-r.left;oy=t.clientY-r.top;dragging=true;
+      },{passive:true});
+      document.addEventListener('touchmove',function(e){
+        if(!dragging)return;
+        var t=e.touches[0];
+        var x=t.clientX-ox,y=t.clientY-oy;
+        x=Math.max(0,Math.min(window.innerWidth-60,x));
+        y=Math.max(0,Math.min(window.innerHeight-60,y));
+        el.style.left=x+'px';el.style.top=y+'px';
+        el.style.right='auto';el.style.bottom='auto';
+        el.style.transition='none';
+      },{passive:true});
+      document.addEventListener('touchend',function(){dragging=false;});
+    }
+    var obs=new MutationObserver(function(muts){
+      var w=document.getElementById('chat-application');
+      if(w){makeDraggable(w);obs.disconnect();}
+    });
+    obs.observe(document.documentElement,{childList:true,subtree:true});
+  })();
+  </script>
 </head>
 <body>
 
