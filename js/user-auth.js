@@ -307,7 +307,7 @@ const UserAuth = (() => {
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
-    // On logout (token=null), also clear the remember-me flag
+    // On logout or invalidated auth, clear everything and forget remember-me
     if (!token) {
       localStorage.removeItem(STORAGE_REMEMBER);
       _activeStore = null;
@@ -692,8 +692,14 @@ const UserAuth = (() => {
   function isLoggedIn() {
     const session = _loadSession();
     const token = _loadToken();
-    // Both must exist AND token must be non-empty string
-    return !!(session && token && token.length > 0);
+    if (!session || !token || !token.length) return false;
+    // Validate token expiry so stale remembered sessions do not stay active.
+    const uid = _verifyLocalToken(token);
+    if (!uid) {
+      _persistAuth(null);
+      return false;
+    }
+    return true;
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
