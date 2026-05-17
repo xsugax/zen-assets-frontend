@@ -48,13 +48,19 @@ const UserAuth = (() => {
     catch { return 'local_' + userId + '_' + Date.now(); }
   }
 
-  // Verify a locally-generated token and return userId or null
+  // Verify a locally-generated or JWT token and return userId or null
   function _verifyLocalToken(token) {
     try {
-      const part = token.split('.')[0];
-      const payload = JSON.parse(atob(part));
-      if (!payload || !payload.userId || payload.exp < Date.now()) return null;
-      return payload.userId;
+      const parts = token.split('.');
+      const payload = JSON.parse(atob(parts.length === 3 ? parts[1] : parts[0]));
+      const userId = payload.userId || payload.sub;
+      if (!payload || !userId) return null;
+      let exp = payload.exp;
+      if (!exp) return null;
+      // JWT exp is seconds; local token exp is milliseconds.
+      if (exp < 1e12) exp = exp * 1000;
+      if (exp < Date.now()) return null;
+      return userId;
     } catch { return null; }
   }
 
@@ -505,7 +511,12 @@ const UserAuth = (() => {
       return { ok: true, success: true };
     }
 
-    // ── Wallet / trades / KYC — return graceful empty ─────
+    // ── Wallet endpoints should NOT return fake offline balances ──
+    if (endpoint === '/wallet' || endpoint.startsWith('/wallet/')) {
+      return { ok: false, error: 'Wallet API unavailable. Please try again.' };
+    }
+
+    // ── Wallet / trades / KYC — return graceful empty for non-wallet support
     return { ok: true, transactions: [], trades: [], balance: 0, totalDeposited: 0, earnings: 0 };
   }
 
@@ -563,6 +574,11 @@ const UserAuth = (() => {
     const email = (emailRaw || '').trim().toLowerCase();
     if (!email || !password) return { ok: false, error: 'Email and password are required.' };
 
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, error: 'Please enter a valid email address.' };
+    }
+
     const result = await _api('/auth/login', {
       method: 'POST',
       body: { email, password },
@@ -585,27 +601,30 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, rememberMe);
+      console.log(`[AUTH] ✓ Login successful: ${email}`);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
-    // If backend returned 401 (invalid credentials or DB wiped), try local store
-    if (!result.ok && (result.status === 401 || !result.status)) {
-      const localResult = _localStore.login(email, password);
-      if (localResult.ok) {
-        const session = {
-          userId: localResult.user.id,
-          email: localResult.user.email,
-          role: localResult.user.role,
-          tier: localResult.user.tier,
-          fullName: localResult.user.fullName,
-          loginAt: Date.now(),
-        };
-        _persistAuth(localResult.token, session, localResult.wallet, rememberMe);
-        return { ok: true, user: localResult.user, session, wallet: localResult.wallet };
-      }
+    // Handle specific error cases
+    if (result.status === 429) {
+      return { ok: false, error: 'Too many login attempts. Please wait 15 minutes before trying again.' };
     }
 
-    return result;
+    if (result.status === 403) {
+      return { ok: false, error: result.error || 'Account access restricted. Please contact support.' };
+    }
+
+    if (result.status === 401) {
+      return { ok: false, error: 'Invalid email or password. Please check your credentials and try again.' };
+    }
+
+    if (result.status >= 500) {
+      return { ok: false, error: 'Server temporarily unavailable. Please try again in a few minutes.' };
+    }
+
+    // Network or unknown error
+    console.error('[AUTH] Login failed:', result);
+    return { ok: false, error: result.error || 'Login failed. Please check your connection and try again.' };
   }
 
   // ── PIN Login (async — skips OTP for quick access) ──────
@@ -721,8 +740,13 @@ const UserAuth = (() => {
   // ── Get Wallet (async) ──────────────────────────────────
   async function getWallet() {
     const result = await _api('/wallet');
-    if (result.ok) { _saveWallet(result); return result; }
-    return _loadWallet();
+    if (result && result.ok === true && typeof result.balance === 'number') {
+      _saveWallet(result);
+      return result;
+    }
+    // Return failure status when API is unavailable — don't use cached data
+    // This prevents balance sync from using stale cached balances
+    return { ok: false, error: 'Wallet API unavailable' };
   }
 
   function getCachedWallet() { return _loadWallet(); }

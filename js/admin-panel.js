@@ -399,18 +399,8 @@ const AdminPanel = (() => {
         _cache.users = _cache.users || {};
       }
 
-      // Always merge local store users INTO the cache (union by email)
-      // This ensures users registered on other devices / seeded locally are visible
-      try {
-        const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-        localUsers.forEach(u => {
-          const norm = _normalizeUser(u);
-          if (norm.role === 'admin') return;
-          if (!_cache.users[norm.email]) {
-            _cache.users[norm.email] = norm;
-          }
-        });
-      } catch { /* graceful */ }
+      // NOTE: When connected to the real backend, only show real server users.
+      // Avoid leaking stale or offline-only local cache users into the live admin panel.
 
       // Normalise withdrawals
       _cache.withdrawals = Array.isArray(withdrawalsRaw)
@@ -1228,7 +1218,11 @@ const AdminPanel = (() => {
     if (!user) return toast('User not found', 'error');
 
     $('modal-user-title').textContent = 'Edit User: ' + user.fullName;
-    $('edit-user-email').value = user.email;
+    const emailInput = $('edit-user-email');
+    if (emailInput) {
+      emailInput.value = user.email;
+      emailInput.disabled = true;
+    }
     $('edit-user-name').value = user.fullName || '';
     $('edit-user-tier').value = user.tier || 'bronze';
     $('edit-user-deposit').value = '';  // Leave empty — enter TOP-UP amount only
@@ -1394,7 +1388,11 @@ const AdminPanel = (() => {
   // CRUD: Create User
   function openCreateUser() {
     $('modal-user-title').textContent = 'Create New User';
-    $('edit-user-email').value = '';
+    const emailInput = $('edit-user-email');
+    if (emailInput) {
+      emailInput.disabled = false;
+      emailInput.value = '';
+    }
     $('edit-user-name').value = '';
     $('edit-user-tier').value = 'bronze';
     $('edit-user-deposit').value = '';
@@ -2006,6 +2004,12 @@ const AdminPanel = (() => {
 
     renderFinancials();
     _updateHeaderStats();
+
+    // Force balance sync across all user's devices
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+      InvestmentReturns.forceBalanceSync();
+      console.log('🔄 Forced balance sync after admin adjustment');
+    }
   }
 
   // ────────────────────────────────────────────────────────
