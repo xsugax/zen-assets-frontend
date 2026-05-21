@@ -168,11 +168,15 @@ const App = (() => {
   let _activeMarket = 'PUBLIC';
 
   // ── Boot Screen ───────────────────────────────────────────
+  function isMobileView() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+  }
+
   function runBoot() {
     const progress = $('loader-fill');
     const status   = $('loader-label');
     let pct = 0;
-    const fastBoot = _isMobile;
+    const fastBoot = isMobileView();
 
     const MSGS = [
       'INITIALIZING QUANTUM CORE...',
@@ -217,7 +221,10 @@ const App = (() => {
     requestAnimationFrame(raf);
   }
 
+  let _bootFinished = false;
   function showApp() {
+    if (_bootFinished) return;
+    _bootFinished = true;
     const loading = $('loading-screen');
     if (loading) {
       loading.style.opacity = '0';
@@ -235,20 +242,20 @@ const App = (() => {
   }
 
   // ── Boot Canvas Particles ─────────────────────────────────
-  const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
   function initBootCanvas() {
     const c = $('boot-canvas'); if (!c) return;
     const ctx = c.getContext('2d');
+    const mobile = isMobileView();
     const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
     resize();
-    const count = _isMobile ? 14 : 30;
-    const speed = _isMobile ? 0.85 : 0.4;
+    const count = mobile ? 14 : 30;
+    const speed = mobile ? 0.85 : 0.4;
     const ptcls = Array.from({ length: count }, () => ({
       x: Math.random() * c.width,
       y: Math.random() * c.height,
       vx: (Math.random() - 0.5) * speed,
       vy: (Math.random() - 0.5) * speed,
-      r: Math.random() * (_isMobile ? 1.2 : 1.5) + 0.5,
+      r: Math.random() * (mobile ? 1.2 : 1.5) + 0.5,
       hue: Math.random() > 0.5 ? '0,212,255' : '212,165,116',
     }));
     let running = true;
@@ -272,7 +279,7 @@ const App = (() => {
       window.removeEventListener('resize', resize);
       ctx.clearRect(0, 0, c.width, c.height);
     };
-    setTimeout(stopBoot, _isMobile ? 4500 : 3000);
+    setTimeout(stopBoot, mobile ? 4500 : 3000);
   }
 
   // ── Cursor Trail — DISABLED (clean professional UI) ───
@@ -3321,22 +3328,25 @@ const App = (() => {
   }
 
   function proceedAfterLogin() {
+    _bootFinished = false;
     const loadingScreen = $('loading-screen');
     if (loadingScreen) {
       loadingScreen.style.display = 'flex';
-      if (_isMobile) loadingScreen.classList.add('boot-mobile-live');
+      loadingScreen.style.opacity = '1';
+      loadingScreen.style.pointerEvents = 'auto';
+      loadingScreen.classList.add('boot-mobile-live');
     }
     initBootCanvas();
     runBoot();
     window._App = { showToast, navigate };
 
-    // SAFETY: Force-remove loading screen after 12s in case boot animation stalls
+    // SAFETY: finish boot if animation stalls (common on slow mobile)
+    const safetyMs = isMobileView() ? 8000 : 12000;
     setTimeout(() => {
       const ls = $('loading-screen');
-      if (ls && ls.style.display !== 'none') {
-        ls.style.display = 'none';
-        ls.style.pointerEvents = 'none';
-        console.warn('⚠️ Loading screen force-removed (safety timeout)');
+      if (ls && ls.style.display !== 'none' && !_bootFinished) {
+        console.warn('⚠️ Loading screen safety timeout — entering app');
+        showApp();
       }
       // Also ensure login screen is truly gone
       const login = $('login-screen');
@@ -3344,7 +3354,7 @@ const App = (() => {
         login.style.display = 'none';
         login.style.pointerEvents = 'none';
       }
-    }, 12000);
+    }, safetyMs);
 
     // After boot completes, sync user state
     setTimeout(() => {

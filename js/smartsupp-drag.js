@@ -26,20 +26,28 @@
     for (const sel of SELECTORS) {
       try {
         const el = document.querySelector(sel);
-        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) return el;
+        if (el && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getBoundingClientRect().width > 0)) {
+          return el;
+        }
       } catch (_) { /* invalid selector in old browsers */ }
     }
     const frames = document.querySelectorAll('iframe[src*="smartsupp"]');
     for (const frame of frames) {
       const parent = frame.parentElement;
-      if (parent && parent.id !== 'app' && parent.offsetWidth > 40) return parent;
+      if (parent && parent.id !== 'app') return parent;
     }
     return null;
   }
 
   function loadPos() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      const pos = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return null;
+      const w = 64;
+      const h = 64;
+      if (pos.left < -w || pos.top < -h) return null;
+      if (pos.left > window.innerWidth + w || pos.top > window.innerHeight + h) return null;
+      return pos;
     } catch {
       return null;
     }
@@ -171,6 +179,6 @@
 
   let attempts = 0;
   const retry = setInterval(() => {
-    if (tryInit() || ++attempts > 30) clearInterval(retry);
-  }, 2000);
+    if (tryInit() || ++attempts > 60) clearInterval(retry);
+  }, 1000);
 })();

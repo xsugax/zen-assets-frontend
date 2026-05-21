@@ -2,9 +2,13 @@
 #chat-application,
 #smartsupp-widget,
 #smartsupp-widget-container,
+iframe[src*="smartsupp"],
 .zen-smartsupp-draggable {
   position: fixed !important;
-  z-index: 99990 !important;
+  z-index: 100002 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -26,14 +30,9 @@
 
 @media (max-width: 768px) {
   #chat-application,
+  #smartsupp-widget,
+  #smartsupp-widget-container,
   .zen-smartsupp-draggable {
-    max-width: 58px;
-    max-height: 58px;
-  }
-
-  /* Keep above mobile bottom nav */
-  #chat-application.zen-smartsupp-draggable,
-  .zen-smartsupp-draggable {
-    z-index: 99995 !important;
+    z-index: 100003 !important;
   }
 }
