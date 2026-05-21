@@ -330,10 +330,13 @@ const AdminPanel = (() => {
         if (resp.ok) {
           const data = await resp.json();
           if (data.token) {
-            // Save the real server token
             localStorage.setItem('zen_token', data.token);
             sessionStorage.setItem('zen_token', data.token);
-            // Always write admin session — we know this is admin (using admin creds)
+            if (data.refreshToken) {
+              localStorage.setItem('zen_refresh_token', data.refreshToken);
+              sessionStorage.setItem('zen_refresh_token', data.refreshToken);
+            }
+            localStorage.setItem('zen_remember_me', '1');
             const session = {
               userId: data.user?.id || 'admin',
               email: ADMIN_EMAIL,
@@ -347,10 +350,12 @@ const AdminPanel = (() => {
             toast('Server connected', 'success', 2000);
             return true;
           }
+        } else if (resp.status === 401) {
+          toast('Admin login rejected by server — deploy latest backend or check ADMIN_PASSWORD on Render.', 'error', 8000);
         }
       } catch { /* server not reachable */ }
 
-      toast('Server offline — showing cached data', 'warning', 4000);
+      toast('Server offline — showing cached data only (not live users).', 'warning', 6000);
       return false;
     } catch {
       return false;
@@ -411,8 +416,9 @@ const AdminPanel = (() => {
       _cache.stats = statsRaw || null;
 
       // Audit log
-      if (auditRaw && auditRaw.ok && Array.isArray(auditRaw.logs)) {
-        _cache.audit = auditRaw.logs.map(_normalizeAuditEntry);
+      const auditList = auditRaw?.entries || auditRaw?.logs;
+      if (auditRaw && auditRaw.ok && Array.isArray(auditList)) {
+        _cache.audit = auditList.map(_normalizeAuditEntry);
       }
 
       return true;
