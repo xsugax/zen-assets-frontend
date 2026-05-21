@@ -878,7 +878,8 @@ const UserAuth = (() => {
     if (!isAdmin()) return [];
     const qs = new URLSearchParams(params).toString();
     const result = await _api(`/admin/users${qs ? '?' + qs : ''}`);
-    return result.ok ? result.users : [];
+    if (!result.ok) return [];
+    return result.users || [];
   }
 
   async function adminGetUser(userId) {

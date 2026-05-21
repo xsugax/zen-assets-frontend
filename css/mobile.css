@@ -1170,3 +1170,76 @@
     font-size: 14px !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE LANDING — less jam-packed vs desktop
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 0 14px 100px !important;
+  }
+
+  .login-brand-section {
+    gap: 22px !important;
+    padding: 0 4px 28px !important;
+  }
+
+  .comparison-block,
+  .ic-section,
+  .pt-section,
+  .faq-section {
+    padding: 18px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .atf-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px 10px !important;
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+  }
+  .atf-time {
+    grid-column: 1 / -1;
+    text-align: left !important;
+  }
+
+  .lb-grid,
+  .rbd-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .zrt-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .zrt-table {
+    min-width: 520px;
+  }
+
+  .goals-preview-strip {
+    padding: 16px 12px !important;
+  }
+
+  .glass-card,
+  .card {
+    margin-bottom: 12px;
+  }
+
+  /* Tables scroll horizontally instead of squashing */
+  .data-table-wrap,
+  .users-table-wrap,
+  .table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .atf-row {
+    grid-template-columns: 1fr !important;
+  }
+  .port-kpi-item {
+    flex: 1 1 100% !important;
+  }
+}

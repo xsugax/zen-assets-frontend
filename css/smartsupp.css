@@ -1,0 +1,39 @@
+/* Smartsupp widget — draggable, above app chrome */
+#chat-application,
+#smartsupp-widget,
+#smartsupp-widget-container,
+.zen-smartsupp-draggable {
+  position: fixed !important;
+  z-index: 99990 !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.zen-smartsupp-draggable::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.zen-smartsupp-draggable:hover::after {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.35);
+}
+
+@media (max-width: 768px) {
+  #chat-application,
+  .zen-smartsupp-draggable {
+    max-width: 58px;
+    max-height: 58px;
+  }
+
+  /* Keep above mobile bottom nav */
+  #chat-application.zen-smartsupp-draggable,
+  .zen-smartsupp-draggable {
+    z-index: 99995 !important;
+  }
+}

@@ -1194,11 +1194,11 @@ body {
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: 14px;
-  width: 520px; max-width: 94vw;
+  width: min(520px, 94vw);
   box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   animation: modalIn 0.25s ease;
 }
-.admin-modal-box.small { width: 420px; }
+.admin-modal-box.small { width: min(420px, 94vw); }
 
 @keyframes modalIn {
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -1232,7 +1232,7 @@ body {
   display: flex; gap: 16px; margin-bottom: 16px;
 }
 .amb-field {
-  flex: 1; margin-bottom: 16px;
+  flex: 1; min-width: 0; margin-bottom: 16px;
 }
 .amb-field.full { flex-basis: 100%; }
 .amb-field label {
@@ -1306,6 +1306,9 @@ body {
   .trade-stats-row { grid-template-columns: repeat(3, 1fr); }
   .config-params-grid { grid-template-columns: repeat(2, 1fr); }
   .kyc-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-main { padding: 22px; }
+  .ac-body { padding: 18px; }
+  .amb-body { padding: 20px; }
 }
 
 @media (max-width: 900px) {
@@ -1314,25 +1317,52 @@ body {
   .as-item span { display: none; }
   .as-badge { display: none; }
   .as-footer { display: none; }
-  .admin-main { margin-left: 60px; }
+  .admin-main { margin-left: 60px; padding: 20px; }
+  .admin-header { padding: 10px 16px; }
+  .ah-right { flex-wrap: wrap; gap: 10px; }
   .overview-charts-row { flex-direction: column; }
   .overview-bottom-row { flex-direction: column; }
   .risk-top-row { flex-direction: column; }
   .risk-gauge-card { flex: auto; }
   .bf-row { flex-direction: column; }
-  .amb-row { flex-direction: column; }
+  .amb-row { flex-direction: column; gap: 12px; }
+  .ac-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .at-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .at-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .ah-breadcrumb { display: none; }
   .ah-quick-stat { display: none; }
+  .admin-modal-box { margin: 0 14px; }
+  .user-table td, .user-table thead th { padding: 12px 10px; }
 }
 
 @media (max-width: 600px) {
-  .kpi-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
   .fin-kpi-row { grid-template-columns: 1fr; }
+  .admin-main { padding: 12px !important; }
+  .users-table-wrap,
+  .data-table-wrap,
+  .admin-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .users-table { min-width: 640px; }
   .trade-stats-row { grid-template-columns: repeat(2, 1fr); }
   .kyc-grid { grid-template-columns: 1fr; }
   .config-params-grid { grid-template-columns: 1fr; }
   .admin-header { padding: 0 12px; }
-  .admin-main { padding: 16px; }
-  .users-toolbar { flex-direction: column; }
-  .ut-filters { flex-wrap: wrap; }
+  .admin-main { margin-left: 60px; padding: 16px; }
+  .at-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .at-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .ac-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .ac-body { padding: 14px; }
+  .amb-body { padding: 16px; }
+  .amb-row { gap: 10px; }
+  .amb-footer { flex-direction: column-reverse; align-items: stretch; }
+  .amb-footer button { width: 100%; }
+  .user-table td, .user-table thead th { padding: 12px 10px; white-space: normal; }
+  .user-table-wrap { overflow-x: auto; }
+  .ut-search { min-width: 100%; }
+  .ut-filters { width: 100%; }
+  .admin-modal-box { margin: 0 10px; }
+  .admin-card { min-width: 0; }
 }

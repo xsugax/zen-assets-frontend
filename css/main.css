@@ -338,6 +338,16 @@ small { font-size: .8em; opacity: .7; display: block; }
   50%     { opacity:1; transform:scale(1.4); }
 }
 
+/* ── Utility Animations ────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(4px); }
+}
+
 /* ═══════════════════════════════════════════════════════
    LOGIN SCREEN - ADDICTIVE WEALTH ENGINE
 ═══════════════════════════════════════════════════════ */
@@ -4818,7 +4828,7 @@ kbd { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
   #sidebar { display: none; }
-  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
   .dash-bottom-row { grid-template-columns: 1fr; }
   .analytics-grid { grid-template-columns: 1fr; }
   .ai-layers-row   { grid-template-columns: 1fr; }

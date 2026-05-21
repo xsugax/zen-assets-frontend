@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════════
+   ZEN ASSETS — Desktop layout (≥1025px)
+   More breathing room than mobile; avoids jam-packed UI on large screens.
+═══════════════════════════════════════════════════════════ */
+
+@media (min-width: 1025px) {
+
+  /* ── Login / landing ───────────────────────────────────── */
+  .login-container {
+    padding: 0 56px 140px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .login-brand-section {
+    max-width: 1000px;
+    gap: 48px;
+    padding-bottom: 56px;
+  }
+
+  .login-form-card {
+    max-width: 480px;
+    padding: 48px 44px 40px;
+  }
+
+  .ai-trade-feed,
+  .proof-wall,
+  .comparison-block {
+    max-width: 1000px;
+  }
+
+  .atf-row {
+    grid-template-columns: 100px 110px 1fr 80px;
+    padding: 12px 24px;
+  }
+
+  .tier-cards-full {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .icp-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  /* ── App dashboard ─────────────────────────────────────── */
+  .kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .dash-charts-row {
+    gap: 24px;
+  }
+
+  .dash-bottom-row {
+    gap: 24px;
+  }
+
+  .terminal-layout {
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+
+  .portfolio-layout {
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+
+  .section {
+    padding: 24px 28px;
+  }
+
+  .glass-card {
+    padding: 20px 22px;
+  }
+
+  /* Hide mobile-only chrome on desktop */
+  .mobile-bottom-nav,
+  .mobile-more-menu {
+    display: none !important;
+  }
+
+  #main-content {
+    padding-bottom: 0 !important;
+  }
+
+  .floating-contact-btn {
+    bottom: 28px !important;
+    right: 28px !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  .kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .analytics-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

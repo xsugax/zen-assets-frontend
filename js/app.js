@@ -3439,6 +3439,16 @@ const App = (() => {
   };
 })();
 
+// ── Global error guard (surfaces issues instead of silent failures) ──
+window.addEventListener('unhandledrejection', (ev) => {
+  console.error('[ZEN] Unhandled promise rejection:', ev.reason);
+});
+window.addEventListener('error', (ev) => {
+  if (ev.message && !/ResizeObserver|smartsupp/i.test(ev.message)) {
+    console.error('[ZEN] Runtime error:', ev.message, ev.filename, ev.lineno);
+  }
+});
+
 // ── Kick-off ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => App.init());
 
