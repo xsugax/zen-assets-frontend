@@ -319,8 +319,9 @@ const App = (() => {
 
       // Also re-sync when window regains focus (user switches back from admin tab)
       window.addEventListener('focus', () => {
-        if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.reloadFromStorage) {
-          if (InvestmentReturns.reloadFromStorage()) {
+        if (typeof InvestmentReturns !== 'undefined') {
+          if (InvestmentReturns.forceBalanceSync) InvestmentReturns.forceBalanceSync();
+          if (InvestmentReturns.reloadFromStorage && InvestmentReturns.reloadFromStorage()) {
             updateReturnsUI();
             updateFundManagerUI();
             console.log('🔄 Balance synced on window focus');
@@ -844,7 +845,7 @@ const App = (() => {
   }
 
   // ── Fund Manager: Claim Pool ─────────────────────────────
-  function claimFundPool(pool) {
+  async function claimFundPool(pool) {
     if (typeof InvestmentReturns === 'undefined') return;
     // Pre-check if there's anything to claim
     const fm = InvestmentReturns.getFundManagerSnapshot();
@@ -855,8 +856,8 @@ const App = (() => {
     const labels = { daily: 'Daily Bonus', weekly: 'Weekly Bonus', trading: 'Trading Profits', interest: 'Compound Interest' };
 
     // Show processing animation then execute claim
-    _showClaimProcessing(amount, labels[pool] || pool, () => {
-      const result = InvestmentReturns.claimEarnings(pool);
+    _showClaimProcessing(amount, labels[pool] || pool, async () => {
+      const result = await InvestmentReturns.claimEarnings(pool);
       if (result.success) {
         // Animate wallet balance counting up
         const walletEl = $('ret-wallet-bal');
@@ -886,13 +887,13 @@ const App = (() => {
     });
   }
 
-  function claimAllFunds() {
+  async function claimAllFunds() {
     if (typeof InvestmentReturns === 'undefined') return;
     const fm = InvestmentReturns.getFundManagerSnapshot();
     if (fm.totalUnclaimed <= 0) { showToast('No pending funds to claim', 'info'); return; }
 
-    _showClaimProcessing(fm.totalUnclaimed, 'All Earnings', () => {
-      const result = InvestmentReturns.claimAll();
+    _showClaimProcessing(fm.totalUnclaimed, 'All Earnings', async () => {
+      const result = await InvestmentReturns.claimAll();
       if (result.success) {
         // Animate wallet balance
         const snap = InvestmentReturns.getSnapshot();
@@ -2066,27 +2067,65 @@ const App = (() => {
       }
     }
 
-    // Active Sessions List
+    loadActiveSessions();
+    const revokeAllBtn = $('revoke-all-btn');
+    if (revokeAllBtn && !revokeAllBtn._wired) {
+      revokeAllBtn._wired = true;
+      revokeAllBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        revokeAllOtherSessions();
+      });
+    }
+  }
+
+  function _parseUserAgent(ua) {
+    if (!ua) return { icon: 'fa-desktop', label: 'Unknown device' };
+    const u = ua.toLowerCase();
+    let icon = 'fa-desktop';
+    if (/iphone|android.*mobile/.test(u)) icon = 'fa-mobile-alt';
+    else if (/ipad|tablet/.test(u)) icon = 'fa-tablet-alt';
+    else if (/macintosh|mac os/.test(u)) icon = 'fa-laptop';
+    const browser = u.includes('chrome') ? 'Chrome' : u.includes('firefox') ? 'Firefox' : u.includes('safari') ? 'Safari' : 'Browser';
+    const os = u.includes('windows') ? 'Windows' : u.includes('mac') ? 'macOS' : u.includes('android') ? 'Android' : u.includes('iphone') ? 'iOS' : 'Device';
+    return { icon, label: `${os} · ${browser}` };
+  }
+
+  async function loadActiveSessions() {
     const sessionsList = $('sessions-list');
-    if (sessionsList) {
-      const sessions = [
-        { icon: 'fa-desktop',    device: 'Windows · Chrome 120',    ip: '192.168.x.x',   location: 'Current Device',  time: 'Active now', current: true  },
-        { icon: 'fa-mobile-alt', device: 'iPhone · Safari 17',      ip: '31.xxx.xx.x',   location: 'London, UK',      time: '2h ago',     current: false },
-        { icon: 'fa-laptop',     device: 'MacBook · Firefox 121',   ip: '82.xxx.xx.x',   location: 'New York, US',    time: '1d ago',     current: false },
-        { icon: 'fa-tablet-alt', device: 'iPad · Chrome Mobile',    ip: '5.xx.xxx.xx',   location: 'Berlin, DE',      time: '3d ago',     current: false },
-      ];
-      sessionsList.innerHTML = sessions.map(s => `
+    if (!sessionsList || typeof UserAuth === 'undefined') return;
+    sessionsList.innerHTML = '<div class="fm-log-empty">Loading sessions...</div>';
+    const result = await UserAuth.listSessions();
+    if (!result.ok || !result.sessions || !result.sessions.length) {
+      sessionsList.innerHTML = '<div class="fm-log-empty">No other active sessions.</div>';
+      return;
+    }
+    sessionsList.innerHTML = result.sessions.map(s => {
+      const parsed = _parseUserAgent(s.userAgent);
+      const created = s.createdAt ? new Date(s.createdAt).toLocaleString() : '';
+      return `
         <div class="session-row${s.current ? ' current' : ''}">
-          <i class="fa ${s.icon}"></i>
+          <i class="fa ${parsed.icon}"></i>
           <div class="sess-info">
-            <b>${s.device}</b>
-            <span>${s.ip} · ${s.location}</span>
+            <b>${parsed.label}</b>
+            <span>${s.ipAddress || '—'} · ${created}</span>
           </div>
-          <span class="sess-time">${s.time}</span>
-          ${s.current
-            ? '<span class="badge-current">CURRENT</span>'
-            : '<button class="btn btn-danger btn-xs" onclick="App.revokeSession && App.revokeSession(this)">Revoke</button>'}
-        </div>`).join('');
+          <span class="sess-time">${s.current ? 'Active now' : created}</span>
+          ${s.current ? '<span class="badge-current">CURRENT</span>' : ''}
+        </div>`;
+    }).join('');
+  }
+
+  async function revokeAllOtherSessions() {
+    if (typeof UserAuth === 'undefined') return;
+    const btn = $('revoke-all-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Revoking...'; }
+    const result = await UserAuth.logoutAllOtherDevices();
+    if (btn) { btn.disabled = false; btn.textContent = 'Revoke All Others'; }
+    if (result.ok) {
+      showToast('Other devices have been signed out.', 'success');
+      loadActiveSessions();
+    } else {
+      showToast(result.error || 'Could not revoke sessions', 'error');
     }
   }
 
@@ -2541,49 +2580,94 @@ const App = (() => {
       const email = $('login-email').value.trim();
       const rememberMe = $('login-remember') ? $('login-remember').checked : false;
 
+      // Clear any previous errors
+      _clearLoginErrors();
+
       if (!email) {
         _showLoginError('Please enter your email address.');
+        $('login-email').focus();
+        return;
+      }
+
+      // Basic email validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        _showLoginError('Please enter a valid email address.');
+        $('login-email').focus();
         return;
       }
 
       if (typeof UserAuth === 'undefined') {
-        _showLoginError('Authentication system unavailable. Please refresh.');
+        _showLoginError('Authentication system unavailable. Please refresh the page.');
         return;
       }
 
       // Show loading state
       const btn = document.querySelector('.btn-login');
       const origHTML = btn ? btn.innerHTML : '';
-      if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Signing in...'; btn.disabled = true; }
+      if (btn) {
+        btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Signing in...';
+        btn.disabled = true;
+      }
 
       let result;
-      if (typeof _loginMode !== 'undefined' && _loginMode === 'pin') {
-        // ── PIN login ──
-        const pin = $('login-pin') ? $('login-pin').value.trim() : '';
-        if (!pin) {
-          _showLoginError('Please enter your 4-digit PIN.');
-          if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
-          return;
+      try {
+        if (typeof _loginMode !== 'undefined' && _loginMode === 'pin') {
+          // ── PIN login ──
+          const pin = $('login-pin') ? $('login-pin').value.trim() : '';
+          if (!pin) {
+            _showLoginError('Please enter your 4-digit PIN.');
+            $('login-pin').focus();
+            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+            return;
+          }
+          if (!/^\d{4}$/.test(pin)) {
+            _showLoginError('PIN must be exactly 4 digits.');
+            $('login-pin').focus();
+            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+            return;
+          }
+          result = await UserAuth.pinLogin(email, pin, rememberMe);
+        } else {
+          // ── Password login ──
+          const password = $('login-password').value;
+          if (!password) {
+            _showLoginError('Please enter your password.');
+            $('login-password').focus();
+            if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+            return;
+          }
+          result = await UserAuth.login(email, password, rememberMe);
         }
-        result = await UserAuth.pinLogin(email, pin, rememberMe);
-      } else {
-        // ── Password login ──
-        const password = $('login-password').value;
-        if (!password) {
-          _showLoginError('Please enter your password.');
-          if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
-          return;
+
+        if (result.ok) {
+          console.log(`[LOGIN] ✓ Success: ${email}`);
+          _dismissLoginScreen();
+        } else {
+          console.warn(`[LOGIN] ✗ Failed: ${email} - ${result.error}`);
+          _showLoginError(result.error || 'Login failed. Please try again.');
+          // Focus appropriate field based on error
+          if (result.error && result.error.includes('email')) {
+            $('login-email').focus();
+          } else if (result.error && result.error.includes('password')) {
+            $('login-password').focus();
+          }
         }
-        result = await UserAuth.login(email, password, rememberMe);
+      } catch (err) {
+        console.error('[LOGIN] Unexpected error:', err);
+        _showLoginError('Connection error. Please check your internet and try again.');
       }
 
-      if (result.ok) {
-        _dismissLoginScreen();
-      } else {
-        _showLoginError(result.error || 'Login failed.');
+      // Restore button state
+      if (btn) {
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
       }
-      if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
     });
+
+    // Clear errors when user starts typing
+    $('login-email').addEventListener('input', _clearLoginErrors);
+    $('login-password').addEventListener('input', _clearLoginErrors);
+    if ($('login-pin')) $('login-pin').addEventListener('input', _clearLoginErrors);
   }
 
   // ── Login OTP Step ──────────────────────────────────────────
@@ -2742,13 +2826,35 @@ const App = (() => {
   // FOMO banner — now shows market prices (no dynamic generation needed)
   function _initFOMOBanner() { }
 
+  function _clearLoginErrors() {
+    // Clear the dedicated error box
+    const errBox = $('login-error');
+    if (errBox) {
+      errBox.textContent = '';
+      errBox.classList.remove('visible');
+      if (errBox._hideTimeout) {
+        clearTimeout(errBox._hideTimeout);
+        errBox._hideTimeout = null;
+      }
+    }
+    // Clear any inline errors
+    const inlineErr = document.querySelector('.login-inline-err');
+    if (inlineErr) inlineErr.remove();
+  }
+
   function _showLoginError(msg) {
     // Use the dedicated error box if available, otherwise inline
     const errBox = $('login-error');
     if (errBox) {
       errBox.textContent = msg;
       errBox.classList.add('visible');
-      setTimeout(() => errBox.classList.remove('visible'), 6000);
+      // Clear any previous auto-hide timeout
+      if (errBox._hideTimeout) clearTimeout(errBox._hideTimeout);
+      // Auto-hide after 8 seconds for better UX
+      errBox._hideTimeout = setTimeout(() => {
+        errBox.classList.remove('visible');
+        errBox._hideTimeout = null;
+      }, 8000);
       return;
     }
     const btn = document.querySelector('.btn-login');
@@ -2757,10 +2863,16 @@ const App = (() => {
     if (prev) prev.remove();
     const div = document.createElement('div');
     div.className = 'login-inline-err';
-    div.style.cssText = 'color:#d65d5d;font-size:13px;margin-top:8px;text-align:center;';
+    div.style.cssText = 'color:#d65d5d;font-size:13px;margin-top:8px;text-align:center;animation:fadeIn 0.3s ease;';
     div.textContent = msg;
     btn.parentElement.appendChild(div);
-    setTimeout(() => div.remove(), 5000);
+    // Auto-remove after 6 seconds
+    setTimeout(() => {
+      if (div.parentElement) {
+        div.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => div.remove(), 300);
+      }
+    }, 6000);
   }
 
   function _dismissLoginScreen() {
@@ -3244,11 +3356,7 @@ const App = (() => {
       tierLabel.textContent = t ? `${t.label} Tier` : 'Member';
     }
 
-    // Show admin panel nav link for admin users
-    const adminNavLink = $('nav-admin-panel');
-    if (adminNavLink) {
-      adminNavLink.style.display = (typeof UserAuth !== 'undefined' && UserAuth.isAdmin()) ? 'flex' : 'none';
-    }
+    // Admin panel removed from the main UI
 
     // Load per-user investment state (set tier + load saved compounding data)
     if (typeof InvestmentReturns !== 'undefined') {
@@ -3326,6 +3434,7 @@ const App = (() => {
     quickTrade, togglePlugin, installPlugin, uninstallPlugin,
     closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
     claimFundPool, claimAllFunds, claimDailyBonus,
+    loadActiveSessions, revokeAllOtherSessions,
     getActiveSymbol() { return _sym; },
   };
 })();

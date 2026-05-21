@@ -20,8 +20,11 @@ const UserAuth = (() => {
 
   const STORAGE_SESSION  = 'zen_session';
   const STORAGE_TOKEN    = 'zen_token';
+  const STORAGE_REFRESH  = 'zen_refresh_token';
   const STORAGE_WALLET   = 'zen_wallet';
-  const STORAGE_REMEMBER = 'zen_remember_me'; // set only when user checks "Keep me signed in"
+  const STORAGE_REMEMBER = 'zen_remember_me';
+
+  const IS_PRODUCTION_API = API_BASE.includes('onrender.com') || API_BASE.includes('zenassets.tech');
 
   let _pendingRememberMe = false; // preserved across the OTP step during login
 
@@ -65,7 +68,7 @@ const UserAuth = (() => {
   }
 
   // ── Local User Store ─────────────────────────────────────
-  const DATA_VERSION = 'v73_clean';
+  const DATA_VERSION = 'v74_multidevice';
   const _localStore = {
     USERS_KEY: 'zen_users_db',
 
@@ -100,10 +103,6 @@ const UserAuth = (() => {
           key.startsWith('zen_investment_') ||
           key.startsWith('autoTradeHistory_') ||
           key === 'autoTradeHistory' ||
-          key === 'zen_session' ||
-          key === 'zen_token' ||
-          key === 'zen_wallet' ||
-          key === 'zen_remember_me' ||
           key.startsWith('zen_admin_')
         )) {
           keysToRemove.push(key);
@@ -292,78 +291,118 @@ const UserAuth = (() => {
 
   function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION) || sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
   function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || sessionStorage.getItem(STORAGE_TOKEN) || null; }
+  function _loadRefresh()  { return localStorage.getItem(STORAGE_REFRESH) || sessionStorage.getItem(STORAGE_REFRESH) || null; }
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
 
-  // Write helpers — ALWAYS respect the active store so non-remember sessions stay in sessionStorage
   function _saveSession(s) { const store = _getStore(); s ? store.setItem(STORAGE_SESSION, JSON.stringify(s)) : store.removeItem(STORAGE_SESSION); }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
+  function _saveRefresh(r) {
+    if (r) {
+      localStorage.setItem(STORAGE_REFRESH, r);
+      sessionStorage.setItem(STORAGE_REFRESH, r);
+    } else {
+      localStorage.removeItem(STORAGE_REFRESH);
+      sessionStorage.removeItem(STORAGE_REFRESH);
+    }
+  }
   function _saveWallet(w)  { const store = _getStore(); w ? store.setItem(STORAGE_WALLET, JSON.stringify(w)) : store.removeItem(STORAGE_WALLET); }
 
-  // ── Persist auth — localStorage (remember-me) or sessionStorage (tab-only) ──
-  function _persistAuth(token, session, wallet, remember) {
-    // Wipe both storages first to avoid stale cross-storage data
+  // ── Persist auth — localStorage for multi-device; sessionStorage only if remember unchecked ──
+  function _persistAuth(token, session, wallet, remember = true, refreshToken = null) {
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
-    // On logout or invalidated auth, clear everything and forget remember-me
     if (!token) {
       localStorage.removeItem(STORAGE_REMEMBER);
+      _saveRefresh(null);
       _activeStore = null;
       return;
     }
-    // Admin sessions are always persisted to localStorage regardless of checkbox
     const isAdmin = session && session.role === 'admin';
-    const store = (remember || isAdmin) ? localStorage : sessionStorage;
+    const usePersistent = remember !== false || isAdmin;
+    const store = usePersistent ? localStorage : sessionStorage;
     _activeStore = store;
     store.setItem(STORAGE_TOKEN, token);
     if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
     if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
-    // Set or clear the remember-me flag accordingly
-    if (remember || isAdmin) {
+    if (refreshToken) _saveRefresh(refreshToken);
+    if (usePersistent) {
       localStorage.setItem(STORAGE_REMEMBER, '1');
+      if (refreshToken) localStorage.setItem(STORAGE_REFRESH, refreshToken);
     } else {
       localStorage.removeItem(STORAGE_REMEMBER);
+      if (refreshToken) sessionStorage.setItem(STORAGE_REFRESH, refreshToken);
     }
+  }
+
+  let _refreshInFlight = null;
+
+  async function _refreshAccessToken() {
+    const existing = _loadRefresh();
+    if (!existing) return false;
+    if (_refreshInFlight) return _refreshInFlight;
+    _refreshInFlight = (async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: existing }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.token) return false;
+        _saveToken(data.token);
+        if (data.refreshToken) _saveRefresh(data.refreshToken);
+        return true;
+      } catch (e) {
+        console.warn('[Auth] refresh failed:', e.message);
+        return false;
+      } finally {
+        _refreshInFlight = null;
+      }
+    })();
+    return _refreshInFlight;
   }
 
   // ── Auth endpoints that MUST reach the server (no local fallback) ──
   const AUTH_CRITICAL = ['/auth/login', '/auth/pin-login', '/auth/register',
-    '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp'];
+    '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp', '/auth/refresh'];
 
-  // ── API Helper — tries live API first, falls back to localStore ──
-  async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
+  async function _fetchOnce(endpoint, { method, body, auth }, attemptMs) {
     const headers = { 'Content-Type': 'application/json' };
     const token = _loadToken();
     if (auth && token) headers['Authorization'] = `Bearer ${token}`;
-
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), attemptMs);
+    const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
+    clearTimeout(timer);
+    const data = await resp.json().catch(() => ({}));
+    return { resp, data };
+  }
 
-    const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
-
+  // ── API Helper — production uses server only; dev may fall back to localStore ──
+  async function _api(endpoint, { method = 'GET', body = null, auth = true, _retried = false } = {}) {
     const isAdminEndpoint = endpoint.startsWith('/admin');
-
-    // Admin endpoints get longer timeout + retry (Render cold-start can take 20-30s)
-    // Auth-critical endpoints get a single generous attempt
-    // Other endpoints: 12s single attempt
     const attempts = isAdminEndpoint ? [30000, 15000] : [12000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), attempts[i]);
-        const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
-        clearTimeout(timer);
-        const data = await resp.json();
-        if (!resp.ok) {
-          return { ok: false, status: resp.status, error: data.error || 'Request failed' };
+        const { resp, data } = await _fetchOnce(endpoint, { method, body, auth }, attempts[i]);
+        if (resp.ok) return { ok: true, ...data };
+
+        if (resp.status === 401 && auth && !_retried && endpoint !== '/auth/refresh') {
+          const code = data.code || '';
+          if (code === 'TOKEN_EXPIRED' || code === 'SESSION_INVALID' || code === 'TOKEN_INVALID') {
+            const refreshed = await _refreshAccessToken();
+            if (refreshed) return _api(endpoint, { method, body, auth, _retried: true });
+          }
         }
-        return { ok: true, ...data };
+        return { ok: false, status: resp.status, error: data.error || 'Request failed', code: data.code };
       } catch (err) {
         console.warn(`⚡ API attempt ${i + 1}/${attempts.length} failed (${endpoint}):`, err.message);
-        // If not last attempt, wait briefly then retry
         if (i < attempts.length - 1) {
           await new Promise(r => setTimeout(r, 1000));
           continue;
@@ -371,9 +410,11 @@ const UserAuth = (() => {
       }
     }
 
-    // All API attempts failed — for auth endpoints, try local store as last resort
-    // (better than showing "server unreachable" which blocks the user entirely)
-    console.warn(`⚡ All API attempts failed (${endpoint}) — trying local fallback`);
+    if (IS_PRODUCTION_API) {
+      return { ok: false, error: 'Cannot reach server. Check your connection and try again.' };
+    }
+
+    console.warn(`⚡ All API attempts failed (${endpoint}) — trying local fallback (dev only)`);
 
     // ── Verify email OTP (local: auto-succeed, no real email in offline mode) ──
     if (endpoint === '/auth/verify-email' && method === 'POST') {
@@ -556,7 +597,7 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, false);
+      _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
 
       // Also save to local store so login works if backend DB resets
       try { _localStore.register({ fullName: cleanName, email: cleanEmail, password, tier, pin }); } catch {}
@@ -600,7 +641,7 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, rememberMe);
+      _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
       console.log(`[AUTH] ✓ Login successful: ${email}`);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
@@ -648,7 +689,7 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, rememberMe);
+      _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
@@ -661,8 +702,7 @@ const UserAuth = (() => {
     const result = await _api('/auth/verify-email', { method: 'POST', body: { userId, code }, auth: false });
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
-      // New registrations always use session-only storage — user must log in manually on next visit
-      _persistAuth(result.token, session, result.wallet, false);
+      _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -675,7 +715,7 @@ const UserAuth = (() => {
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
       // Use the remember-me preference captured at the login step
-      _persistAuth(result.token, session, result.wallet, _pendingRememberMe);
+      _persistAuth(result.token, session, result.wallet, _pendingRememberMe !== false, result.refreshToken);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -691,15 +731,12 @@ const UserAuth = (() => {
   function getSession()     { return _loadSession(); }
   function isLoggedIn() {
     const session = _loadSession();
+    if (!session) return false;
     const token = _loadToken();
-    if (!session || !token || !token.length) return false;
-    // Validate token expiry so stale remembered sessions do not stay active.
-    const uid = _verifyLocalToken(token);
-    if (!uid) {
-      _persistAuth(null);
-      return false;
-    }
-    return true;
+    if (token && _verifyLocalToken(token)) return true;
+    if (_loadRefresh()) return true;
+    if (token) _persistAuth(null);
+    return false;
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
@@ -719,9 +756,13 @@ const UserAuth = (() => {
 
   // ── Refresh session from API (async) ─────────────────────
   async function refreshSession() {
-    if (!_loadToken()) return null;
-    const result = await _api('/auth/me');
-    if (result.ok) {
+    if (!_loadToken() && !_loadRefresh()) return null;
+    let result = await _api('/auth/me');
+    if (!result.ok && result.status === 401) {
+      const refreshed = await _refreshAccessToken();
+      if (refreshed) result = await _api('/auth/me');
+    }
+    if (result.ok && result.user) {
       const session = {
         userId: result.user.id,
         email: result.user.email,
@@ -733,14 +774,11 @@ const UserAuth = (() => {
       _saveSession(session);
       if (result.wallet) _saveWallet(result.wallet);
       return { user: result.user, wallet: result.wallet };
-    } else {
-      if (result.status === 401) {
-        _saveToken(null);
-        _saveSession(null);
-        _saveWallet(null);
-      }
-      return null;
     }
+    if (result.status === 401) {
+      _persistAuth(null);
+    }
+    return null;
   }
 
   // ── Get Wallet (async) ──────────────────────────────────
@@ -767,11 +805,16 @@ const UserAuth = (() => {
     
     // ═ STEP 1: Clear Auth FIRST (most important — do this before anything else) ═
     console.log('🔐 LOGOUT: Clearing authentication...');
+    const refreshTok = _loadRefresh();
+    try {
+      await _api('/auth/logout', { method: 'POST', body: { refreshToken: refreshTok }, auth: true });
+    } catch (_) { /* best-effort */ }
     localStorage.removeItem(STORAGE_REMEMBER);
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
+      s.removeItem(STORAGE_REFRESH);
     });
     _activeStore = null;
     console.log('✓ Auth cleared');
@@ -1057,28 +1100,26 @@ const UserAuth = (() => {
     const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
 
     // ── Path A: "Remember me" — persistent login across browser restarts ──
-    if (remembered && localStorage.getItem(STORAGE_TOKEN) && localStorage.getItem(STORAGE_SESSION)) {
+    if (remembered && localStorage.getItem(STORAGE_SESSION) && (localStorage.getItem(STORAGE_TOKEN) || localStorage.getItem(STORAGE_REFRESH))) {
       _activeStore = localStorage;
       console.log('[Auth] Remembered session found — restoring...');
-      // Validate token expiry locally (7-day tokens)
       const token = localStorage.getItem(STORAGE_TOKEN);
-      const uid = _verifyLocalToken(token);
-      if (!uid) {
-        console.warn('[Auth] Remembered token expired — clearing');
+      const uid = token ? _verifyLocalToken(token) : null;
+      if (!uid && localStorage.getItem(STORAGE_REFRESH)) {
+        _refreshAccessToken().catch(() => {});
+      } else if (!uid && !localStorage.getItem(STORAGE_REFRESH)) {
+        console.warn('[Auth] Remembered session expired — clearing');
         _persistAuth(null);
-        return; // isLoggedIn() will return false → login screen shows
+        return;
       }
-      // Fire-and-forget async validation against API
       refreshSession().then(result => {
         if (!result) {
-          console.warn('[Auth] Remembered session invalid — clearing');
-          _persistAuth(null);
-          location.reload();
+          console.warn('[Auth] Session could not be validated — will retry on next action');
         } else {
           console.log('[Auth] Remembered session validated ✓');
         }
       }).catch(() => {
-        console.log('[Auth] API unreachable — using cached session');
+        console.log('[Auth] API unreachable — using cached session until reconnect');
       });
       return;
     }
@@ -1117,8 +1158,22 @@ const UserAuth = (() => {
     }
   }
 
+  async function listSessions() {
+    return _api('/auth/sessions');
+  }
+
+  async function logoutAllOtherDevices() {
+    const result = await _api('/auth/logout-all', { method: 'POST' });
+    if (result.ok && result.token) {
+      const session = _loadSession();
+      _persistAuth(result.token, session, _loadWallet(), true, result.refreshToken);
+    }
+    return result;
+  }
+
   return {
     init, register, login, pinLogin, logout,
+    listSessions, logoutAllOtherDevices,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
