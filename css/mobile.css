@@ -701,6 +701,38 @@
 
 
 /* ═══════════════════════════════════════════════════════
+   MOBILE BOOT — Keep loading screen visibly alive
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  #loading-screen.boot-mobile-live .boot-scanlines {
+    opacity: 1;
+    animation: scanlines-move 2.5s linear infinite;
+  }
+  #loading-screen.boot-mobile-live .boot-grid-overlay {
+    opacity: 0.1;
+    animation: grid-pulse 2s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .hex-outline-anim {
+    animation: hex-rotate 5s linear infinite, hex-outline-pulse 1.2s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .hex-inner-anim {
+    animation: hex-rotate-reverse 7s linear infinite, hex-inner-pulse 1.2s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .boot-logo-z {
+    animation: boot-z-glow 1.2s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .boot-progress-bar {
+    animation: boot-progress-shimmer 1s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .boot-status {
+    animation: boot-status-pulse 1.4s ease-in-out infinite;
+  }
+  #loading-screen.boot-mobile-live .bm-val {
+    transition: color 0.15s;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    PRINT — Hide unnecessary elements when printing
 ═══════════════════════════════════════════════════════ */
 @media print {

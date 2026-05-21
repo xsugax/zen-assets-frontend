@@ -36,6 +36,15 @@
   0%,100% { opacity:.03; }
   50%      { opacity:.06; }
 }
+@keyframes boot-progress-shimmer {
+  0%   { filter: brightness(1); box-shadow: 0 0 8px rgba(0,212,255,.35); }
+  50%  { filter: brightness(1.25); box-shadow: 0 0 16px rgba(212,165,116,.5); }
+  100% { filter: brightness(1); box-shadow: 0 0 8px rgba(0,212,255,.35); }
+}
+@keyframes boot-status-pulse {
+  0%,100% { opacity: .75; }
+  50%      { opacity: 1; }
+}
 
 /* ── Fade / Slide Entries ───────────────────────────────── */
 @keyframes fadeInUp {

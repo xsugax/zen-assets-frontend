@@ -172,6 +172,7 @@ const App = (() => {
     const progress = $('loader-fill');
     const status   = $('loader-label');
     let pct = 0;
+    const fastBoot = _isMobile;
 
     const MSGS = [
       'INITIALIZING QUANTUM CORE...',
@@ -183,22 +184,25 @@ const App = (() => {
       'SYSTEM READY — WELCOME TO ZEN',
     ];
 
-    animBootCounter('bm-nodes',  0, 2048,   1800);
-    animBootCounter('bm-lat',    0, 12,     1600, 'ms');
-    animBootCounter('bm-ai',     0, 4,      1200);
-    animBootCounter('bm-mkt',    0, 27,     1400);
+    const counterDur = fastBoot ? 1100 : 1800;
+    animBootCounter('bm-nodes',  0, 2048,   counterDur);
+    animBootCounter('bm-lat',    0, 12,     counterDur - 200, 'ms');
+    animBootCounter('bm-ai',     0, 4,      counterDur - 400);
+    animBootCounter('bm-mkt',    0, 27,     counterDur - 300);
 
+    const tickMs = fastBoot ? 55 : 80;
+    const step = fastBoot ? 0.055 : 0.035;
     const iv = setInterval(() => {
-      pct += (100 - pct) * 0.035 + 0.8;
+      pct += (100 - pct) * step + (fastBoot ? 1.4 : 0.8);
       if (pct >= 100) pct = 100;
       if (progress) progress.style.width = pct + '%';
       const idx = Math.min(MSGS.length - 1, Math.floor((pct / 100) * MSGS.length));
       if (status) status.textContent = MSGS[idx];
       if (pct >= 100) {
         clearInterval(iv);
-        setTimeout(showApp, 600);
+        setTimeout(showApp, fastBoot ? 350 : 600);
       }
-    }, 80);
+    }, tickMs);
   }
 
   function animBootCounter(id, from, to, dur, suffix = '') {
@@ -233,28 +237,42 @@ const App = (() => {
   // ── Boot Canvas Particles ─────────────────────────────────
   const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
   function initBootCanvas() {
-    // Skip particles entirely on mobile — saves GPU during boot
-    if (_isMobile) return;
     const c = $('boot-canvas'); if (!c) return;
     const ctx = c.getContext('2d');
-    c.width = window.innerWidth; c.height = window.innerHeight;
-    const ptcls = Array.from({ length: 30 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, r: Math.random() * 1.5 + .5, a: Math.random() }));
+    const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
+    resize();
+    const count = _isMobile ? 14 : 30;
+    const speed = _isMobile ? 0.85 : 0.4;
+    const ptcls = Array.from({ length: count }, () => ({
+      x: Math.random() * c.width,
+      y: Math.random() * c.height,
+      vx: (Math.random() - 0.5) * speed,
+      vy: (Math.random() - 0.5) * speed,
+      r: Math.random() * (_isMobile ? 1.2 : 1.5) + 0.5,
+      hue: Math.random() > 0.5 ? '0,212,255' : '212,165,116',
+    }));
     let running = true;
     const draw = () => {
       if (!running) return;
       ctx.clearRect(0, 0, c.width, c.height);
       ptcls.forEach(p => {
-        p.x += p.vx; p.y += p.vy; p.a = 0.4 + Math.sin(Date.now() * 0.002 + p.r) * 0.3;
+        p.x += p.vx; p.y += p.vy;
+        const a = 0.35 + Math.sin(Date.now() * 0.003 + p.r * 2) * 0.35;
         if (p.x < 0) p.x = c.width; if (p.x > c.width) p.x = 0;
         if (p.y < 0) p.y = c.height; if (p.y > c.height) p.y = 0;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0,212,255,${p.a})`; ctx.fill();
+        ctx.fillStyle = `rgba(${p.hue},${a})`; ctx.fill();
       });
       requestAnimationFrame(draw);
     };
     draw();
-    const stopBoot = () => { running = false; ctx.clearRect(0, 0, c.width, c.height); };
-    setTimeout(stopBoot, 3000);
+    window.addEventListener('resize', resize, { passive: true });
+    const stopBoot = () => {
+      running = false;
+      window.removeEventListener('resize', resize);
+      ctx.clearRect(0, 0, c.width, c.height);
+    };
+    setTimeout(stopBoot, _isMobile ? 4500 : 3000);
   }
 
   // ── Cursor Trail — DISABLED (clean professional UI) ───
@@ -3304,7 +3322,10 @@ const App = (() => {
 
   function proceedAfterLogin() {
     const loadingScreen = $('loading-screen');
-    if (loadingScreen) loadingScreen.style.display = 'flex';
+    if (loadingScreen) {
+      loadingScreen.style.display = 'flex';
+      if (_isMobile) loadingScreen.classList.add('boot-mobile-live');
+    }
     initBootCanvas();
     runBoot();
     window._App = { showToast, navigate };

@@ -466,90 +466,9 @@ const UserAuth = (() => {
       return { ok: true };
     }
 
-    // ── Admin: list users ─────────────────────────────────
-    if (endpoint.startsWith('/admin/users') && method === 'GET') {
-      return { ok: true, users: _localStore.listUsers() };
-    }
-
-    // ── Admin: create user (offline) ──────────────────────
-    if (endpoint === '/admin/users' && method === 'POST') {
-      const regResult = _localStore.register({
-        fullName: body.fullName,
-        email: body.email,
-        password: body.password,
-        pin: body.pin,
-        tier: body.tier || 'gold',
-        depositAmount: parseFloat(body.depositAmount) || 0,
-      });
-      if (!regResult.ok) return regResult;
-      const allUsers = _localStore.getAll();
-      const idx = allUsers.findIndex(u => u.email.toLowerCase() === body.email.toLowerCase());
-      if (idx !== -1) {
-        allUsers[idx].balance = parseFloat(body.depositAmount) || 0;
-        allUsers[idx].depositAmount = parseFloat(body.depositAmount) || 0;
-        allUsers[idx].status = 'active';
-        _localStore.save(allUsers);
-      }
-      return { ok: true, success: true, user: regResult.user, wallet: regResult.wallet };
-    }
-
-    // ── Admin: update user ────────────────────────────────
-    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
-      const uid = endpoint.split('/').pop();
-      return _localStore.updateUser(uid, body);
-    }
-
-    // ── Admin: stats ──────────────────────────────────────
-    if (endpoint === '/admin/stats') {
-      const users = _localStore.listUsers();
-      return {
-        ok: true,
-        totalUsers: users.length,
-        activeUsers: users.filter(u => u.status === 'active').length,
-        totalDeposited: users.reduce((s, u) => s + (u.depositAmount || 0), 0),
-      };
-    }
-
-    // ── Admin: credit user ────────────────────────────────
-    if (endpoint.match(/^\/admin\/users\/[^/]+\/credit$/) && method === 'POST') {
-      const uid = endpoint.split('/')[3];
-      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-      const idx = allUsers.findIndex(u => u.id === uid);
-      if (idx === -1) return { ok: false, error: 'User not found.' };
-      const amt = parseFloat(body.amount) || 0;
-      allUsers[idx].balance = (allUsers[idx].balance || 0) + amt;
-      allUsers[idx].depositAmount = (allUsers[idx].depositAmount || 0) + amt;
-      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-      return { ok: true, balance: allUsers[idx].balance };
-    }
-
-    // ── Admin: debit user ─────────────────────────────────
-    if (endpoint.match(/^\/admin\/users\/[^/]+\/debit$/) && method === 'POST') {
-      const uid = endpoint.split('/')[3];
-      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-      const idx = allUsers.findIndex(u => u.id === uid);
-      if (idx === -1) return { ok: false, error: 'User not found.' };
-      const amt = parseFloat(body.amount) || 0;
-      allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
-      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-      return { ok: true, balance: allUsers[idx].balance };
-    }
-
-    // ── Admin: delete user ─────────────────────────────────
-    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'DELETE') {
-      const uid = endpoint.split('/').pop();
-      return _localStore.deleteUser(uid);
-    }
-
-    // ── Admin: set PIN ────────────────────────────────────
-    if (endpoint.match(/^\/admin\/users\/[^/]+\/set-pin$/) && method === 'POST') {
-      const uid = endpoint.split('/')[3];
-      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-      const idx = allUsers.findIndex(u => u.id === uid);
-      if (idx === -1) return { ok: false, error: 'User not found.' };
-      allUsers[idx].pinHash = _simpleHash(body.pin);
-      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-      return { ok: true, success: true };
+    // Admin routes never use offline fallback (users must exist on server)
+    if (endpoint.startsWith('/admin/')) {
+      return { ok: false, error: 'Admin API unavailable. Connect to server and try again.' };
     }
 
     // ── Wallet endpoints should NOT return fake offline balances ──
@@ -598,10 +517,6 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
-
-      // Also save to local store so login works if backend DB resets
-      try { _localStore.register({ fullName: cleanName, email: cleanEmail, password, tier, pin }); } catch {}
-
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     if (result.ok) {
@@ -875,7 +790,6 @@ const UserAuth = (() => {
 
   // ── Admin: User Management (async) ──────────────────────
   async function adminGetAllUsers(params = {}) {
-    if (!isAdmin()) return [];
     const qs = new URLSearchParams(params).toString();
     const result = await _api(`/admin/users${qs ? '?' + qs : ''}`);
     if (!result.ok) return [];
@@ -893,11 +807,14 @@ const UserAuth = (() => {
   }
 
   async function adminCreateUser({ email, fullName, password, pin, tier, depositAmount }) {
-    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
-    return _api('/admin/users', {
+    const result = await _api('/admin/users', {
       method: 'POST',
       body: { email, fullName, password, pin, tier, depositAmount },
     });
+    if (result.ok && (result.success || result.user)) {
+      return { ok: true, success: true, user: result.user, wallet: result.wallet };
+    }
+    return { ok: false, error: result.error || 'Could not create user on server.' };
   }
 
   async function adminDeleteUser(userId) {

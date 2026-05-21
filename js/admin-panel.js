@@ -388,24 +388,17 @@ const AdminPanel = (() => {
       // Ensure required users exist in local store before merging
       _ensureRequiredUsers();
 
-      // Normalise users → dict keyed by email
-      // IMPORTANT: only replace cache if we got data; keep previous data otherwise
-      if (Array.isArray(usersRaw) && usersRaw.length > 0) {
+      // Server is source of truth — replace user list whenever API returns (even empty)
+      if (_serverAuthenticated && Array.isArray(usersRaw)) {
         const fresh = {};
         usersRaw.forEach(u => {
           const norm = _normalizeUser(u);
           fresh[norm.email] = norm;
         });
         _cache.users = fresh;
-
-        // Sync API users into local store so they persist offline
-        _syncUsersToLocalStore(usersRaw);
-      } else {
+      } else if (!_serverAuthenticated) {
         _cache.users = _cache.users || {};
       }
-
-      // NOTE: When connected to the real backend, only show real server users.
-      // Avoid leaking stale or offline-only local cache users into the live admin panel.
 
       // Normalise withdrawals
       _cache.withdrawals = Array.isArray(withdrawalsRaw)
@@ -1264,11 +1257,11 @@ const AdminPanel = (() => {
         email, fullName: newName, password: newPwd,
         pin: newPin || '', tier: newTier, depositAmount: deposit,
       });
-      if (!result.ok && !result.success) return toast(result.error || 'Failed to create user', 'error');
+      if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
 
       closeModal('modal-user-edit');
       log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
-      toast(`${newName} created successfully`, 'success');
+      toast(`${newName} created — they can sign in on the main site with this email and password`, 'success', 6000);
 
       // Refresh user list from API
       await _loadApiData();
