@@ -650,25 +650,15 @@ const AutoTrader = (() => {
         ? (pnlPct > 1.5 ? 'Take Profit hit — target reached' : 'AI confidence exit — securing gains')
         : 'Stop Loss triggered — risk managed';
 
-      // Credit/debit to InvestmentReturns wallet (the real balance)
-      if (typeof InvestmentReturns !== 'undefined') {
-        if (pnl > 0) {
-          InvestmentReturns.creditTradingProfit(pnl, {
-            symbol: trade.symbol,
-            side: trade.side,
-            pnlPct: pnlPct,
-          });
-          // Gamification: track auto-trade profit
-          if (typeof Gamification !== 'undefined') Gamification.trackProfit(pnl);
-        } else if (pnl < 0) {
-          InvestmentReturns.debitTradingLoss(Math.abs(pnl), {
-            symbol: trade.symbol,
-            side: trade.side,
-          });
-        }
+      // Balance updates are handled by backend API — frontend syncs periodically
+      // Removed: InvestmentReturns.creditTradingProfit/debitTradingLoss calls
+      // to prevent double-counting since backend already updates wallet balance
+
+      // Gamification: track auto-trade profit/loss
+      if (typeof Gamification !== 'undefined') {
+        if (pnl > 0) Gamification.trackProfit(pnl);
+        Gamification.trackTrade();
       }
-      // Gamification: track auto-trade execution
-      if (typeof Gamification !== 'undefined') Gamification.trackTrade();
 
       // ── Lifecycle: EXIT → COMPOUND ───────────────────────
       _logStep('exit', {

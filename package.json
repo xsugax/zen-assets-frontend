@@ -2,6 +2,7 @@
   "name": "zen-assets-frontend",
   "version": "1.0.0",
   "private": true,
+  "description": "ZEN ASSETS — Vercel static site + serverless email API",
   "dependencies": {
     "@sendgrid/mail": "^8.1.4"
   }

@@ -1002,15 +1002,36 @@ const UserAuth = (() => {
     return result;
   }
 
-  // ── Email Notification (fire-and-forget) ─────────────────
+  // ── Email via backend admin API (authenticated) ──────────
+  async function adminNotifyEmail(type, data) {
+    if (!isAdmin()) return { ok: false };
+    return _api('/admin/notify-email', { method: 'POST', body: { type, ...data } });
+  }
+
   function _sendEmail(type, data) {
-    try {
-      fetch('/api/email/' + type, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }).catch(function () { /* silent — email is non-blocking */ });
-    } catch (e) { /* silent */ }
+    if (isAdmin()) {
+      adminNotifyEmail(type, data).catch(() => {});
+      return;
+    }
+    // User-triggered emails are sent by the backend (register, withdraw, etc.)
+  }
+
+  async function forgotPassword(emailRaw) {
+    const email = (emailRaw || '').trim().toLowerCase();
+    if (!email) return { ok: false, error: 'Email is required.' };
+    return _api('/auth/forgot-password', { method: 'POST', body: { email }, auth: false });
+  }
+
+  async function resetPassword(emailRaw, code, newPassword) {
+    const email = (emailRaw || '').trim().toLowerCase();
+    if (!email || !code || !newPassword) {
+      return { ok: false, error: 'Email, reset code, and new password are required.' };
+    }
+    return _api('/auth/reset-password', {
+      method: 'POST',
+      body: { email, code, newPassword },
+      auth: false,
+    });
   }
 
   // ── Init ─────────────────────────────────────────────────
@@ -1090,7 +1111,7 @@ const UserAuth = (() => {
   }
 
   return {
-    init, register, login, pinLogin, logout,
+    init, register, login, pinLogin, logout, forgotPassword, resetPassword,
     listSessions, logoutAllOtherDevices,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
@@ -1107,7 +1128,7 @@ const UserAuth = (() => {
     submitKYC, getKYCStatus,
     getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
-    sendEmailNotification: _sendEmail,
+    sendEmailNotification: _sendEmail, adminNotifyEmail,
     hashPassword: _simpleHash,
     TIERS,
   };

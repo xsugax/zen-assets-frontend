@@ -17,6 +17,10 @@
   display: flex; opacity: 1; pointer-events: all;
 }
 
+#forgot-password-overlay.visible {
+  display: flex; opacity: 1; pointer-events: all;
+}
+
 .register-card {
   background: linear-gradient(145deg, #111622, #0d111b);
   border: 1px solid rgba(212,165,116,0.12);

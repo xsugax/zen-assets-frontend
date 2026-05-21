@@ -1,6 +1,6 @@
 // POST /api/email/weekly-report — Send weekly portfolio summary
 // Called from admin panel (loops through users) or via Vercel cron
-const { send, fmtMoney, _esc, validatePost } = require('../_lib/sendgrid');
+const { send, fmtMoney, _esc, validatePost, requireEmailAuth } = require('../_lib/sendgrid');
 
 const TIER_COLORS = {
   bronze:   '#cd7f32',
@@ -11,6 +11,7 @@ const TIER_COLORS = {
 };
 
 module.exports = async function handler(req, res) {
+  if (!requireEmailAuth(req, res)) return;
   const body = validatePost(req, res, ['email', 'fullName', 'balance']);
   if (!body) return;
 

@@ -1,5 +1,5 @@
 // POST /api/email/withdrawal — Send withdrawal status email
-const { send, fmtMoney, _esc, validatePost } = require('../_lib/sendgrid');
+const { send, fmtMoney, _esc, validatePost, requireEmailAuth } = require('../_lib/sendgrid');
 
 const STATUS_CONFIG = {
   pending:  { label: 'Processing',  color: '#d4a574', icon: '&#9203;', subject: 'Withdrawal Request Received' },
@@ -8,6 +8,7 @@ const STATUS_CONFIG = {
 };
 
 module.exports = async function handler(req, res) {
+  if (!requireEmailAuth(req, res)) return;
   const body = validatePost(req, res, ['email', 'fullName', 'amount', 'status']);
   if (!body) return;
 

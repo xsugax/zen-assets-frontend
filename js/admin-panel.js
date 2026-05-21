@@ -31,7 +31,6 @@ const AdminPanel = (() => {
   };
 
   const ADMIN_EMAIL = 'admin@zenassets.com';
-  const ADMIN_PASS  = 'ZenAdmin2026!';
 
   const TIERS = {
     bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 2000,    apy: '25–38%', maxLev: '5x',  commission: 0.15 },
@@ -316,46 +315,7 @@ const AdminPanel = (() => {
         } catch { /* token invalid or server cold — continue to re-auth */ }
       }
 
-      // Step 2: Re-authenticate with admin credentials to get a real server token
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 45000);
-        const resp = await fetch(`${API_BASE}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASS }),
-          signal: controller.signal,
-        });
-        clearTimeout(timer);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.token) {
-            localStorage.setItem('zen_token', data.token);
-            sessionStorage.setItem('zen_token', data.token);
-            if (data.refreshToken) {
-              localStorage.setItem('zen_refresh_token', data.refreshToken);
-              sessionStorage.setItem('zen_refresh_token', data.refreshToken);
-            }
-            localStorage.setItem('zen_remember_me', '1');
-            const session = {
-              userId: data.user?.id || 'admin',
-              email: ADMIN_EMAIL,
-              role: 'admin',
-              tier: data.user?.tier || 'diamond',
-              fullName: data.user?.fullName || data.user?.full_name || 'Admin',
-              loginAt: Date.now(),
-            };
-            localStorage.setItem('zen_session', JSON.stringify(session));
-            sessionStorage.setItem('zen_session', JSON.stringify(session));
-            toast('Server connected', 'success', 2000);
-            return true;
-          }
-        } else if (resp.status === 401) {
-          toast('Admin login rejected by server — deploy latest backend or check ADMIN_PASSWORD on Render.', 'error', 8000);
-        }
-      } catch { /* server not reachable */ }
-
-      toast('Server offline — showing cached data only (not live users).', 'warning', 6000);
+      toast('Sign in on this page with your admin email and password to load live users.', 'warning', 8000);
       return false;
     } catch {
       return false;
@@ -1507,8 +1467,8 @@ const AdminPanel = (() => {
     closeModal('modal-activate');
 
     // Email notification — deposit confirmation
-    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
-      UserAuth.sendEmailNotification('deposit', {
+    if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
+      UserAuth.adminNotifyEmail('deposit', {
         email: email,
         fullName: u.fullName || email,
         amount: topUp,
@@ -1848,8 +1808,8 @@ const AdminPanel = (() => {
     toast(`Withdrawal ${statusLabels[newStatus]}`, newStatus === 'approved' ? 'success' : 'warning');
 
     // Email notification to user
-    if (w.email && typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
-      UserAuth.sendEmailNotification('withdrawal', {
+    if (w.email && typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
+      UserAuth.adminNotifyEmail('withdrawal', {
         email: w.email,
         fullName: w.name || w.email,
         amount: w.amount,
@@ -1988,9 +1948,9 @@ const AdminPanel = (() => {
     toast(`Balance adjusted: ${fmtMoney(user.deposit)}`, 'success');
 
     // Email notification to user
-    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+    if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
       if (operation === 'add' || operation === 'set') {
-        UserAuth.sendEmailNotification('deposit', {
+        UserAuth.adminNotifyEmail('deposit', {
           email: email,
           fullName: user.fullName || email,
           amount: amount,
@@ -2576,8 +2536,8 @@ const AdminPanel = (() => {
     let sent = 0;
     for (const u of clients) {
       try {
-        if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
-          UserAuth.sendEmailNotification('weekly-report', {
+        if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
+          UserAuth.adminNotifyEmail('weekly-report', {
             email: u.email,
             fullName: u.fullName || u.email,
             balance: u.deposit || u.balance || 0,

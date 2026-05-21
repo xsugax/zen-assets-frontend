@@ -450,23 +450,10 @@ const SmartExitEngine = (() => {
       if (typeof AutoTrader !== 'undefined') {
         AutoTrader.updateClosedPosition(pos.id, signal.price, pos.pnl, pos.pnlPct, hoursHeld);
       }
-      
-      // Credit/debit trading profit to wallet via InvestmentReturns
-      if (typeof InvestmentReturns !== 'undefined') {
-        if (pos.pnl > 0) {
-          InvestmentReturns.creditTradingProfit(pos.pnl, {
-            symbol: pos.sym,
-            side: pos.side || 'long',
-            pnlPct: pos.pnlPct,
-          });
-        } else if (pos.pnl < 0) {
-          InvestmentReturns.debitTradingLoss(Math.abs(pos.pnl), {
-            symbol: pos.sym,
-            side: pos.side || 'long',
-          });
-        }
-      }
-      
+
+      // Balance updates handled by backend — frontend syncs periodically
+      // Removed: InvestmentReturns credit/debit calls to prevent double-counting
+
       // Cleanup state
       delete positionStates[pos.id];
       

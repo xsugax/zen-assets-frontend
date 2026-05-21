@@ -365,14 +365,8 @@ const TradeEngine = (() => {
       pos.closedAt = Date.now();
       pos.exitPrice = exitPrice;
 
-      // Credit/debit to wallet
-      if (typeof InvestmentReturns !== 'undefined') {
-        if (pos.pnl > 0.01) {
-          InvestmentReturns.creditTradingProfit(pos.pnl, { symbol: pos.sym, side: pos.side, market: pos.market });
-        } else if (pos.pnl < -0.01) {
-          InvestmentReturns.debitTradingLoss(Math.abs(pos.pnl), { symbol: pos.sym, side: pos.side, market: pos.market });
-        }
-      }
+      // Balance updates handled by backend — frontend syncs periodically
+      // Removed: InvestmentReturns credit/debit calls to prevent double-counting
 
       _log('CLOSE', pos);
       return pos;

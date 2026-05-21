@@ -1,7 +1,8 @@
 // POST /api/email/deposit — Send deposit confirmation email
-const { send, fmtMoney, _esc, statBox, validatePost } = require('../_lib/sendgrid');
+const { send, fmtMoney, _esc, statBox, validatePost, requireEmailAuth } = require('../_lib/sendgrid');
 
 module.exports = async function handler(req, res) {
+  if (!requireEmailAuth(req, res)) return;
   const body = validatePost(req, res, ['email', 'fullName', 'amount']);
   if (!body) return;
 

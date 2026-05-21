@@ -2395,18 +2395,77 @@ const App = (() => {
     }, duration);
   }
 
-  // ── Forgot Password ──────────────────────────────────────
+  // ── Forgot / Reset Password ─────────────────────────────
   window.showForgotPassword = function() {
-    const email = prompt('Enter your registered email address and we will send you a password reset link:');
-    if (!email) return;
-    const trimmed = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      showToast('Please enter a valid email address.', 'error');
+    const overlay = $('forgot-password-overlay');
+    if (overlay) {
+      overlay.classList.add('visible');
+      const step1 = $('forgot-step-request');
+      const step2 = $('forgot-step-reset');
+      if (step1) step1.style.display = '';
+      if (step2) step2.style.display = 'none';
+      const err = $('forgot-error');
+      if (err) { err.textContent = ''; err.classList.remove('visible'); }
       return;
     }
-    // Offline: acknowledge the request — real reset requires backend
-    showToast('If that email is registered, a reset link has been sent. Check your inbox.', 'success', 6000);
-    console.info('[ZEN] Password reset requested for:', trimmed);
+    showToast('Reset form unavailable. Refresh the page.', 'error');
+  };
+
+  window.closeForgotPassword = function() {
+    const overlay = $('forgot-password-overlay');
+    if (overlay) overlay.classList.remove('visible');
+  };
+
+  window.submitForgotPasswordRequest = async function(e) {
+    e.preventDefault();
+    const email = ($('forgot-email')?.value || '').trim().toLowerCase();
+    const errEl = $('forgot-error');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (errEl) { errEl.textContent = 'Enter a valid email address.'; errEl.classList.add('visible'); }
+      return;
+    }
+    const btn = $('btn-forgot-send');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    const result = typeof UserAuth !== 'undefined'
+      ? await UserAuth.forgotPassword(email)
+      : { ok: false, error: 'Auth unavailable' };
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-envelope"></i> Send Reset Code'; }
+    if (result.ok) {
+      showToast(result.message || 'Check your email for a reset code.', 'success', 6000);
+      $('forgot-step-request').style.display = 'none';
+      $('forgot-step-reset').style.display = '';
+      const resetEmail = $('forgot-reset-email');
+      if (resetEmail) resetEmail.value = email;
+    } else if (errEl) {
+      errEl.textContent = result.error || 'Could not send reset code.';
+      errEl.classList.add('visible');
+    }
+  };
+
+  window.submitPasswordReset = async function(e) {
+    e.preventDefault();
+    const email = ($('forgot-reset-email')?.value || '').trim().toLowerCase();
+    const code = ($('forgot-reset-code')?.value || '').trim();
+    const pwd = $('forgot-new-password')?.value || '';
+    const errEl = $('forgot-error-reset') || $('forgot-error');
+    if (!email || !code || !pwd) {
+      if (errEl) { errEl.textContent = 'Fill in all fields.'; errEl.classList.add('visible'); }
+      return;
+    }
+    const btn = $('btn-forgot-reset');
+    if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+    const result = typeof UserAuth !== 'undefined'
+      ? await UserAuth.resetPassword(email, code, pwd)
+      : { ok: false, error: 'Auth unavailable' };
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-check"></i> Update Password'; }
+    if (result.ok) {
+      showToast('Password updated. Sign in with your new password.', 'success', 6000);
+      closeForgotPassword();
+      if (typeof AuthManager !== 'undefined') AuthManager.switchView('login');
+    } else if (errEl) {
+      errEl.textContent = result.error || 'Reset failed.';
+      errEl.classList.add('visible');
+    }
   };
 
   // ── Enterprise SSO ───────────────────────────────────────
@@ -3210,10 +3269,14 @@ const App = (() => {
     };
 
     window.selectTier = (tier) => {
-      console.log(`Selected tier: ${tier.toUpperCase()}`);
       closeTierModal();
-      // In production, this would initiate onboarding flow for selected tier
-      alert(`You've selected the ${tier.toUpperCase()} tier! In production, this would start your onboarding process.`);
+      if (typeof AuthManager !== 'undefined') {
+        AuthManager.switchView('register');
+        setTimeout(() => {
+          const opt = document.querySelector(`.tier-opt[data-tier="${tier}"]`);
+          if (opt && typeof selectRegTier === 'function') selectRegTier(opt);
+        }, 200);
+      }
     };
 
     // ── Smartsupp Live Chat Integration ──
@@ -3279,10 +3342,24 @@ const App = (() => {
       if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
       input.value = v;
     };
-    window.submitCardDeposit = (e) => {
+    window.submitCardDeposit = async (e) => {
       e.preventDefault();
-      showToast('Card payment is being processed. Funds will appear in your balance shortly.', 'success');
-      e.target.reset();
+      const amount = parseFloat($('card-deposit-amount')?.value);
+      if (!amount || amount < 10) {
+        showToast('Minimum card deposit is $10.', 'error');
+        return;
+      }
+      if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) {
+        showToast('Please sign in before depositing.', 'error');
+        return;
+      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to Stripe…'; }
+      const result = await UserAuth.redirectToStripe(amount);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-lock"></i> Pay Securely with Card'; }
+      if (!result.ok) {
+        showToast(result.error || 'Card payments are not available yet. Use wire or crypto.', 'error', 7000);
+      }
     };
 
     // ── Ensure External Crypto Links Always Open ──────────

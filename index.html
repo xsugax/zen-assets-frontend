@@ -1143,33 +1143,6 @@
           <div class="login-btn-sub">Sovereign-grade encryption &#8212; Two-factor verification enabled</div>
         </form>
 
-        <!-- --- LOGIN OTP STEP (shown after email+password validated) --- -->
-        <div id="login-otp-step" style="display:none">
-          <div class="otp-header">
-            <div class="otp-icon"><i class="fa fa-envelope-open-text"></i></div>
-            <h3>Check Your Email</h3>
-            <p class="otp-desc">We sent a 6-digit code to<br><strong id="login-otp-email"></strong></p>
-          </div>
-          <form id="login-otp-form">
-            <div class="form-group">
-              <label><i class="fa fa-key"></i> Verification Code</label>
-              <input type="text" id="login-otp-code" class="form-input otp-input"
-                maxlength="6" placeholder="000000" pattern="[0-9]{6}" inputmode="numeric"
-                autocomplete="one-time-code" required />
-            </div>
-            <button type="submit" class="btn btn-primary btn-full btn-login">
-              <span>Verify &amp; Sign In</span>
-              <i class="fa fa-shield-halved"></i>
-            </button>
-            <div class="otp-resend">
-              Didn't receive it?
-              <a href="#" id="login-otp-resend" onclick="return false;">Resend code</a>
-              <span id="login-otp-timer"></span>
-            </div>
-            <a href="#" class="otp-back-link" id="login-otp-back">? Back to sign in</a>
-          </form>
-        </div>
-
         <div class="login-divider"><span>or</span></div>
 
         <div class="login-alt-actions">
@@ -1223,6 +1196,53 @@
         </div>
       </div>
     </div><!-- /.login-form-section -->
+
+  <!-- --- FORGOT PASSWORD MODAL --- -->
+  <div id="forgot-password-overlay" class="register-overlay" onclick="if(event.target===this)closeForgotPassword()">
+    <div class="register-card" onclick="event.stopPropagation()">
+      <button class="auth-modal-close" onclick="closeForgotPassword()" title="Close" aria-label="Close">
+        <i class="fa fa-times"></i>
+      </button>
+      <div id="forgot-step-request">
+        <div class="register-header">
+          <div class="logo-icon">Z</div>
+          <h2>Reset Your Password</h2>
+          <p>Enter your email and we will send a reset code</p>
+        </div>
+        <div id="forgot-error" class="register-error" role="alert"></div>
+        <form onsubmit="submitForgotPasswordRequest(event)">
+          <div class="form-group">
+            <label for="forgot-email">Email Address</label>
+            <input type="email" id="forgot-email" class="form-input" required autocomplete="email" placeholder="you@example.com" />
+          </div>
+          <button type="submit" class="btn-register" id="btn-forgot-send">
+            <i class="fa fa-envelope"></i> Send Reset Code
+          </button>
+        </form>
+      </div>
+      <div id="forgot-step-reset" style="display:none">
+        <div class="register-header">
+          <h2>Enter Reset Code</h2>
+          <p>Use the code from your email and choose a new password</p>
+        </div>
+        <div id="forgot-error-reset" class="register-error" role="alert"></div>
+        <form onsubmit="submitPasswordReset(event)">
+          <input type="hidden" id="forgot-reset-email" />
+          <div class="form-group">
+            <label for="forgot-reset-code">Reset Code</label>
+            <input type="text" id="forgot-reset-code" class="form-input" required maxlength="8" placeholder="Code from email" />
+          </div>
+          <div class="form-group">
+            <label for="forgot-new-password">New Password</label>
+            <input type="password" id="forgot-new-password" class="form-input" required minlength="8" autocomplete="new-password" placeholder="Min 8 characters" />
+          </div>
+          <button type="submit" class="btn-register" id="btn-forgot-reset">
+            <i class="fa fa-check"></i> Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- --- REGISTRATION MODAL --- -->
   <div id="register-overlay" class="register-overlay" onclick="if(event.target===this)AuthManager.closeAllModals()">
@@ -1314,33 +1334,6 @@
           <i class="fa fa-rocket"></i> Initialize Position
         </button>
       </form>
-
-      <!-- --- REGISTER OTP STEP (shown after registration, before account activation) --- -->
-      <div id="register-otp-step" style="display:none">
-        <div class="otp-header">
-          <div class="otp-icon" style="border-color:rgba(0,255,136,0.4);color:#00ff88">
-            <i class="fa fa-envelope-open-text"></i>
-          </div>
-          <h3>Verify Your Email</h3>
-          <p class="otp-desc">We sent a 6-digit activation code to<br><strong id="reg-otp-email"></strong></p>
-        </div>
-        <form id="register-otp-form">
-          <div class="form-group">
-            <label><i class="fa fa-key"></i> Verification Code</label>
-            <input type="text" id="register-otp-code" class="form-input otp-input"
-              maxlength="6" placeholder="000000" pattern="[0-9]{6}" inputmode="numeric"
-              autocomplete="one-time-code" required />
-          </div>
-          <button type="submit" class="btn-register">
-            <i class="fa fa-circle-check"></i> Verify &amp; Activate Account
-          </button>
-          <div class="otp-resend">
-            Didn't receive it?
-            <a href="#" id="reg-otp-resend" onclick="return false;">Resend code</a>
-            <span id="reg-otp-timer"></span>
-          </div>
-        </form>
-      </div>
 
       <div class="register-login-link">
         Already have an account? <a href="#" id="back-to-login-link" onclick="AuthManager.switchView('login'); return false;">Access Node ?</a>
@@ -3987,7 +3980,7 @@
 <!-- Scripts -->
 <script src="js/market-data.js?v=100"></script>
 <script src="js/zen-markets.js?v=100"></script>
-<script src="js/user-auth.js?v=100"></script>
+<script src="js/user-auth.js?v=104"></script>
 <script src="js/api-proxy.js?v=100"></script>
 <script src="js/resilience-engine.js?v=100"></script>
 <!-- debug-monitor disabled in production -->
@@ -4005,7 +3998,7 @@
 <script src="js/investment-returns.js?v=100"></script>
 <script src="js/gamification.js?v=100"></script>
 <script src="js/plugins.js?v=100"></script>
-<script src="js/app.js?v=103"></script>
+<script src="js/app.js?v=104"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>

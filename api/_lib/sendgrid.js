@@ -108,6 +108,23 @@ async function send(to, subject, htmlBody) {
   await sgMail.send(msg);
 }
 
+// ── Require shared secret (Vercel env: EMAIL_API_SECRET, CRON_SECRET for cron) ──
+function requireEmailAuth(req, res) {
+  const secret = process.env.EMAIL_API_SECRET || process.env.CRON_SECRET;
+  if (!secret) {
+    console.error('[EMAIL API] EMAIL_API_SECRET not configured');
+    res.status(503).json({ error: 'Email API not configured' });
+    return false;
+  }
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const headerSecret = req.headers['x-api-secret'] || bearer;
+  const cronSecret = req.headers['x-vercel-cron-secret'] || req.query?.cron_secret;
+  if (headerSecret === secret || cronSecret === secret) return true;
+  res.status(401).json({ error: 'Unauthorized' });
+  return false;
+}
+
 // ── Validate request method + parse body ──────────────────
 function validatePost(req, res, requiredFields) {
   if (req.method !== 'POST') {
@@ -133,4 +150,4 @@ function validatePost(req, res, requiredFields) {
   return body;
 }
 
-module.exports = { send, wrapHtml, statBox, divider, fmtMoney, _esc, validatePost };
+module.exports = { send, wrapHtml, statBox, divider, fmtMoney, _esc, validatePost, requireEmailAuth };

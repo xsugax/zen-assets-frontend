@@ -69,8 +69,11 @@ const InvestmentReturns = (() => {
 
   let STORAGE_KEY = 'zen_investment_state';
   const ACCRUAL_INTERVAL = 10000;    // Accrue returns every 10 seconds for smoother compounding
+  const BALANCE_SYNC_INTERVAL = 30000; // Sync balance from API every 30 seconds
   let accrualTimer = null;
+  let balanceSyncTimer = null;
   const subscribers = {};
+  let lastKnownBalance = 0; // Track last balance from API to detect changes
 
   // ── Helper: Total unclaimed across all non-overlapping pools
   function _totalUnclaimed() {
@@ -272,7 +275,110 @@ const InvestmentReturns = (() => {
 
     // Restart accrual
     accrualTimer = setInterval(() => accrueReturns(), ACCRUAL_INTERVAL);
+
+    // Start balance synchronization from API
+    startBalanceSync();
+
     console.log(`💰 Loaded user investment state: $${state.walletBalance.toFixed(2)}`);
+  }
+
+  // ── Balance Synchronization ──────────────────────────────
+  // Ensures all devices show the exact same balance by periodically
+  // syncing with the backend API and detecting external changes
+
+  function startBalanceSync() {
+    if (balanceSyncTimer) clearInterval(balanceSyncTimer);
+
+    // Initial sync on startup
+    syncBalanceFromAPI();
+
+    // Periodic sync every 30 seconds
+    balanceSyncTimer = setInterval(() => {
+      syncBalanceFromAPI();
+    }, BALANCE_SYNC_INTERVAL);
+
+    console.log('🔄 Balance sync engine started (30s intervals)');
+  }
+
+  async function syncBalanceFromAPI() {
+    if (!isActivated() || typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) return;
+
+    try {
+      const walletData = await UserAuth.getWallet();
+      if (!walletData || walletData.ok === false || typeof walletData.balance !== 'number') return;
+
+      const apiBalance = walletData.balance || 0;
+      const apiTotalDeposited = walletData.totalDeposited || 0;
+      const apiTotalWithdrawn = walletData.totalWithdrawn || 0;
+      const apiTotalEarned = walletData.totalEarned || 0;
+      const apiTotalClaimed = walletData.totalClaimed || 0;
+      const apiPendingEarnings = walletData.pendingEarnings || 0;
+      const apiUpdatedAt = walletData.updatedAt || null;
+
+      // Check if balance changed externally (admin funding, trades, etc.)
+      const balanceChanged = Math.abs(apiBalance - state.walletBalance) > 0.01;
+
+      if (balanceChanged) {
+        console.log(`🔄 Balance sync: Local $${state.walletBalance.toFixed(2)} → API $${apiBalance.toFixed(2)}`);
+
+        // Update local state with API values
+        const oldBalance = state.walletBalance;
+        state.walletBalance = apiBalance;
+        state.initialDeposit = apiTotalDeposited;
+        state.totalTradingProfit = apiTotalEarned;
+        state.totalClaimed = apiTotalClaimed;
+
+        // If balance increased externally (admin funding, deposits), add to trading pool
+        if (apiBalance > oldBalance) {
+          const increase = apiBalance - oldBalance;
+          state.unclaimedTrading += increase;
+          state.totalReturnCredit += increase;
+          console.log(`💰 External balance increase: +$${increase.toFixed(2)} → trading pool`);
+        }
+
+        // If balance decreased externally (withdrawals, losses), adjust accordingly
+        if (apiBalance < oldBalance) {
+          const decrease = oldBalance - apiBalance;
+          // Reduce from pools proportionally
+          const totalPools = _totalUnclaimed();
+          if (totalPools > 0) {
+            const ratio = decrease / totalPools;
+            state.unclaimedTrading = Math.max(0, state.unclaimedTrading * (1 - ratio));
+            state.unclaimedInterest = Math.max(0, state.unclaimedInterest * (1 - ratio));
+            state.unclaimedDaily = Math.max(0, state.unclaimedDaily * (1 - ratio));
+            state.unclaimedWeekly = Math.max(0, state.unclaimedWeekly * (1 - ratio));
+            console.log(`💸 External balance decrease: -$${decrease.toFixed(2)} from pools`);
+          }
+        }
+
+        // Update timestamps
+        if (apiUpdatedAt) {
+          state.lastAccrualTick = new Date(apiUpdatedAt).getTime();
+        }
+
+        saveState();
+        emit('balanceChanged', {
+          balance: state.walletBalance,
+          oldBalance: oldBalance,
+          source: 'api_sync'
+        });
+
+        // Force UI update
+        if (typeof updateReturnsUI === 'function') updateReturnsUI();
+        if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
+      }
+
+      lastKnownBalance = apiBalance;
+
+    } catch (err) {
+      console.warn('⚠ Balance sync failed:', err.message);
+    }
+  }
+
+  // Force immediate balance sync (called by admin panel after funding)
+  function forceBalanceSync() {
+    console.log('🔄 Force balance sync requested');
+    syncBalanceFromAPI();
   }
 
   // ── Catch up on missed compounding while user was away ───
@@ -625,7 +731,7 @@ const InvestmentReturns = (() => {
   }
 
   // ── Fund Manager: Claim / Transfer Functions ────────────
-  function claimEarnings(pool) {
+  async function claimEarnings(pool) {
     const poolMap = {
       daily:    { field: 'unclaimedDaily',    label: 'Daily Bonus' },
       weekly:   { field: 'unclaimedWeekly',   label: 'Weekly Bonus' },
@@ -637,8 +743,50 @@ const InvestmentReturns = (() => {
     const amount = state[p.field] || 0;
     if (amount <= 0) return { success: false, amount: 0 };
 
-    // V2: Actually transfer from pending pool → walletBalance!
-    // This is the REAL money movement — wallet visibly increases
+    // Call backend API to claim earnings — this updates the real wallet balance
+    try {
+      if (typeof UserAuth !== 'undefined') {
+        const result = await UserAuth._api('/wallet/claim', {
+          method: 'POST',
+          body: { amount, pool },
+          auth: true,
+        });
+
+        if (result.ok) {
+          // Update local state to match backend
+          const balanceBefore = state.walletBalance;
+          state.walletBalance = result.balanceAfter;
+          state[p.field] = Math.max(0, state[p.field] - amount);
+          state.totalClaimed += amount;
+
+          // Update claim streak
+          const today = new Date().toDateString();
+          if (state.lastClaimDate !== today) {
+            const yesterday = new Date(Date.now() - 86400000).toDateString();
+            state.claimStreak = (state.lastClaimDate === yesterday) ? (state.claimStreak || 0) + 1 : 1;
+            state.lastClaimDate = today;
+          }
+
+          state.transferLog.unshift({
+            ts: Date.now(), type: pool, amount, label: p.label,
+            balanceBefore, balanceAfter: state.walletBalance,
+          });
+          if (state.transferLog.length > 50) state.transferLog.pop();
+          saveState();
+          emit('claim', { pool, amount, label: p.label, balance: state.walletBalance, balanceBefore, streak: state.claimStreak });
+          return { success: true, amount, label: p.label, balanceBefore, balanceAfter: state.walletBalance, streak: state.claimStreak };
+        } else {
+          console.error('Claim API failed:', result.error);
+          return { success: false, error: result.error };
+        }
+      }
+    } catch (err) {
+      console.error('Claim request failed:', err);
+      return { success: false, error: 'Network error' };
+    }
+
+    // Fallback: local-only claim (for offline mode)
+    console.warn('Claim: Using local fallback');
     const balanceBefore = state.walletBalance;
     state.walletBalance += amount;
     state[p.field] = 0;
@@ -662,17 +810,17 @@ const InvestmentReturns = (() => {
     return { success: true, amount, label: p.label, balanceBefore, balanceAfter: state.walletBalance, streak: state.claimStreak };
   }
 
-  function claimAll() {
+  async function claimAll() {
     const pools = ['daily', 'weekly', 'trading', 'interest'];
     let totalClaimed = 0;
     const claimed = [];
-    pools.forEach(pool => {
-      const result = claimEarnings(pool);
+    for (const pool of pools) {
+      const result = await claimEarnings(pool);
       if (result.success) {
         totalClaimed += result.amount;
         claimed.push(result.label);
       }
-    });
+    }
     return { success: totalClaimed > 0, totalClaimed, claimed };
   }
 
@@ -744,5 +892,7 @@ const InvestmentReturns = (() => {
     claimEarnings,
     claimAll,
     getFundManagerSnapshot,
+    // Balance Synchronization
+    forceBalanceSync,
   };
 })();

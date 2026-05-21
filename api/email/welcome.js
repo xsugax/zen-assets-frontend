@@ -1,5 +1,5 @@
 // POST /api/email/welcome — Send welcome email on signup
-const { send, fmtMoney, _esc, validatePost } = require('../_lib/sendgrid');
+const { send, fmtMoney, _esc, validatePost, requireEmailAuth } = require('../_lib/sendgrid');
 
 const TIER_COLORS = {
   bronze:   '#cd7f32',
@@ -10,6 +10,7 @@ const TIER_COLORS = {
 };
 
 module.exports = async function handler(req, res) {
+  if (!requireEmailAuth(req, res)) return;
   const body = validatePost(req, res, ['email', 'fullName', 'tier']);
   if (!body) return;
 
