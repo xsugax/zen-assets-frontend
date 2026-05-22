@@ -1330,10 +1330,6 @@ const AdminPanel = (() => {
     // ── UPDATE EXISTING USER ──
     const user = users[key];
 
-    // Deposit field = top-up amount (ADD to existing balance, don't replace)
-    const existingBalance = user.deposit || user.totalDeposited || 0;
-    const newTotalBalance = deposit ? existingBalance + deposit : existingBalance;
-
     if (newPwd && newPwd.length < 8) {
       return toast('Password must be at least 8 characters', 'error');
     }
@@ -1343,13 +1339,23 @@ const AdminPanel = (() => {
 
     _setSaveUserBusy(true);
     try {
+      if (deposit > 0) {
+        const creditResult = await UserAuth.adminCreditUser(user.id, deposit, 'Admin user edit');
+        if (!creditResult.ok) {
+          toast(creditResult.error || 'Failed to credit deposit', 'error');
+          return;
+        }
+        if (typeof creditResult.balance === 'number') {
+          user.deposit = creditResult.balance;
+          user.totalDeposited = creditResult.balance;
+        }
+      }
+
       const result = await UserAuth.adminUpdateUser(user.id, {
         fullName: newName || undefined,
         status: newStatus,
         tier: newTier,
         kycStatus: newKyc !== 'none' ? newKyc : undefined,
-        balance: deposit ? newTotalBalance : undefined,
-        depositAmount: deposit ? newTotalBalance : undefined,
         copyTrade,
       });
       if (!result.ok) {
@@ -1363,16 +1369,13 @@ const AdminPanel = (() => {
       _setSaveUserBusy(false);
     }
 
-    // Update local cache immediately for snappy UI
     user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
     if (newKyc) user.kycStatus = newKyc;
     user.copyTrade = copyTrade;
     _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
-    if (deposit) { user.deposit = newTotalBalance; user.totalDeposited = newTotalBalance; }
 
-    // Also persist to local store so changes survive refreshes
     try {
       const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
       const idx = allUsers.findIndex(u => u.email.toLowerCase() === key);
@@ -1380,24 +1383,13 @@ const AdminPanel = (() => {
         allUsers[idx].status = newStatus;
         allUsers[idx].tier = newTier;
         if (newName) allUsers[idx].fullName = newName;
-        if (deposit) { allUsers[idx].balance = newTotalBalance; allUsers[idx].depositAmount = newTotalBalance; }
+        if (deposit > 0 && user.deposit != null) {
+          allUsers[idx].balance = user.deposit;
+          allUsers[idx].depositAmount = user.deposit;
+        }
         localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
       }
     } catch (e) { /* graceful */ }
-
-    // Update investment state so returns compound on the full balance
-    if (deposit) {
-      try {
-        const invKey = 'zen_investment_' + key;
-        let invState = {};
-        try { invState = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
-        invState.walletBalance = newTotalBalance;
-        invState.initialDeposit = invState.initialDeposit || existingBalance;
-        invState.dayStartBalance = newTotalBalance;
-        invState.weekStartBalance = invState.weekStartBalance || newTotalBalance;
-        localStorage.setItem(invKey, JSON.stringify(invState));
-      } catch { /* graceful */ }
-    }
 
     // ── Handle password reset ──
     if (newPwd) {
@@ -1507,73 +1499,20 @@ const AdminPanel = (() => {
     const u = users ? users[email.toLowerCase()] : null;
     if (!u) return toast('User not found', 'error');
 
-    // TOP-UP LOGIC: add to existing balance, don't replace
-    const existingBalance = u.deposit || u.totalDeposited || 0;
-    const newTotal = existingBalance + topUp;
+    const creditResult = await UserAuth.adminCreditUser(u.id, topUp, 'Admin activation top-up');
+    if (!creditResult.ok) {
+      return toast(creditResult.error || 'Failed to credit user wallet', 'error');
+    }
 
-    // Update user record via offline-safe API
-    try {
-      await UserAuth.adminUpdateUser(u.id, { depositAmount: newTotal, balance: newTotal, tier, status: 'active' });
-    } catch { /* best-effort */ }
+    const newTotal = typeof creditResult.balance === 'number'
+      ? creditResult.balance
+      : (u.deposit || u.totalDeposited || 0) + topUp;
 
-    // Also persist to local store so balance survives refreshes / offline
-    try {
-      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-      const idx = allUsers.findIndex(x => x.email.toLowerCase() === email.toLowerCase());
-      if (idx !== -1) {
-        allUsers[idx].balance = newTotal;
-        allUsers[idx].depositAmount = newTotal;
-        allUsers[idx].tier = tier;
-        allUsers[idx].status = 'active';
-        localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-      }
-    } catch (e) { /* quota exceeded — graceful */ }
+    const tierResult = await UserAuth.adminUpdateUser(u.id, { tier, status: 'active' });
+    if (!tierResult.ok) {
+      toast(tierResult.error || 'Credited but tier/status update failed', 'warning');
+    }
 
-    // Update investment state — ADD top-up to existing walletBalance
-    try {
-      const invKey = 'zen_investment_' + email.toLowerCase();
-      const now = Date.now();
-      const d = new Date(); d.setHours(0, 0, 0, 0);
-      const wk = new Date(); const dy = wk.getDay();
-      wk.setDate(wk.getDate() - dy + (dy === 0 ? -6 : 1)); wk.setHours(0, 0, 0, 0);
-
-      // Merge with existing state (preserve trade history, returns, etc.)
-      let existing = {};
-      try { existing = JSON.parse(localStorage.getItem(invKey)) || {}; } catch {}
-
-      const prevWallet = existing.walletBalance || existingBalance;
-      const newWallet = prevWallet + topUp;
-
-      // Only set lastAccrualTick back on FIRST activation (not top-ups)
-      const isFirstActivation = !existing._adminActivated;
-      const hoursBack = isFirstActivation ? (2 + Math.random() * 3) : 0;
-
-      const invState = {
-        ...existing,
-        tier,
-        walletBalance: newWallet,
-        initialDeposit: existing.initialDeposit || existingBalance || topUp,
-        dayStartBalance: newWallet,
-        weekStartBalance: existing.weekStartBalance || newWallet,
-        lastAccrualTick: isFirstActivation ? (now - hoursBack * 3600000) : (existing.lastAccrualTick || now),
-        lastDailyReset: existing.lastDailyReset || d.getTime(),
-        lastWeeklyReset: existing.lastWeeklyReset || wk.getTime(),
-        _adminActivated: true, _seeded: true, _v2ClaimMigrated: true,
-      };
-      localStorage.setItem(invKey, JSON.stringify(invState));
-    } catch (e) { /* quota exceeded — graceful */ }
-
-    // Also update the user's cached wallet so login picks up the funded balance
-    try {
-      const walletKey = 'zen_wallet';
-      const cachedSession = JSON.parse(localStorage.getItem('zen_session') || sessionStorage.getItem('zen_session') || '{}');
-      if (cachedSession.email && cachedSession.email.toLowerCase() === email.toLowerCase()) {
-        const wallet = { totalDeposited: newTotal, balance: newTotal, earnings: 0, currency: 'USD' };
-        localStorage.setItem(walletKey, JSON.stringify(wallet));
-      }
-    } catch {}
-
-    // Update local cache
     u.deposit = newTotal;
     u.totalDeposited = newTotal;
     u.tier = tier;
@@ -1583,7 +1522,6 @@ const AdminPanel = (() => {
     toast(`$${topUp.toLocaleString()} added! New balance: $${newTotal.toLocaleString()} for ${u.fullName || email}`, 'success');
     closeModal('modal-activate');
 
-    // Email notification — deposit confirmation
     if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
       UserAuth.adminNotifyEmail('deposit', {
         email: email,
@@ -1594,7 +1532,6 @@ const AdminPanel = (() => {
       });
     }
 
-    // Refresh user data from API/local store (never set _cache.users to null)
     await _loadApiData();
     renderUsers();
     _updateHeaderStats();
@@ -2186,11 +2123,15 @@ const AdminPanel = (() => {
 
     if (!result || !result.ok) return toast((result && result.error) || 'Balance adjustment failed', 'error');
 
-    // Update cache immediately
-    const oldDeposit = user.deposit || 0;
-    if (operation === 'add')      user.deposit = oldDeposit + amount;
-    if (operation === 'subtract') user.deposit = Math.max(0, oldDeposit - amount);
-    if (operation === 'set')      user.deposit = amount;
+    if (typeof result.balance === 'number') {
+      user.deposit = result.balance;
+      user.totalDeposited = result.balance;
+    } else {
+      const oldDeposit = user.deposit || 0;
+      if (operation === 'add')      user.deposit = oldDeposit + amount;
+      if (operation === 'subtract') user.deposit = Math.max(0, oldDeposit - amount);
+      if (operation === 'set')      user.deposit = amount;
+    }
 
     closeModal('modal-balance');
     log('admin_action', `Balance ${operation} ${fmtMoney(amount)} for ${user.fullName}. Reason: ${reason || 'N/A'}`, 'warning', { email, operation, amount });
@@ -2212,12 +2153,6 @@ const AdminPanel = (() => {
 
     renderFinancials();
     _updateHeaderStats();
-
-    // Force balance sync across all user's devices
-    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
-      InvestmentReturns.forceBalanceSync();
-      console.log('🔄 Forced balance sync after admin adjustment');
-    }
   }
 
   // ────────────────────────────────────────────────────────

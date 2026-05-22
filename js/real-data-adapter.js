@@ -272,11 +272,28 @@ const RealDataAdapter = (() => {
   //  HISTORICAL OHLCV — Real Candle Data Per Asset
   // ═══════════════════════════════════════════════════════════
 
+  async function fetchZenMarketCandles(symbol, interval, limit) {
+    try {
+      if (typeof APIProxy === 'undefined' || !APIProxy.fetchMarketKlines) return null;
+      const candles = await APIProxy.fetchMarketKlines(symbol, interval, limit);
+      if (candles && candles.length >= 5) {
+        console.log(`✅ ${candles.length} candles for ${symbol} (ZEN market API)`);
+        return candles;
+      }
+    } catch (e) {
+      console.warn(`❌ ZEN market API failed for ${symbol}:`, e.message);
+    }
+    return null;
+  }
+
   async function fetchHistoricalCandles(symbol, interval = '1h', limit = 120) {
     // Non-crypto uses simulated — no free CORS-enabled source for stocks/forex
     if (!CONFIG.cryptoIds[symbol]) return null;
 
-    // Crypto: Binance → CryptoCompare → CoinGecko (multi-source cascade)
+    // Crypto: ZEN backend → Binance → CryptoCompare → CoinGecko
+    const zen = await fetchZenMarketCandles(symbol, interval, limit);
+    if (zen && zen.length >= 5) return zen;
+
     const binance = await fetchBinanceCandles(symbol, interval, limit);
     if (binance && binance.length >= 5) return binance;
 

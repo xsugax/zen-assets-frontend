@@ -13,6 +13,9 @@ const APIProxy = (() => {
   'use strict';
 
   const TIMEOUT_MS = 6000;
+  const MARKET_API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:4000/api/market'
+    : 'https://zen-assets-backend.onrender.com/api/market';
 
   // Binance public REST — all mirrors support CORS for GET
   const BINANCE_HOSTS = [
@@ -71,5 +74,21 @@ const APIProxy = (() => {
     return r;
   }
 
-  return { fetchBinance, fetchCryptoCompare, fetchCoinGecko, _timedFetch };
+  // ── ZEN backend market proxy (primary — no browser CORS issues) ──
+  async function fetchMarketKlines(symbol, interval = '1h', limit = 120) {
+    const q = new URLSearchParams({
+      symbol: String(symbol).toUpperCase(),
+      interval,
+      limit: String(limit),
+    });
+    const r = await _timedFetch(`${MARKET_API_BASE}/klines?${q}`, 10000);
+    if (!r.ok) throw new Error(`Market API HTTP ${r.status}`);
+    const data = await r.json();
+    if (!data.ok || !Array.isArray(data.candles) || data.candles.length < 5) {
+      throw new Error('Market API returned insufficient candles');
+    }
+    return data.candles;
+  }
+
+  return { fetchBinance, fetchCryptoCompare, fetchCoinGecko, fetchMarketKlines, _timedFetch };
 })();

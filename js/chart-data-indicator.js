@@ -110,6 +110,13 @@ const ChartDataIndicator = (() => {
     _styleBadge(badge, 'loading');
   }
 
+  function setDemo(chartContainerId) {
+    const badge = createBadge(chartContainerId);
+    if (!badge) return;
+    badge.innerHTML = 'Demo feed';
+    _styleBadge(badge, 'calibrating');
+  }
+
   // ── Public API ───────────────────────────────────────────
   return {
     createBadge,
@@ -117,5 +124,6 @@ const ChartDataIndicator = (() => {
     setCalibrating,
     hide,
     showLoading,
+    setDemo,
   };
 })();
