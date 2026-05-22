@@ -321,24 +321,33 @@
   <div class="login-container">
     <div class="login-brand-section">
       <div class="programs-disclaimer"><strong>Important:</strong> Program parameters and projections on this page are illustrative targets, not guarantees. Past performance does not indicate future results. This is not investment advice. <a href="#" onclick="showLegalModal('risk');return false" style="color:#c9a227">Read risk disclosure</a>.</div>
+      <div class="model-assumptions-panel">
+        <h3>Program parameters (illustrative model)</h3>
+        <p>Outputs depend on <strong>starting balance</strong>, <strong>tier APY band</strong>, and <strong>compounding frequency</strong> — not live portfolio PnL. Wallet balance after login is server truth (Live).</p>
+        <ul>
+          <li>Starting balance: user-selected in calculators (default $100,000)</li>
+          <li>APY range: tier table below (model)</li>
+          <li>Compounding: daily reinvestment in calculator; accrual on dashboard follows session engine</li>
+        </ul>
+      </div>
       <!-- Returns Breakdown -->
       <div class="returns-breakdown">
         <div class="rbd-header">
           <i class="fa fa-calendar-days"></i>
-          <span>Target program parameters by interval</span>
+          <span>Program parameters by interval (illustrative model)</span>
         </div>
         <div class="rbd-grid">
           <div class="rbd-item">
             <div class="rbd-period">DAILY</div>
             <div class="rbd-range">+0.15% &#8211; 1.10%</div>
             <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$150 &#8211; $1,096/day</strong></div>
-            <div class="rbd-desc">Autonomous multi-corridor rebalancing, compounded daily</div>
+            <div class="rbd-desc">Model daily band — not live PnL</div>
           </div>
           <div class="rbd-item">
             <div class="rbd-period">WEEKLY</div>
             <div class="rbd-range">+1.06% &#8211; 7.69%</div>
             <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$1,058 &#8211; $7,692/week</strong></div>
-            <div class="rbd-desc">Capital rotates across 120+ instruments in 5 sovereign corridors</div>
+            <div class="rbd-desc">Model weekly band — diversified allocation assumption</div>
           </div>
           <div class="rbd-item">
             <div class="rbd-period">MONTHLY</div>
@@ -350,7 +359,7 @@
             <div class="rbd-period">ANNUAL</div>
             <div class="rbd-range">+55% &#8211; 400%</div>
             <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$55,000 &#8211; $400,000/year</strong></div>
-            <div class="rbd-desc">Node-dependent compounding: sovereign corridor yield + quantitative alpha</div>
+            <div class="rbd-desc">Tier-dependent model compounding — see tier table</div>
           </div>
         </div>
         <div class="rbd-footnote">

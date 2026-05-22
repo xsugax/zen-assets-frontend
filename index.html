@@ -226,7 +226,7 @@
 
   <link rel="stylesheet" href="css/animations.css?v=100" />
   <link rel="stylesheet" href="css/main.css?v=102" />
-  <link rel="stylesheet" href="css/zen-feel.css?v=101" />
+  <link rel="stylesheet" href="css/zen-feel.css?v=108" />
   <link rel="stylesheet" href="css/advanced-charts.css?v=100" />
   <link rel="stylesheet" href="css/auto-trader.css?v=100" />
   <link rel="stylesheet" href="css/investment-returns.css?v=100" />
@@ -358,8 +358,8 @@
         </div>
         <div class="llc-divider"></div>
         <div class="llc-item">
-          <div class="llc-value llc-green zen-counter" id="llc-profit" data-count-to="96.4" data-count-suffix="%" data-count-decimals="1">0.0%</div>
-          <div class="llc-label">Illustrative 12-month metrics</div>
+          <div class="llc-value llc-green zen-counter" id="llc-profit" data-count-to="18.5" data-count-suffix="%" data-count-decimals="1">0.0%</div>
+          <div class="llc-label">Illustrative model band (not live PnL)</div>
         </div>
         <div class="llc-divider"></div>
         <div class="llc-item">
@@ -519,22 +519,22 @@
             <div class="lb-item">
               <i class="fa fa-robot"></i>
               <div>
-                <div class="lb-label">Sovereign Corridor Engine</div>
-                <div class="lb-desc">96.4% deployment accuracy across 120+ instruments, 5 corridors active 24/7</div>
+                <div class="lb-label">Allocation engine</div>
+                <div class="lb-desc">Systematic strategies across approved markets with risk controls</div>
               </div>
             </div>
             <div class="lb-item">
               <i class="fa fa-bolt"></i>
               <div>
-                <div class="lb-label">Autonomous Compounding</div>
-                <div class="lb-desc">Yields compound in real-time with live deployment tracking</div>
+                <div class="lb-label">Accrual &amp; claims</div>
+                <div class="lb-desc">Earnings pools with step-by-step claim transfer to wallet</div>
               </div>
             </div>
             <div class="lb-item">
               <i class="fa fa-shield-halved"></i>
               <div>
-                <div class="lb-label">Full Capital Sovereignty</div>
-                <div class="lb-desc">Manage corridors, reallocate, or withdraw. No lockup periods.</div>
+                <div class="lb-label">Capital control</div>
+                <div class="lb-desc">Request withdrawals with tracked status; balance synced from server</div>
               </div>
             </div>
             <div class="lb-item">
@@ -548,7 +548,7 @@
         </div>
 
         <div class="login-footer">
-          <p class="login-disclaimer">Platform available to qualified participants. All deployments carry risk. Historical yields do not guarantee future performance.</p>
+          <p class="login-disclaimer">For qualified participants. Not investment advice. Program ranges on <a href="programs.html" style="color:#c9a227">programs page</a> are illustrative models.</p>
           <div class="login-legal-links">
             <a href="#" onclick="showLegalModal('privacy'); return false;">Privacy Policy</a>
             <span class="legal-sep">ï¿½</span>
@@ -615,8 +615,8 @@
       </button>
       <div class="register-header">
         <div class="logo-icon">Z</div>
-        <h2>Initialize Your Allocation Position</h2>
-        <p>Select your node and begin sovereign corridor deployment</p>
+        <h2>Open your account</h2>
+        <p>Choose a program tier. Funding starts at $0 until you complete a deposit.</p>
       </div>
       <div class="register-trust-badges">
         <span><i class="fa fa-shield-halved"></i> Bank-Grade Security</span>
@@ -653,7 +653,7 @@
           <small id="reg-pin-hint" style="color:#64748b;font-size:11px;margin-top:4px;display:block">Set a 4-digit PIN for quick sign-in next time</small>
         </div>
         <div class="tier-selector">
-          <label>Choose Your Allocation Node</label>
+          <label>Program tier</label>
           <div class="tier-options">
             <div class="tier-opt" data-tier="bronze" onclick="selectRegTier(this)">
               <input type="radio" name="reg-tier" value="bronze" />
@@ -694,12 +694,12 @@
           </label>
         </div>
         <button type="submit" class="btn-register" id="btn-register-submit">
-          <i class="fa fa-rocket"></i> Initialize Position
+          <i class="fa fa-user-plus"></i> Open account
         </button>
       </form>
 
       <div class="register-login-link">
-        Already have an account? <a href="#" id="back-to-login-link" onclick="AuthManager.switchView('login'); return false;">Access Node ?</a>
+        Already have an account? <a href="#" id="back-to-login-link" onclick="AuthManager.switchView('login'); return false;">Client login</a>
       </div>
     </div>
   </div>
@@ -868,8 +868,9 @@
   <div class="tier-modal-overlay" onclick="closeTierModal()"></div>
   <div class="tier-modal-content">
     <button class="tier-modal-close" onclick="closeTierModal()"><i class="fa fa-times"></i></button>
-    <h2 class="tier-modal-title">Select Your Allocation Node</h2>
-    <p class="tier-modal-subtitle">Each node unlocks exponentially greater deployment yield, infrastructure access, and dedicated intelligence</p>
+    <h2 class="tier-modal-title">Program tiers</h2>
+    <p class="tier-modal-subtitle">Target parameter ranges by tier (illustrative model). <a href="#" onclick="showLegalModal('risk');return false" style="color:#c9a227">Risk disclosure</a>.</p>
+    <p class="tier-model-banner" style="font-size:12px;color:#9aa8bc;margin:0 0 16px;padding:10px 14px;border:1px solid rgba(201,162,39,0.25);border-radius:8px;background:rgba(201,162,39,0.06)">10-year figures below are calculator outputs, not forecasts or guarantees.</p>
     
     <div class="tier-cards-full">
       <!-- BRONZE -->
@@ -887,7 +888,7 @@
           <li><i class="fa fa-check"></i> Email support (24-48h response)</li>
         </ul>
         <div class="tc-projection">10-year projection: $2K &#8594; <strong>$317,759</strong> (66% avg APY)</div>
-        <button class="btn btn-tier bronze" onclick="selectTier('bronze')">Initialize Node I</button>
+        <button class="btn btn-tier bronze" onclick="selectTier('bronze')">Select Core I</button>
       </div>
 
       <!-- SILVER -->
@@ -905,12 +906,12 @@
           <li><i class="fa fa-check"></i> Monthly allocation reviews with intelligence insights</li>
         </ul>
         <div class="tc-projection">10-year projection: $25K &#8594; <strong>$20,727,540</strong> (96% avg APY)</div>
-        <button class="btn btn-tier silver" onclick="selectTier('silver')">Activate Node II</button>
+        <button class="btn btn-tier silver" onclick="selectTier('silver')">Select Core II</button>
       </div>
 
       <!-- GOLD -->
       <div class="tier-card gold popular">
-        <div class="tc-popular-badge">MOST POPULAR</div>
+        <div class="tc-popular-badge">PREFERRED</div>
         <div class="tc-badge">NODE III ï¿½ GOLD</div>
         <div class="tc-return">115-175% APY</div>
         <div class="tc-min">Minimum: $100,000</div>
@@ -925,7 +926,7 @@
           <li><i class="fa fa-check"></i> Real-time deployment monitoring + alerts</li>
         </ul>
         <div class="tc-projection">10-year projection: $100K &#8594; <strong>$778,010,987</strong> (145% avg APY)</div>
-        <button class="btn btn-tier gold" onclick="selectTier('gold')">Activate Node III</button>
+        <button class="btn btn-tier gold" onclick="selectTier('gold')">Select Core III</button>
       </div>
 
       <!-- PLATINUM -->
@@ -945,7 +946,7 @@
           <li><i class="fa fa-check"></i> Exclusive participant events (NYC, London, Edinburgh, Shanghai)</li>
         </ul>
         <div class="tc-projection">10-year projection: $500K &#8594; <strong>$5.28B</strong> (218% avg APY)</div>
-        <button class="btn btn-tier platinum" onclick="selectTier('platinum')">Unlock Node IV</button>
+        <button class="btn btn-tier platinum" onclick="selectTier('platinum')">Select Preferred</button>
       </div>
 
       <!-- DIAMOND -->
@@ -966,12 +967,12 @@
           <li><i class="fa fa-check"></i> $50M Lloyd's of London excess coverage</li>
         </ul>
         <div class="tc-projection">10-year projection: $2M &#8594; <strong>$425.4B</strong> (330% avg APY)</div>
-        <button class="btn btn-tier diamond" onclick="selectTier('diamond')">Enter Node V</button>
+        <button class="btn btn-tier diamond" onclick="selectTier('diamond')">Select Private</button>
       </div>
     </div>
 
     <div class="tier-modal-footer">
-      <p><i class="fa fa-info-circle"></i> All tiers include SIPC insurance up to $500K. Diamond tier includes Lloyd's of London excess coverage up to $25M.</p>
+      <p><i class="fa fa-info-circle"></i> Tier minimums and APY bands are product parameters (model). See <a href="#" onclick="showLegalModal('risk');return false" style="color:#c9a227">risk disclosure</a> before enrolling.</p>
     </div>
   </div>
 </div>
@@ -1656,8 +1657,7 @@
         <!-- Whale Alert Feed -->
         <div class="glass-card whale-card">
           <div class="card-header">
-            <span class="ch-title"><i class="fa fa-water"></i> Whale Sonar</span>
-            <span class="pulse-dot cyan-dot"></span>
+            <span class="ch-title"><i class="fa fa-water"></i> Market activity <span class="ch-badge illustrative">demo</span></span>
           </div>
           <div id="whale-feed" class="whale-feed"></div>
         </div>
@@ -3204,6 +3204,38 @@
         </form>
       </div>
 
+      <div class="glass-card ledger-card" style="padding:16px;margin-top:12px">
+        <div class="card-header" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <span class="ch-title"><i class="fa fa-list-alt"></i> Account history</span>
+          <div class="ledger-actions">
+            <span class="ledger-wallet">Wallet: <strong id="account-history-wallet">—</strong></span>
+            <button type="button" class="btn btn-sm btn-text" id="account-history-refresh"><i class="fa fa-sync"></i> Refresh</button>
+            <button type="button" class="btn btn-sm btn-secondary" id="account-history-export-csv"><i class="fa fa-download"></i> CSV</button>
+            <button type="button" class="btn btn-sm btn-secondary" id="account-history-export-pdf"><i class="fa fa-file-alt"></i> Statement</button>
+          </div>
+        </div>
+        <p class="sec-hint" style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Deposits, withdrawals, credits, and claims from server ledger.</p>
+        <p id="account-history-status" class="ledger-reconcile"></p>
+        <div class="ledger-table-wrap">
+          <table class="ledger-table">
+            <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Amount</th><th>Balance</th><th>Notes</th></tr></thead>
+            <tbody id="account-history-tbody"><tr><td colspan="6">Loading…</td></tbody>
+          </table>
+        </div>
+        <div id="account-history-attribution" style="margin-top:14px"></div>
+      </div>
+
+      <div class="glass-card" style="padding:16px;margin-top:12px">
+        <div class="card-header" style="margin-bottom:12px">
+          <span class="ch-title"><i class="fa fa-sliders-h"></i> Display density</span>
+        </div>
+        <p class="sec-hint" style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Same data everywhere — density changes layout, not truth.</p>
+        <div class="density-toggle">
+          <label><input type="radio" name="experience-tier" value="novice" id="density-novice" checked /> Guided view</label>
+          <label><input type="radio" name="experience-tier" value="professional" id="density-pro" /> Professional view</label>
+        </div>
+      </div>
+
       <div class="glass-card" style="padding:16px;margin-top:12px">
         <div class="card-header" style="margin-bottom:12px">
           <span class="ch-title"><i class="fa fa-key"></i> Change Password</span>
@@ -3342,7 +3374,8 @@
 <script src="js/market-data.js?v=100"></script>
 <script src="js/zen-markets.js?v=100"></script>
 <script src="js/user-auth.js?v=104"></script>
-<script src="js/zen-copy.js?v=107"></script>
+<script src="js/zen-copy.js?v=108"></script>
+<script src="js/account-history.js?v=108"></script>
 <script src="js/api-proxy.js?v=106"></script>
 <script src="js/resilience-engine.js?v=100"></script>
 <!-- debug-monitor disabled in production -->
@@ -3358,10 +3391,10 @@
 <script src="js/smart-exit-engine.js?v=100"></script>
 <script src="js/auto-trader.js?v=101"></script>
 <script src="js/portfolio.js?v=100"></script>
-<script src="js/investment-returns.js?v=106"></script>
+<script src="js/investment-returns.js?v=108"></script>
 <script src="js/gamification.js?v=100"></script>
 <script src="js/plugins.js?v=100"></script>
-<script src="js/app.js?v=107"></script>
+<script src="js/app.js?v=108"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>

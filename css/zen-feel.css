@@ -137,3 +137,91 @@
   color: var(--feel-settled) !important;
   border-color: rgba(122, 143, 168, 0.25) !important;
 }
+
+/* ── Illustrative / demo badges ───────────────────────────── */
+#app .ch-badge.illustrative {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--feel-calibrating);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Account ledger (Security) ────────────────────────────── */
+#app .ledger-table-wrap {
+  overflow-x: auto;
+  max-height: 320px;
+}
+
+#app .ledger-table {
+  width: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+}
+
+#app .ledger-table th,
+#app .ledger-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
+}
+
+#app .ledger-table th {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+#app .ledger-reconcile.ok { color: var(--feel-up); font-size: 12px; }
+#app .ledger-reconcile.warn { color: var(--feel-calibrating); font-size: 12px; }
+
+#app .ledger-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+#app .ledger-attribution {
+  font-size: 12px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(74, 158, 255, 0.12);
+  padding-top: 12px;
+}
+
+#app .ledger-att-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+#app .density-toggle {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+
+#app .density-toggle label {
+  cursor: pointer;
+  color: #b8d4f0;
+}
+
+/* ── Professional density: hide demo / gamification noise ─── */
+#app.density-pro .whale-card,
+#app.density-pro .gamification-strip,
+#app.density-pro #zen-streak-widget {
+  display: none !important;
+}
+
+#app.density-pro .ledger-table {
+  font-size: 12px;
+}
+
+#app.density-pro .ledger-table-wrap {
+  max-height: 480px;
+}

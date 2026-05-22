@@ -307,6 +307,7 @@ const UserAuth = (() => {
       loginAt: Date.now(),
       tradingPaused: !!user.tradingPaused,
       profitPaused: !!user.profitPaused,
+      experienceTier: user.experienceTier || 'novice',
     };
   }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
@@ -964,6 +965,21 @@ const UserAuth = (() => {
     return _api(`/wallet/transactions${qs ? '?' + qs : ''}`);
   }
 
+  async function updateSettings(patch) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    const result = await _api('/auth/settings', { method: 'PATCH', body: patch });
+    if (result.ok) {
+      const session = _loadSession();
+      if (session) {
+        if (result.experienceTier) session.experienceTier = result.experienceTier;
+        if (typeof result.tradingPaused === 'boolean') session.tradingPaused = result.tradingPaused;
+        if (typeof result.profitPaused === 'boolean') session.profitPaused = result.profitPaused;
+        _persistAuth(_loadToken(), session, _loadWallet(), true);
+      }
+    }
+    return result;
+  }
+
   // ── Account Transfer (cross-device login) ────────────────
   // Generates a portable code containing user + investment data
   // that can be imported on any device to enable login there.
@@ -1171,7 +1187,7 @@ const UserAuth = (() => {
     getCurrentTier, getCurrentUser,
     refreshSession,
     getWallet, getCachedWallet,
-    requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
+    requestDeposit, requestWithdrawal, claimEarnings, getTransactions, updateSettings,
     changePassword, getPlatformConfig,
     adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
     adminGetConfig, adminSaveConfig, adminGetPendingKyc, adminReviewKyc, adminSendBroadcast,

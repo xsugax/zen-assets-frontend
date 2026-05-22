@@ -673,11 +673,17 @@ const App = (() => {
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
       dailyPnL = snap.todayPnL;
-      dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${snap.tierAPY} APY`;
+      const apyTag = typeof ZenCopy !== 'undefined'
+        ? ZenCopy.system.tierApyIndicative(snap.tierAPY)
+        : `Indicative · ${snap.tierAPY} APY`;
+      dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${apyTag}`;
       
       // Wallet balance KPI (claimed funds only)
       setText('kpi-wallet-balance', `$${fmt(snap.walletBalance, 2)}`);
-      setText('kpi-wallet-tier', `${snap.tierIcon} ${snap.tierLabel} Tier · ${snap.tierAPY}`);
+      const tierLine = typeof ZenCopy !== 'undefined'
+        ? `${ZenCopy.tierLabel(snap.tier)} · ${ZenCopy.system.tierApyIndicative(snap.tierAPY)}`
+        : `${snap.tierLabel} Tier · ${snap.tierAPY}`;
+      setText('kpi-wallet-tier', tierLine);
     }
     
     setText('kpi-port-value', `$${fmt(m.totalValue, 0)}`);
@@ -1108,6 +1114,13 @@ const App = (() => {
   // ── Whale Alerts ──────────────────────────────────────────
   function renderWhaleAlerts() {
     const feed = $('whale-feed'); if (!feed) return;
+    const whaleCard = feed.closest('.whale-card');
+    if (whaleCard) {
+      const titleEl = whaleCard.querySelector('.ch-title');
+      if (titleEl) {
+        titleEl.innerHTML = '<i class="fa fa-water"></i> Market activity <span class="ch-badge illustrative">demo</span>';
+      }
+    }
     const WHALE_DATA = [
       { symbol: 'BTC/USD', side: 'buy',  sizeUSD: 48000000, exchange: 'Binance',  ts: Date.now() - 12000 },
       { symbol: 'ETH/USD', side: 'sell', sizeUSD: 22000000, exchange: 'Coinbase', ts: Date.now() - 80000 },
@@ -2157,6 +2170,10 @@ const App = (() => {
       if (_keyStreamTimer) clearInterval(_keyStreamTimer);
       if (_section === 'security') {
         refreshKycStatus();
+        if (typeof AccountHistory !== 'undefined') {
+          AccountHistory.wire();
+          AccountHistory.refresh().catch(() => {});
+        }
         _keyStreamTimer = setInterval(() => {
           if (_section !== 'security') { clearInterval(_keyStreamTimer); _keyStreamTimer = null; return; }
           keyStream.textContent = gen();
@@ -2645,7 +2662,7 @@ const App = (() => {
 
     addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
 
-    const useDemoFeed = true;
+    const useDemoFeed = false;
     if (!useDemoFeed) return;
 
     const _notifTypes = [
@@ -3687,6 +3704,37 @@ const App = (() => {
       Gamification.loadForUser();
       updateGamificationUI();
     }
+
+    _applyExperienceDensity(session.experienceTier || 'novice');
+    _wireDensityToggle(session.experienceTier || 'novice');
+  }
+
+  function _applyExperienceDensity(tier) {
+    const app = $('app');
+    if (!app) return;
+    const pro = tier === 'professional';
+    app.classList.toggle('density-pro', pro);
+    app.classList.toggle('density-novice', !pro);
+  }
+
+  let _densityWired = false;
+  function _wireDensityToggle(current) {
+    if (_densityWired) return;
+    const novice = $('density-novice');
+    const pro = $('density-pro');
+    if (!novice || !pro) return;
+    _densityWired = true;
+    novice.checked = current !== 'professional';
+    pro.checked = current === 'professional';
+    const onChange = async (tier) => {
+      _applyExperienceDensity(tier);
+      if (typeof UserAuth !== 'undefined' && UserAuth.updateSettings) {
+        await UserAuth.updateSettings({ experienceTier: tier });
+      }
+      showToast(tier === 'professional' ? 'Professional view enabled' : 'Guided view enabled', 'success');
+    };
+    novice.addEventListener('change', () => { if (novice.checked) onChange('novice'); });
+    pro.addEventListener('change', () => { if (pro.checked) onChange('professional'); });
   }
 
   // ── User Dropdown Toggle ─────────────────────────────────
