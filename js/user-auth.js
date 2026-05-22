@@ -806,10 +806,10 @@ const UserAuth = (() => {
     return _api(`/admin/users/${userId}`, { method: 'PATCH', body: updates });
   }
 
-  async function adminCreateUser({ email, fullName, password, pin, tier, depositAmount }) {
+  async function adminCreateUser({ email, fullName, password, pin, tier, status, kycStatus, depositAmount }) {
     const result = await _api('/admin/users', {
       method: 'POST',
-      body: { email, fullName, password, pin, tier, depositAmount },
+      body: { email, fullName, password, pin, tier, status, kycStatus, depositAmount },
     });
     if (result.ok && (result.success || result.user)) {
       return { ok: true, success: true, user: result.user, wallet: result.wallet };

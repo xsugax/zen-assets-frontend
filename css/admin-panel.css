@@ -1195,6 +1195,9 @@ body {
   border: 1px solid var(--admin-border);
   border-radius: 14px;
   width: min(520px, 94vw);
+  max-height: min(90vh, calc(100dvh - 24px));
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   animation: modalIn 0.25s ease;
 }
@@ -1225,8 +1228,25 @@ body {
 }
 .amb-close:hover { background: rgba(214,93,93,0.1); color: var(--admin-red); }
 
-.amb-body { padding: 24px; }
+.amb-body {
+  padding: 24px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
 .amb-body p { color: var(--admin-text-muted); font-size: 14px; line-height: 1.5; }
+.user-form-hint {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: rgba(212, 165, 116, 0.08);
+  border: 1px solid rgba(212, 165, 116, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--admin-text-muted);
+}
+.amb-field .req { color: var(--admin-orange); font-weight: 700; }
 
 .amb-row {
   display: flex; gap: 16px; margin-bottom: 16px;
@@ -1256,8 +1276,10 @@ body {
 
 .amb-footer {
   display: flex; justify-content: flex-end; gap: 10px;
+  flex-shrink: 0;
   padding: 16px 24px;
   border-top: 1px solid var(--admin-border);
+  background: var(--admin-surface);
 }
 
 /* ═══════════════════════════════════════════════════════════

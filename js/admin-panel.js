@@ -116,6 +116,7 @@ const AdminPanel = (() => {
   let auditPage         = 1;
   let charts            = {};        // Chart.js instances
   let refreshTimer      = null;
+  let _userModalMode    = 'edit'; // 'create' | 'edit'
 
   // API response cache
   const _cache = {
@@ -1170,12 +1171,62 @@ const AdminPanel = (() => {
     renderUsers();
   }
 
+  function _setUserModalMode(mode) {
+    _userModalMode = mode === 'create' ? 'create' : 'edit';
+    const isCreate = _userModalMode === 'create';
+
+    const btnText = $('btn-save-user-text');
+    if (btnText) btnText.textContent = isCreate ? 'Create User' : 'Save Changes';
+
+    const pwdLabel = $('edit-user-password-label');
+    if (pwdLabel) {
+      pwdLabel.innerHTML = isCreate
+        ? 'Password <span class="req">*</span>'
+        : 'New Password <span class="req" style="display:none" id="edit-user-password-req"></span> (leave empty to keep)';
+    }
+
+    const pinLabel = $('edit-user-pin-label');
+    if (pinLabel) {
+      pinLabel.innerHTML = isCreate
+        ? 'PIN (4 digits) <span class="req">*</span>'
+        : 'PIN (4 digits, leave empty to keep current)';
+    }
+
+    const depLabel = $('edit-user-deposit-label');
+    if (depLabel) depLabel.textContent = isCreate ? 'Initial Deposit ($)' : 'Top-up Deposit ($)';
+
+    const earningsRow = $('row-user-earnings');
+    if (earningsRow) earningsRow.style.display = isCreate ? 'none' : '';
+
+    const hint = $('user-form-hint');
+    if (hint) {
+      hint.textContent = isCreate
+        ? 'Required: email, full name, password (8+ chars), and 4-digit PIN — same as site registration. User can sign in immediately.'
+        : '';
+      hint.style.display = isCreate ? 'block' : 'none';
+    }
+
+    const pwdReq = $('edit-user-password-req');
+    if (pwdReq) pwdReq.style.display = isCreate ? 'inline' : 'none';
+    const pinReq = $('edit-user-pin-req');
+    if (pinReq) pinReq.style.display = isCreate ? 'inline' : 'none';
+  }
+
+  function _setSaveUserBusy(busy) {
+    const btn = $('btn-save-user');
+    if (!btn) return;
+    btn.disabled = !!busy;
+    btn.style.opacity = busy ? '0.65' : '';
+    btn.style.pointerEvents = busy ? 'none' : '';
+  }
+
   // CRUD: Open Edit Modal
   function openEditUser(email) {
     const users = loadUsers();
     const user = users[email.toLowerCase()];
     if (!user) return toast('User not found', 'error');
 
+    _setUserModalMode('edit');
     $('modal-user-title').textContent = 'Edit User: ' + user.fullName;
     const emailInput = $('edit-user-email');
     if (emailInput) {
@@ -1184,9 +1235,13 @@ const AdminPanel = (() => {
     }
     $('edit-user-name').value = user.fullName || '';
     $('edit-user-tier').value = user.tier || 'bronze';
-    $('edit-user-deposit').value = '';  // Leave empty — enter TOP-UP amount only
+    $('edit-user-deposit').value = '';
     $('edit-user-deposit').placeholder = `Current: $${(user.deposit || 0).toLocaleString()} — enter top-up amount`;
     $('edit-user-status').value = user.status || 'active';
+    if ($('edit-user-kyc')) {
+      const kyc = user.kycStatus || 'none';
+      $('edit-user-kyc').value = ['none', 'pending', 'submitted', 'verified', 'rejected'].includes(kyc) ? kyc : 'none';
+    }
     $('edit-user-earnings').value = user.earningsOverride || '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
@@ -1200,34 +1255,51 @@ const AdminPanel = (() => {
 
     const users     = loadUsers();
     const key       = email.toLowerCase();
-    const isNew     = !users || !users[key];
+    const isCreate  = _userModalMode === 'create';
     const newTier   = $('edit-user-tier').value;
     const newStatus = $('edit-user-status').value;
+    const newKyc    = $('edit-user-kyc') ? $('edit-user-kyc').value : 'none';
     const newName   = $('edit-user-name').value.trim();
     const newPin    = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
     const newPwd    = $('edit-user-password') ? $('edit-user-password').value.trim() : '';
     const deposit   = parseFloat($('edit-user-deposit').value) || 0;
 
     // ── CREATE NEW USER ──
-    if (isNew) {
+    if (isCreate) {
       if (!newName) return toast('Full name is required', 'error');
-      if (!newPwd || newPwd.length < 6) return toast('Password must be at least 6 characters', 'error');
+      if (!newPwd || newPwd.length < 8) return toast('Password must be at least 8 characters', 'error');
+      if (!/^\d{4}$/.test(newPin)) return toast('A 4-digit PIN is required', 'error');
 
-      const result = await UserAuth.adminCreateUser({
-        email, fullName: newName, password: newPwd,
-        pin: newPin || '', tier: newTier, depositAmount: deposit,
-      });
-      if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
+      _setSaveUserBusy(true);
+      try {
+        const result = await UserAuth.adminCreateUser({
+          email,
+          fullName: newName,
+          password: newPwd,
+          pin: newPin,
+          tier: newTier,
+          status: newStatus,
+          kycStatus: newKyc,
+          depositAmount: deposit,
+        });
+        if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
 
-      closeModal('modal-user-edit');
-      log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
-      toast(`${newName} created — they can sign in on the main site with this email and password`, 'success', 6000);
+        closeModal('modal-user-edit');
+        _userModalMode = 'edit';
+        log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
+        toast(`${newName} created — they can sign in with this email, password, and PIN`, 'success', 6000);
 
-      // Refresh user list from API
-      await _loadApiData();
-      renderUsers();
-      _updateHeaderStats();
+        await _loadApiData();
+        renderUsers();
+        _updateHeaderStats();
+      } finally {
+        _setSaveUserBusy(false);
+      }
       return;
+    }
+
+    if (!users || !users[key]) {
+      return toast('User not found — refresh the list or use Add User to create a new account', 'error');
     }
 
     // ── UPDATE EXISTING USER ──
@@ -1237,20 +1309,39 @@ const AdminPanel = (() => {
     const existingBalance = user.deposit || user.totalDeposited || 0;
     const newTotalBalance = deposit ? existingBalance + deposit : existingBalance;
 
-    // Try server update (best-effort — may fail for locally-seeded users)
+    if (newPwd && newPwd.length < 8) {
+      return toast('Password must be at least 8 characters', 'error');
+    }
+    if (newPin && !/^\d{4}$/.test(newPin)) {
+      return toast('PIN must be exactly 4 digits', 'error');
+    }
+
+    _setSaveUserBusy(true);
     try {
       const result = await UserAuth.adminUpdateUser(user.id, {
-        status: newStatus, tier: newTier,
-        balance: newTotalBalance || undefined,
-        depositAmount: newTotalBalance || undefined,
+        fullName: newName || undefined,
+        status: newStatus,
+        tier: newTier,
+        kycStatus: newKyc !== 'none' ? newKyc : undefined,
+        balance: deposit ? newTotalBalance : undefined,
+        depositAmount: deposit ? newTotalBalance : undefined,
       });
-      if (!result.ok) console.warn('Server update failed (may be local-only user):', result.error);
-    } catch { /* server unreachable — continue with local update */ }
+      if (!result.ok) {
+        toast(result.error || 'Server update failed', 'error');
+        return;
+      }
+    } catch {
+      toast('Could not reach server to save changes', 'error');
+      return;
+    } finally {
+      _setSaveUserBusy(false);
+    }
 
     // Update local cache immediately for snappy UI
     user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
+    if (newKyc) user.kycStatus = newKyc;
     if (deposit) { user.deposit = newTotalBalance; user.totalDeposited = newTotalBalance; }
 
     // Also persist to local store so changes survive refreshes
@@ -1280,12 +1371,8 @@ const AdminPanel = (() => {
       } catch { /* graceful */ }
     }
 
-    closeModal('modal-user-edit');
-    log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
-    toast(`${user.fullName} updated successfully`, 'success');
-
     // ── Handle password reset ──
-    if (newPwd && newPwd.length >= 6) {
+    if (newPwd) {
       // Update server (best-effort)
       try {
         const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
@@ -1310,35 +1397,32 @@ const AdminPanel = (() => {
 
     // ── Handle PIN set/reset via admin API ──
     if (newPin) {
-      if (!/^\d{4}$/.test(newPin)) {
-        toast('PIN must be exactly 4 digits', 'error');
-      } else {
-        try {
-          const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
-          const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ pin: newPin }),
-          });
-          const pinRes = await resp.json();
-          if (pinRes.success) {
-            toast('PIN updated', 'success');
-            log('user_pin_set', `PIN set for ${user.fullName} (${email})`, 'info', { email });
-          } else {
-            toast(pinRes.error || 'PIN update failed', 'error');
-          }
-        } catch (e) {
-          // Offline: update localStore directly
-          const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-          const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-          if (idx !== -1) {
-            allUsers[idx].pinHash = UserAuth.hashPassword(newPin);
-            localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
-            toast('PIN set (offline)', 'success');
-          }
+      try {
+        const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+        const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ pin: newPin }),
+        });
+        const pinRes = await resp.json();
+        if (pinRes.success) {
+          log('user_pin_set', `PIN set for ${user.fullName} (${email})`, 'info', { email });
+        } else {
+          toast(pinRes.error || 'PIN update failed', 'error');
+        }
+      } catch (e) {
+        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+        const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+        if (idx !== -1) {
+          allUsers[idx].pinHash = UserAuth.hashPassword(newPin);
+          localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
         }
       }
     }
+
+    closeModal('modal-user-edit');
+    log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
+    toast(`${user.fullName} updated successfully`, 'success');
 
     renderUsers();
     _updateHeaderStats();
@@ -1346,6 +1430,7 @@ const AdminPanel = (() => {
 
   // CRUD: Create User
   function openCreateUser() {
+    _setUserModalMode('create');
     $('modal-user-title').textContent = 'Create New User';
     const emailInput = $('edit-user-email');
     if (emailInput) {
@@ -1353,12 +1438,15 @@ const AdminPanel = (() => {
       emailInput.value = '';
     }
     $('edit-user-name').value = '';
-    $('edit-user-tier').value = 'bronze';
+    $('edit-user-tier').value = 'gold';
     $('edit-user-deposit').value = '';
+    $('edit-user-deposit').placeholder = '0';
     $('edit-user-status').value = 'active';
+    if ($('edit-user-kyc')) $('edit-user-kyc').value = 'none';
     $('edit-user-earnings').value = '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
+    _setSaveUserBusy(false);
     openModal('modal-user-edit');
   }
 

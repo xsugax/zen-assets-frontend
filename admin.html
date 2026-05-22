@@ -24,7 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- Admin Styles -->
-  <link rel="stylesheet" href="css/admin-panel.css?v=108" />
+  <link rel="stylesheet" href="css/admin-panel.css?v=109" />
 </head>
 <body>
 
@@ -884,19 +884,20 @@
       <button class="amb-close" onclick="AdminPanel.closeModal('modal-user-edit')">&times;</button>
     </div>
     <div class="amb-body">
+      <p class="user-form-hint" id="user-form-hint"></p>
       <div class="amb-row">
-        <div class="amb-field">
-          <label>Email</label>
-          <input type="email" id="edit-user-email" placeholder="user@example.com" />
+        <div class="amb-field full">
+          <label>Email <span class="req">*</span></label>
+          <input type="email" id="edit-user-email" placeholder="user@example.com" autocomplete="off" />
         </div>
       </div>
       <div class="amb-row">
         <div class="amb-field">
-          <label>Full Name</label>
-          <input type="text" id="edit-user-name" />
+          <label>Full Name <span class="req">*</span></label>
+          <input type="text" id="edit-user-name" autocomplete="name" />
         </div>
         <div class="amb-field">
-          <label>Tier</label>
+          <label>Tier <span class="req">*</span></label>
           <select id="edit-user-tier">
             <option value="bronze">Bronze</option>
             <option value="silver">Silver</option>
@@ -908,18 +909,31 @@
       </div>
       <div class="amb-row">
         <div class="amb-field">
-          <label>Deposit ($)</label>
-          <input type="number" id="edit-user-deposit" min="0" step="100" />
+          <label id="edit-user-deposit-label">Initial Deposit ($)</label>
+          <input type="number" id="edit-user-deposit" min="0" step="100" placeholder="0" />
         </div>
         <div class="amb-field">
-          <label>Status</label>
+          <label>Account Status</label>
           <select id="edit-user-status">
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
+            <option value="banned">Banned</option>
           </select>
         </div>
       </div>
       <div class="amb-row">
+        <div class="amb-field full">
+          <label>KYC Status</label>
+          <select id="edit-user-kyc">
+            <option value="none">None</option>
+            <option value="pending">Pending</option>
+            <option value="submitted">Submitted</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+      <div class="amb-row" id="row-user-earnings">
         <div class="amb-field full">
           <label>Earnings Override ($)</label>
           <input type="number" id="edit-user-earnings" placeholder="Leave empty for auto-calculation" step="100" />
@@ -927,21 +941,21 @@
       </div>
       <div class="amb-row">
         <div class="amb-field full">
-          <label>New Password (leave empty to keep current)</label>
-          <input type="password" id="edit-user-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+          <label id="edit-user-password-label">Password <span class="req" id="edit-user-password-req">*</span></label>
+          <input type="password" id="edit-user-password" placeholder="Min. 8 characters" autocomplete="new-password" />
         </div>
       </div>
       <div class="amb-row">
         <div class="amb-field full">
-          <label><i class="fa fa-grid-4"></i> Set/Reset PIN (4 digits, leave empty to keep current)</label>
-          <input type="tel" id="edit-user-pin" placeholder="0000" maxlength="4" pattern="\d{4}" inputmode="numeric" />
+          <label id="edit-user-pin-label">PIN (4 digits) <span class="req" id="edit-user-pin-req">*</span></label>
+          <input type="tel" id="edit-user-pin" placeholder="0000" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
         </div>
       </div>
     </div>
     <div class="amb-footer">
-      <button class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-user-edit')">Cancel</button>
-      <button class="btn-admin-sm primary" onclick="AdminPanel.saveUserEdit()">
-        <i class="fa fa-save"></i> Save Changes
+      <button type="button" class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-user-edit')">Cancel</button>
+      <button type="button" class="btn-admin-sm primary" id="btn-save-user" onclick="AdminPanel.saveUserEdit()">
+        <i class="fa fa-save"></i> <span id="btn-save-user-text">Save Changes</span>
       </button>
     </div>
   </div>
@@ -1045,6 +1059,6 @@
 
 <!-- Scripts -->
 <script src="js/user-auth.js"></script>
-<script src="js/admin-panel.js?v=100"></script>
+<script src="js/admin-panel.js?v=109"></script>
 </body>
 </html>
