@@ -23,6 +23,13 @@
     </image:image>
   </url>
 
+  <url>
+    <loc>https://zenassets.tech/programs.html</loc>
+    <lastmod>2026-05-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Dashboard (authenticated SPA shell) -->
   <url>
     <loc>https://zenassets.tech/dashboard</loc>

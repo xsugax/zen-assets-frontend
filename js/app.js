@@ -2781,17 +2781,34 @@ const App = (() => {
     initModalHandlers();
   }
 
+  function _isProgramsPage() {
+    return /programs\.html/i.test(location.pathname || '') ||
+      document.body?.dataset?.page === 'programs' ||
+      document.getElementById('login-screen')?.dataset?.page === 'programs';
+  }
+
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm) { proceedAfterLogin(); return; }
-    
-    // ── Login Screen Enhancements ──
+    if (!loginForm && !_isProgramsPage()) { proceedAfterLogin(); return; }
+
+    const openAuth = sessionStorage.getItem('zen_open_auth');
+    if (openAuth && typeof AuthManager !== 'undefined' && AuthManager.switchView) {
+      sessionStorage.removeItem('zen_open_auth');
+      AuthManager.switchView(openAuth === 'register' ? 'register' : 'login');
+    }
+
     const _safeInit = fn => { try { fn(); } catch(e) { console.warn('Login init error:', e.message); } };
-    _safeInit(_initLoginParticles);
-    _safeInit(_initTestimonialCarousel);
-    _safeInit(_initTimeHorizonButtons);
-    _safeInit(_initAITradeFeed);
-    _safeInit(_initScrollCounters);
+    if (_isProgramsPage()) {
+      _safeInit(_initTestimonialCarousel);
+      _safeInit(_initTimeHorizonButtons);
+      _safeInit(_initAITradeFeed);
+      _safeInit(_initScrollCounters);
+    } else {
+      _safeInit(_initLoginParticles);
+      _safeInit(_initScrollCounters);
+      _safeInit(_initLandingMarketStrip);
+    }
+    if (!loginForm) return;
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -3015,6 +3032,7 @@ const App = (() => {
 
   // Testimonial carousel with auto-rotation
   function _initTestimonialCarousel() {
+    if (!_isProgramsPage()) return;
     const cards = document.querySelectorAll('.lt-card');
     const dots = document.querySelectorAll('.lt-dot');
     if (!cards.length) return;
@@ -3041,8 +3059,30 @@ const App = (() => {
   // Live counter — removed (simplified static display)
   function _initLiveCounterAnimation() { }
 
-  // FOMO banner — now shows market prices (no dynamic generation needed)
   function _initFOMOBanner() { }
+
+  async function _initLandingMarketStrip() {
+    const inner = document.getElementById('market-strip-inner');
+    if (!inner || typeof APIProxy === 'undefined') return;
+    const items = [];
+    for (const sym of ['BTC', 'ETH', 'SOL']) {
+      try {
+        const r = await APIProxy.fetchBinance(`/ticker/24hr?symbol=${sym}USDT`);
+        const d = await r.json();
+        const pct = parseFloat(d.priceChangePercent) || 0;
+        const col = pct >= 0 ? '#5fb38e' : '#d65d5d';
+        const price = parseFloat(d.lastPrice) || 0;
+        items.push(
+          `${sym}/USD <strong>$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> ` +
+          `<span style="color:${col}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>`
+        );
+      } catch (e) { /* skip */ }
+    }
+    if (items.length) {
+      const html = items.map(t => `<span class="market-strip-item">${t}</span>`).join('');
+      inner.innerHTML = html + html;
+    }
+  }
 
   function _clearLoginErrors() {
     // Clear the dedicated error box
@@ -3195,6 +3235,7 @@ const App = (() => {
 
   // ── AI Trade Feed — simulated live executions ─────────────
   function _initAITradeFeed() {
+    if (!_isProgramsPage()) return;
     const list = document.getElementById('atf-list');
     const countEl = document.getElementById('atf-count');
     const dailyEl = document.getElementById('atf-daily-profit');

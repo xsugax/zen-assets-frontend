@@ -69,6 +69,27 @@ const ZenCopy = (() => {
     },
   };
 
+  const landing = {
+    tagline: 'Capital Intelligence',
+    marketsOpen: 'Markets open',
+    clientLogin: 'Client login',
+    openAccount: 'Open account',
+    programs: 'Programs',
+    heroTitle: 'Global multi-asset allocation platform',
+    heroAccent: 'Research. Risk. Reporting.',
+    heroLead: 'ZEN ASSETS provides institutional-grade portfolio infrastructure for family offices, private wealth, and qualified investors — with disciplined risk frameworks and transparent reporting.',
+    viewPrograms: 'View programs',
+    metricAum: 'Capital under management',
+    metricTrack: 'Illustrative 12-month metrics',
+    metricClients: 'Institutional & private clients',
+    metricsDisclaimer: 'Figures are illustrative platform metrics unless otherwise stated. Not investment advice.',
+    howWeOperate: 'How we operate',
+    governance: 'Governance & security',
+    globalPresence: 'Global presence',
+    clientSegments: 'Client segments',
+    programsDisclaimer: 'Program parameters and projections shown below are illustrative targets, not guarantees. Past performance does not indicate future results.',
+  };
+
   function formatMoney(n, decimals = 2) {
     const x = parseFloat(n);
     if (isNaN(x)) return '$0.00';
@@ -81,6 +102,7 @@ const ZenCopy = (() => {
     chart,
     system,
     notifications,
+    landing,
     formatMoney,
   };
 })();
