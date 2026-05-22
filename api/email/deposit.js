@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
     </table>
 
     <p style="margin:0 0 4px;font-size:14px;color:#c8d0dc;line-height:1.6;">
-      Your deposit has been credited to your wallet. View balance, account history, and session performance in your dashboard. Program APY ranges are illustrative models — live PnL is shown separately.
+      Your funds are now active across our sovereign deployment corridors. Returns are compounded autonomously — monitor performance in real-time from your dashboard.
     </p>
 
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;">

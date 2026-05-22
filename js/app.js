@@ -673,17 +673,11 @@ const App = (() => {
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
       dailyPnL = snap.todayPnL;
-      const apyTag = typeof ZenCopy !== 'undefined'
-        ? ZenCopy.system.tierApyIndicative(snap.tierAPY)
-        : `Indicative · ${snap.tierAPY} APY`;
-      dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${apyTag}`;
+      dailySub = `${snap.tierIcon} ${snap.tierLabel} · ${snap.tierAPY} APY`;
       
       // Wallet balance KPI (claimed funds only)
       setText('kpi-wallet-balance', `$${fmt(snap.walletBalance, 2)}`);
-      const tierLine = typeof ZenCopy !== 'undefined'
-        ? `${ZenCopy.tierLabel(snap.tier)} · ${ZenCopy.system.tierApyIndicative(snap.tierAPY)}`
-        : `${snap.tierLabel} Tier · ${snap.tierAPY}`;
-      setText('kpi-wallet-tier', tierLine);
+      setText('kpi-wallet-tier', `${snap.tierIcon} ${snap.tierLabel} Tier · ${snap.tierAPY}`);
     }
     
     setText('kpi-port-value', `$${fmt(m.totalValue, 0)}`);
@@ -1114,13 +1108,6 @@ const App = (() => {
   // ── Whale Alerts ──────────────────────────────────────────
   function renderWhaleAlerts() {
     const feed = $('whale-feed'); if (!feed) return;
-    const whaleCard = feed.closest('.whale-card');
-    if (whaleCard) {
-      const titleEl = whaleCard.querySelector('.ch-title');
-      if (titleEl) {
-        titleEl.innerHTML = '<i class="fa fa-water"></i> Market activity <span class="ch-badge illustrative">demo</span>';
-      }
-    }
     const WHALE_DATA = [
       { symbol: 'BTC/USD', side: 'buy',  sizeUSD: 48000000, exchange: 'Binance',  ts: Date.now() - 12000 },
       { symbol: 'ETH/USD', side: 'sell', sizeUSD: 22000000, exchange: 'Coinbase', ts: Date.now() - 80000 },
@@ -2170,10 +2157,6 @@ const App = (() => {
       if (_keyStreamTimer) clearInterval(_keyStreamTimer);
       if (_section === 'security') {
         refreshKycStatus();
-        if (typeof AccountHistory !== 'undefined') {
-          AccountHistory.wire();
-          AccountHistory.refresh().catch(() => {});
-        }
         _keyStreamTimer = setInterval(() => {
           if (_section !== 'security') { clearInterval(_keyStreamTimer); _keyStreamTimer = null; return; }
           keyStream.textContent = gen();
@@ -2662,7 +2645,7 @@ const App = (() => {
 
     addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
 
-    const useDemoFeed = false;
+    const useDemoFeed = true;
     if (!useDemoFeed) return;
 
     const _notifTypes = [
@@ -2798,34 +2781,17 @@ const App = (() => {
     initModalHandlers();
   }
 
-  function _isProgramsPage() {
-    return /programs\.html/i.test(location.pathname || '') ||
-      document.body?.dataset?.page === 'programs' ||
-      document.getElementById('login-screen')?.dataset?.page === 'programs';
-  }
-
   function initLoginScreen() {
     const loginForm = $('login-form');
-    if (!loginForm && !_isProgramsPage()) { proceedAfterLogin(); return; }
-
-    const openAuth = sessionStorage.getItem('zen_open_auth');
-    if (openAuth && typeof AuthManager !== 'undefined' && AuthManager.switchView) {
-      sessionStorage.removeItem('zen_open_auth');
-      AuthManager.switchView(openAuth === 'register' ? 'register' : 'login');
-    }
-
+    if (!loginForm) { proceedAfterLogin(); return; }
+    
+    // ── Login Screen Enhancements ──
     const _safeInit = fn => { try { fn(); } catch(e) { console.warn('Login init error:', e.message); } };
-    if (_isProgramsPage()) {
-      _safeInit(_initTestimonialCarousel);
-      _safeInit(_initTimeHorizonButtons);
-      _safeInit(_initAITradeFeed);
-      _safeInit(_initScrollCounters);
-    } else {
-      _safeInit(_initLoginParticles);
-      _safeInit(_initScrollCounters);
-      _safeInit(_initLandingMarketStrip);
-    }
-    if (!loginForm) return;
+    _safeInit(_initLoginParticles);
+    _safeInit(_initTestimonialCarousel);
+    _safeInit(_initTimeHorizonButtons);
+    _safeInit(_initAITradeFeed);
+    _safeInit(_initScrollCounters);
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -3049,7 +3015,6 @@ const App = (() => {
 
   // Testimonial carousel with auto-rotation
   function _initTestimonialCarousel() {
-    if (!_isProgramsPage()) return;
     const cards = document.querySelectorAll('.lt-card');
     const dots = document.querySelectorAll('.lt-dot');
     if (!cards.length) return;
@@ -3076,30 +3041,8 @@ const App = (() => {
   // Live counter — removed (simplified static display)
   function _initLiveCounterAnimation() { }
 
+  // FOMO banner — now shows market prices (no dynamic generation needed)
   function _initFOMOBanner() { }
-
-  async function _initLandingMarketStrip() {
-    const inner = document.getElementById('market-strip-inner');
-    if (!inner || typeof APIProxy === 'undefined') return;
-    const items = [];
-    for (const sym of ['BTC', 'ETH', 'SOL']) {
-      try {
-        const r = await APIProxy.fetchBinance(`/ticker/24hr?symbol=${sym}USDT`);
-        const d = await r.json();
-        const pct = parseFloat(d.priceChangePercent) || 0;
-        const col = pct >= 0 ? '#5fb38e' : '#d65d5d';
-        const price = parseFloat(d.lastPrice) || 0;
-        items.push(
-          `${sym}/USD <strong>$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong> ` +
-          `<span style="color:${col}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</span>`
-        );
-      } catch (e) { /* skip */ }
-    }
-    if (items.length) {
-      const html = items.map(t => `<span class="market-strip-item">${t}</span>`).join('');
-      inner.innerHTML = html + html;
-    }
-  }
 
   function _clearLoginErrors() {
     // Clear the dedicated error box
@@ -3252,7 +3195,6 @@ const App = (() => {
 
   // ── AI Trade Feed — simulated live executions ─────────────
   function _initAITradeFeed() {
-    if (!_isProgramsPage()) return;
     const list = document.getElementById('atf-list');
     const countEl = document.getElementById('atf-count');
     const dailyEl = document.getElementById('atf-daily-profit');
@@ -3704,37 +3646,6 @@ const App = (() => {
       Gamification.loadForUser();
       updateGamificationUI();
     }
-
-    _applyExperienceDensity(session.experienceTier || 'novice');
-    _wireDensityToggle(session.experienceTier || 'novice');
-  }
-
-  function _applyExperienceDensity(tier) {
-    const app = $('app');
-    if (!app) return;
-    const pro = tier === 'professional';
-    app.classList.toggle('density-pro', pro);
-    app.classList.toggle('density-novice', !pro);
-  }
-
-  let _densityWired = false;
-  function _wireDensityToggle(current) {
-    if (_densityWired) return;
-    const novice = $('density-novice');
-    const pro = $('density-pro');
-    if (!novice || !pro) return;
-    _densityWired = true;
-    novice.checked = current !== 'professional';
-    pro.checked = current === 'professional';
-    const onChange = async (tier) => {
-      _applyExperienceDensity(tier);
-      if (typeof UserAuth !== 'undefined' && UserAuth.updateSettings) {
-        await UserAuth.updateSettings({ experienceTier: tier });
-      }
-      showToast(tier === 'professional' ? 'Professional view enabled' : 'Guided view enabled', 'success');
-    };
-    novice.addEventListener('change', () => { if (novice.checked) onChange('novice'); });
-    pro.addEventListener('change', () => { if (pro.checked) onChange('professional'); });
   }
 
   // ── User Dropdown Toggle ─────────────────────────────────
