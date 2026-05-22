@@ -307,7 +307,6 @@ const UserAuth = (() => {
       loginAt: Date.now(),
       tradingPaused: !!user.tradingPaused,
       profitPaused: !!user.profitPaused,
-      experienceTier: user.experienceTier || 'novice',
     };
   }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
@@ -423,13 +422,7 @@ const UserAuth = (() => {
             if (refreshed) return _api(endpoint, { method, body, auth, _retried: true });
           }
         }
-        return {
-          ok: false,
-          status: resp.status,
-          error: data.error || 'Request failed',
-          code: data.code,
-          accountStatus: data.status,
-        };
+        return { ok: false, status: resp.status, error: data.error || 'Request failed', code: data.code };
       } catch (err) {
         console.warn(`⚡ API attempt ${i + 1}/${attempts.length} failed (${endpoint}):`, err.message);
         if (i < attempts.length - 1) {
@@ -591,12 +584,7 @@ const UserAuth = (() => {
     }
 
     if (result.status === 403) {
-      const acctStatus = result.userStatus || result.accountStatus;
-      const msg = result.error
-        || (acctStatus && acctStatus !== 'active'
-          ? `Account is "${acctStatus}". Ask admin to set status to Active.`
-          : 'Account access restricted. Please contact support.');
-      return { ok: false, error: msg, accountStatus: acctStatus };
+      return { ok: false, error: result.error || 'Account access restricted. Please contact support.' };
     }
 
     if (result.status === 401) {
@@ -671,41 +659,10 @@ const UserAuth = (() => {
     const session = _loadSession();
     if (!session) return false;
     const token = _loadToken();
-    if (!token) return !!_loadRefresh();
-    if (_verifyLocalToken(token)) return true;
-    // Server-issued JWT (3 segments) — do not wipe session on load; refresh handles expiry
-    if (token.split('.').length === 3) return true;
+    if (token && _verifyLocalToken(token)) return true;
     if (_loadRefresh()) return true;
-    _persistAuth(null);
+    if (token) _persistAuth(null);
     return false;
-  }
-
-  /** After admin creates a user, mirror credentials into local store for dev fallback */
-  function syncLocalUserCredentials({ email, password, pin, fullName, tier, userId, status = 'active' }) {
-    const key = (email || '').trim().toLowerCase();
-    if (!key || !password) return;
-    const users = _localStore.getAll();
-    const idx = users.findIndex((u) => u.email.toLowerCase() === key);
-    const row = {
-      id: userId || ('u_admin_' + Date.now()),
-      fullName: fullName || key,
-      email: key,
-      passwordHash: _simpleHash(password),
-      pinHash: pin && /^\d{4}$/.test(String(pin)) ? _simpleHash(String(pin)) : null,
-      tier: tier || 'bronze',
-      depositAmount: 0,
-      role: 'user',
-      balance: 0,
-      earnings: 0,
-      status: status || 'active',
-      createdAt: new Date().toISOString(),
-    };
-    if (idx !== -1) {
-      users[idx] = { ...users[idx], ...row, passwordHash: row.passwordHash, pinHash: row.pinHash || users[idx].pinHash };
-    } else {
-      users.push(row);
-    }
-    _localStore.save(users);
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
@@ -1007,21 +964,6 @@ const UserAuth = (() => {
     return _api(`/wallet/transactions${qs ? '?' + qs : ''}`);
   }
 
-  async function updateSettings(patch) {
-    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
-    const result = await _api('/auth/settings', { method: 'PATCH', body: patch });
-    if (result.ok) {
-      const session = _loadSession();
-      if (session) {
-        if (result.experienceTier) session.experienceTier = result.experienceTier;
-        if (typeof result.tradingPaused === 'boolean') session.tradingPaused = result.tradingPaused;
-        if (typeof result.profitPaused === 'boolean') session.profitPaused = result.profitPaused;
-        _persistAuth(_loadToken(), session, _loadWallet(), true);
-      }
-    }
-    return result;
-  }
-
   // ── Account Transfer (cross-device login) ────────────────
   // Generates a portable code containing user + investment data
   // that can be imported on any device to enable login there.
@@ -1225,11 +1167,11 @@ const UserAuth = (() => {
     init, register, login, pinLogin, logout, forgotPassword, resetPassword,
     listSessions, logoutAllOtherDevices,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
-    getSession, isLoggedIn, isAdmin, syncLocalUserCredentials,
+    getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
     refreshSession,
     getWallet, getCachedWallet,
-    requestDeposit, requestWithdrawal, claimEarnings, getTransactions, updateSettings,
+    requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
     changePassword, getPlatformConfig,
     adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
     adminGetConfig, adminSaveConfig, adminGetPendingKyc, adminReviewKyc, adminSendBroadcast,

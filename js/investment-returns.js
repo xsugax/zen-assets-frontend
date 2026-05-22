@@ -301,7 +301,7 @@ const InvestmentReturns = (() => {
   }
 
   async function syncBalanceFromAPI() {
-    if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) return;
+    if (!isActivated() || typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) return;
 
     try {
       const walletData = await UserAuth.getWallet();
@@ -309,22 +309,6 @@ const InvestmentReturns = (() => {
 
       const apiBalance = walletData.balance || 0;
       const apiTotalDeposited = walletData.totalDeposited || 0;
-
-      // Activate from server wallet when admin funded but local state is still dormant
-      if (apiBalance > 0 && !state._adminActivated && state.walletBalance <= 0) {
-        state.walletBalance = apiBalance;
-        state.initialDeposit = apiTotalDeposited || apiBalance;
-        state.dayStartBalance = apiBalance;
-        state.weekStartBalance = state.weekStartBalance || apiBalance;
-        state._adminActivated = true;
-        state._seeded = true;
-        if (!state.lastAccrualTick) state.lastAccrualTick = Date.now();
-        saveState();
-        emit('balanceChanged', { balance: apiBalance, source: 'api_activation' });
-        if (typeof updateReturnsUI === 'function') updateReturnsUI();
-        if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
-      }
-
       const apiTotalWithdrawn = walletData.totalWithdrawn || 0;
       const apiTotalEarned = walletData.totalEarned || 0;
       const apiTotalClaimed = walletData.totalClaimed || 0;

@@ -281,78 +281,69 @@ const AdvancedChartEngine = (() => {
   //   4. Only fall back to simulated if real data truly fails, with background retries
   // This makes each timeframe feel genuinely different because the data IS different:
   //   Always shows simulated candles instantly, then silently upgrades to real data.
-  function _renderSimFallback(containerId, assetId, tf, symbol, timeframe, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries) {
+  async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe = '5m') {
+    const assetId  = symbol.split('/')[0];
+    const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
+
+    // ── Step 1: Always render simulated data IMMEDIATELY ──
+    // This guarantees the chart never stays on "Fetching..."
     try {
       if (typeof MarketData !== 'undefined' && MarketData.getOHLCV) {
         const simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
         if (simCandles.length > 0) {
           _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
-          if (typeof ChartDataIndicator !== 'undefined') ChartDataIndicator.setDemo(containerId);
-          console.log(`📊 [${assetId}] Demo fallback: ${simCandles.length} simulated candles`);
-          return true;
+          if (typeof ChartDataIndicator !== 'undefined') {
+            ChartDataIndicator.setCalibrating(containerId, assetId, timeframe);
+          }
+          console.log(`📊 [${assetId}] Rendered ${simCandles.length} simulated candles`);
+        } else {
+          console.warn(`⚠️ [${assetId}] getOHLCV returned empty`);
+          try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
         }
+      } else {
+        console.warn(`⚠️ MarketData not available for ${assetId}`);
+        try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
       }
     } catch (e) {
       console.error(`❌ [${assetId}] Simulated render failed:`, e.message);
+      try { updateDataSourceIndicator(symbol, false, timeframe, containerId); } catch {}
     }
-    if (typeof ChartDataIndicator !== 'undefined') ChartDataIndicator.setDemo(containerId);
-    return false;
-  }
 
-  async function loadChartData(containerId, symbol, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, timeframe = '5m') {
-    const assetId  = symbol.split('/')[0];
-    const tf       = TIMEFRAMES[timeframe] || TIMEFRAMES['5m'];
-    const isCrypto = CRYPTO_SYMBOLS.has(assetId);
-
-    const tryRealData = async () => {
-      if (typeof RealDataAdapter === 'undefined') return false;
-      try {
-        const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
-        if (real && real.length >= 5) {
-          _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
-          _realDataLoaded[containerId] = true;
-          if (typeof ChartDataIndicator !== 'undefined') {
-            ChartDataIndicator.updateStatus(containerId, true, assetId, timeframe);
-          }
-          console.log(`✅ [${assetId}] ${real.length} live candles`);
-          return true;
+    // ── Step 2: Try upgrading to real Binance/Yahoo data in background ──
+    if (typeof RealDataAdapter !== 'undefined') {
+      const tryRealData = async () => {
+        if (typeof ChartDataIndicator !== 'undefined') {
+          ChartDataIndicator.showLoading(containerId);
         }
-      } catch (e) {
-        console.warn(`⚠️ [${assetId}] Real data fetch failed:`, e.message);
-      }
-      return false;
-    };
-
-    if (isCrypto) {
-      if (typeof ChartDataIndicator !== 'undefined') {
-        ChartDataIndicator.showLoading(containerId);
-      }
-      const ok = await tryRealData();
-      if (ok) return;
-
-      let retryMs = 5000;
-      let attempts = 0;
-      const maxAttempts = 4;
-      const retryLoop = () => {
-        attempts += 1;
-        tryRealData().then(success => {
-          if (success) return;
-          if (attempts >= maxAttempts) {
-            _renderSimFallback(containerId, assetId, tf, symbol, timeframe, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries);
-            return;
+        try {
+          const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
+          if (real && real.length >= 5) {
+            _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, real, symbol, true, timeframe);
+            _realDataLoaded[containerId] = true;
+            console.log(`✅ [${assetId}] Upgraded to ${real.length} REAL candles — simulated feed disabled`);
+            return true;
           }
-          retryMs = Math.min(retryMs * 1.5, 30000);
-          setTimeout(retryLoop, retryMs);
-        });
+        } catch (e) {
+          console.warn(`⚠️ [${assetId}] Real data fetch failed:`, e.message);
+        }
+        return false;
       };
-      setTimeout(retryLoop, retryMs);
-      return;
-    }
 
-    // Non-crypto: simulated data with calibrating badge (unchanged)
-    _renderSimFallback(containerId, assetId, tf, symbol, timeframe, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries);
-    if (typeof ChartDataIndicator !== 'undefined') {
-      ChartDataIndicator.setCalibrating(containerId, assetId, timeframe);
+      // First attempt — don't block, run in background
+      tryRealData().then(ok => {
+        if (ok) return;
+        // Retry with exponential backoff
+        let retryMs = 5000;
+        const retry = () => {
+          tryRealData().then(success => {
+            if (!success) {
+              retryMs = Math.min(retryMs * 1.5, 30000);
+              setTimeout(retry, retryMs);
+            }
+          });
+        };
+        setTimeout(retry, retryMs);
+      });
     }
   }
 
@@ -479,10 +470,13 @@ const AdvancedChartEngine = (() => {
     const assetId = symbol.split('/')[0];
     const isCrypto = CRYPTO_SYMBOLS.has(assetId);
 
+    // Layer 1: always start the simulated feed — instant, no network needed
+    _startSimulatedFeed(containerId, assetId, tf, candleSeries, volumeSeries);
+
+    // Layer 2: attempt real data on top
     if (isCrypto) {
       _startKlineWebSocket(containerId, assetId, tf, candleSeries, volumeSeries);
     } else {
-      _startSimulatedFeed(containerId, assetId, tf, candleSeries, volumeSeries);
       _startRestFallback(containerId, assetId, tf, candleSeries, volumeSeries, 10000);
     }
   }
