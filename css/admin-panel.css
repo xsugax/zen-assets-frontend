@@ -1335,34 +1335,198 @@ body {
   .user-table td, .user-table thead th { padding: 12px 10px; }
 }
 
+@media (max-width: 768px) {
+  :root {
+    --header-height: 52px;
+    --sidebar-width: 0px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .admin-header {
+    height: var(--header-height);
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .ah-left {
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .ah-logo-text .ah-env { display: none; }
+  .ah-breadcrumb { display: none; }
+  .ah-quick-stat { display: none; }
+  .ah-divider { display: none; }
+
+  .ah-admin-badge {
+    padding: 4px 8px;
+    flex-shrink: 0;
+  }
+
+  .aab-info { display: none; }
+
+  /* Bottom navigation — replaces left sidebar on phones */
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--admin-border);
+    z-index: 110;
+    overflow: visible;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .as-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 8px;
+    flex: 1;
+    gap: 4px;
+  }
+
+  .as-group-label { display: none !important; }
+
+  .as-item {
+    position: relative;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 58px;
+    max-width: 72px;
+    padding: 8px 6px;
+    margin-bottom: 0;
+    font-size: 9px;
+    text-align: center;
+  }
+
+  .as-badge {
+    display: inline-block !important;
+  }
+
+  .as-item span {
+    display: block !important;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 64px;
+  }
+
+  .as-item i {
+    width: auto;
+    font-size: 16px;
+  }
+
+  .as-item.active::before { display: none; }
+
+  .as-badge,
+  .as-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    margin-left: 0;
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+
+  .as-footer { display: none; }
+
+  .admin-main {
+    margin-left: 0 !important;
+    margin-top: var(--header-height);
+    margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding: 12px !important;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    min-height: calc(100vh - var(--header-height) - 64px);
+  }
+
+  .admin-tab.active {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .fin-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .overview-charts-row,
+  .overview-bottom-row,
+  .risk-top-row { flex-direction: column; }
+
+  .users-table-wrap,
+  .data-table-wrap,
+  .admin-table-scroll,
+  .user-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .users-table { min-width: 560px; }
+
+  .at-header,
+  .ac-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .at-header-actions,
+  .ut-filters {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .ut-search { min-width: 100%; }
+
+  .admin-modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .admin-modal-box {
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 0;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .admin-login-container {
+    width: calc(100% - 32px);
+    max-width: 400px;
+    padding: 28px 22px;
+  }
+}
+
 @media (max-width: 600px) {
   .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
   .fin-kpi-row { grid-template-columns: 1fr; }
-  .admin-main { padding: 12px !important; }
-  .users-table-wrap,
-  .data-table-wrap,
-  .admin-table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .users-table { min-width: 640px; }
   .trade-stats-row { grid-template-columns: repeat(2, 1fr); }
   .kyc-grid { grid-template-columns: 1fr; }
   .config-params-grid { grid-template-columns: 1fr; }
-  .admin-header { padding: 0 12px; }
-  .admin-main { margin-left: 60px; padding: 16px; }
-  .at-header { flex-direction: column; align-items: flex-start; gap: 14px; }
-  .at-header-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
-  .ac-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .ac-body { padding: 14px; }
-  .amb-body { padding: 16px; }
-  .amb-row { gap: 10px; }
+  .user-table td,
+  .user-table thead th {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
   .amb-footer { flex-direction: column-reverse; align-items: stretch; }
   .amb-footer button { width: 100%; }
-  .user-table td, .user-table thead th { padding: 12px 10px; white-space: normal; }
-  .user-table-wrap { overflow-x: auto; }
-  .ut-search { min-width: 100%; }
-  .ut-filters { width: 100%; }
-  .admin-modal-box { margin: 0 10px; }
   .admin-card { min-width: 0; }
 }
