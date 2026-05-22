@@ -2133,6 +2133,9 @@
           <button class="fm-claim-all-btn" id="fm-claim-all" onclick="App.claimAllFunds()">
             <i class="fa fa-wallet"></i> Transfer All to Main Wallet
           </button>
+          <button type="button" class="btn btn-outline fm-withdraw-btn" onclick="App.openWithdrawModal()">
+            <i class="fa fa-arrow-up-from-bracket"></i> Request Withdrawal
+          </button>
           <div class="fm-lifetime-claimed">
             <span>Lifetime Claimed:</span>
             <strong id="fm-lifetime-total">$0.00</strong>
@@ -3323,7 +3326,7 @@
             </div>
 
             <div class="wallet-intro">
-              <p>Fund your account through multiple secure channels. Choose any method below to deposit instantly.</p>
+              <p>Fund your account through multiple secure channels. Crypto and manual transfers are credited after admin verification; card deposits confirm via Stripe.</p>
             </div>
 
             <!-- Funding Method Tabs -->
@@ -3417,6 +3420,11 @@
                 </div>
               </div>
 
+              <div class="crypto-deposit-report" style="margin-top:12px">
+                <p class="fund-honesty-note">After sending crypto, report your transfer so our team can match and credit your wallet (usually within 24 hours).</p>
+                <button type="button" class="btn btn-outline" onclick="App.reportCryptoDeposit()"><i class="fa fa-paper-plane"></i> Report crypto transfer</button>
+              </div>
+
               <div class="where-to-buy">
                 <div class="wtb-header"><i class="fa fa-shopping-cart"></i> <span>Don't have crypto? Buy instantly:</span></div>
                 <div class="wtb-platforms">
@@ -3447,7 +3455,7 @@
                   <div class="fmc-header">
                     <div class="fmc-icon card"><i class="fa fa-credit-card"></i></div>
                     <div class="fmc-title">Credit / Debit Card</div>
-                    <div class="fmc-badge instant">Instant</div>
+                    <div class="fmc-badge pending">Stripe</div>
                   </div>
                   <div class="card-brands">
                     <span class="card-brand"><i class="fab fa-cc-visa"></i></span>
@@ -3456,45 +3464,20 @@
                     <span class="card-brand"><i class="fab fa-cc-discover"></i></span>
                     <span class="card-brand"><i class="fab fa-cc-jcb"></i></span>
                   </div>
+                  <p class="fund-honesty-note">Card payments are processed securely by Stripe. Enter the amount below — you will be redirected to Stripe Checkout (no card details are stored on this site).</p>
                   <form class="card-form" id="card-deposit-form" onsubmit="submitCardDeposit(event)">
                     <div class="cf-row">
                       <div class="cf-field full">
-                        <label>Cardholder Name</label>
-                        <input type="text" placeholder="John M. Smith" required autocomplete="cc-name" />
+                        <label>Deposit Amount (USD)</label>
+                        <input type="number" placeholder="1000" min="10" step="0.01" required id="card-deposit-amount" />
                       </div>
                     </div>
-                    <div class="cf-row">
-                      <div class="cf-field full">
-                        <label>Card Number</label>
-                        <div class="cf-input-icon">
-                          <input type="text" placeholder="4242 4242 4242 4242" maxlength="19" required autocomplete="cc-number" oninput="formatCardNumber(this)" />
-                          <i class="fa fa-lock"></i>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="cf-row">
-                      <div class="cf-field">
-                        <label>Expiry</label>
-                        <input type="text" placeholder="MM/YY" maxlength="5" required autocomplete="cc-exp" oninput="formatExpiry(this)" />
-                      </div>
-                      <div class="cf-field">
-                        <label>CVV</label>
-                        <div class="cf-input-icon">
-                          <input type="text" placeholder="123" maxlength="4" required autocomplete="cc-csc" />
-                          <i class="fa fa-shield-halved"></i>
-                        </div>
-                      </div>
-                      <div class="cf-field">
-                        <label>Amount (USD)</label>
-                        <input type="number" placeholder="1,000" min="50" step="0.01" required id="card-deposit-amount" />
-                      </div>
-                    </div>
-                    <button type="submit" class="btn-fund-submit"><i class="fa fa-lock"></i> Deposit Securely</button>
+                    <button type="submit" class="btn-fund-submit"><i class="fa fa-lock"></i> Continue to Stripe Checkout</button>
                     <div class="card-form-security">
-                      <i class="fa fa-shield-check"></i> 256-bit SSL ï¿½ PCI DSS Level 1 ï¿½ 3D Secure
+                      <i class="fa fa-shield-check"></i> Powered by Stripe — funds credit after payment confirmation
                     </div>
                   </form>
-                  <div class="fmc-limits">Min: $50 ï¿½ Max: $50,000 ï¿½ Fee: <span style="color:#e8b960">2.9% + $0.30</span></div>
+                  <div class="fmc-limits">Min: $10 — Max: $50,000 — Fee: <span style="color:#e8b960">2.9% + $0.30</span></div>
                 </div>
               </div>
             </div>
@@ -3633,7 +3616,7 @@
                   <li><strong>Choose</strong> your preferred e-wallet platform above</li>
                   <li><strong>Copy</strong> the recipient email/ID and send funds from your wallet</li>
                   <li><strong>Include</strong> your ZEN reference code in the transaction note</li>
-                  <li><strong>Funds</strong> are credited instantly to 24 hours depending on the platform</li>
+                  <li><strong>Funds</strong> are credited after payment confirmation (card via Stripe) or admin verification (crypto/manual), typically within 24 hours</li>
                 </ol>
                 <div class="fi-warning"><i class="fa fa-exclamation-triangle"></i>
                   <span><strong>Important:</strong> Always use the same name on your e-wallet and ZEN ASSETS account. Mismatched names may delay verification.</span>
@@ -3872,12 +3855,42 @@
           <div class="sec-val">AI-Powered IDS</div>
           <div class="sec-status green">SCANNING</div>
         </div>
-        <div class="glass-card sec-card">
+        <div class="glass-card sec-card" id="kyc-status-card">
           <div class="sec-icon red"><i class="fa fa-user-shield"></i></div>
           <div class="sec-label">KYC / AML</div>
-          <div class="sec-val">Tier 3 Verified</div>
-          <div class="sec-status green">VERIFIED</div>
+          <div class="sec-val" id="kyc-status-label">Not submitted</div>
+          <div class="sec-status" id="kyc-status-badge">PENDING</div>
         </div>
+      </div>
+
+      <div class="glass-card" style="padding:16px;margin-top:12px">
+        <div class="card-header" style="margin-bottom:12px">
+          <span class="ch-title"><i class="fa fa-id-card"></i> Identity Verification (KYC)</span>
+        </div>
+        <p class="sec-hint" style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Required for withdrawals over $1,000. Upload a government ID and selfie.</p>
+        <form id="kyc-submit-form" class="kyc-form" onsubmit="App.submitKyc(event)">
+          <div class="cf-row">
+            <select id="kyc-doc-type" required>
+              <option value="passport">Passport</option>
+              <option value="drivers_license">Driver's License</option>
+              <option value="national_id">National ID</option>
+            </select>
+          </div>
+          <label class="kyc-file-label">ID Front <input type="file" id="kyc-doc-front" accept="image/*" required /></label>
+          <label class="kyc-file-label">Selfie <input type="file" id="kyc-selfie" accept="image/*" required /></label>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-upload"></i> Submit for Review</button>
+        </form>
+      </div>
+
+      <div class="glass-card" style="padding:16px;margin-top:12px">
+        <div class="card-header" style="margin-bottom:12px">
+          <span class="ch-title"><i class="fa fa-key"></i> Change Password</span>
+        </div>
+        <form id="change-password-form" onsubmit="App.changePassword(event)">
+          <input type="password" id="cp-current" placeholder="Current password" required style="width:100%;margin-bottom:8px" />
+          <input type="password" id="cp-new" placeholder="New password (8+ chars)" required minlength="8" style="width:100%;margin-bottom:8px" />
+          <button type="submit" class="btn btn-primary btn-sm">Update Password</button>
+        </form>
       </div>
 
       <!-- Key Stream -->
@@ -3905,6 +3918,32 @@
 </div><!-- /app -->
 
 
+
+<!-- Withdraw Modal -->
+<div class="modal-overlay" id="withdraw-modal" style="display:none">
+  <div class="modal-box glass-card" style="max-width:420px;padding:24px">
+    <h3 style="margin:0 0 16px"><i class="fa fa-arrow-up-from-bracket"></i> Request Withdrawal</h3>
+    <form id="withdraw-form" onsubmit="App.submitWithdraw(event)">
+      <label>Amount (USD)</label>
+      <input type="number" id="withdraw-amount" min="10" step="0.01" required style="width:100%;margin:8px 0 12px" />
+      <label>Method</label>
+      <select id="withdraw-method" required style="width:100%;margin:8px 0 12px">
+        <option value="crypto_usdt">USDT (TRC20/SPL)</option>
+        <option value="crypto_btc">Bitcoin</option>
+        <option value="crypto_eth">Ethereum</option>
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="paypal">PayPal</option>
+      </select>
+      <label>Wallet / account address</label>
+      <input type="text" id="withdraw-address" placeholder="Your payout address" style="width:100%;margin:8px 0 12px" />
+      <p style="font-size:11px;color:var(--text-muted)">Funds are reserved immediately. Admin approval required (1–3 business days).</p>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button type="button" class="btn btn-outline" onclick="App.closeWithdrawModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- --- SEARCH OVERLAY --- -->
 <div id="search-overlay" class="search-overlay">

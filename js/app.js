@@ -2111,6 +2111,7 @@ const App = (() => {
       // Only run when security section is active, and clear previous timer
       if (_keyStreamTimer) clearInterval(_keyStreamTimer);
       if (_section === 'security') {
+        refreshKycStatus();
         _keyStreamTimer = setInterval(() => {
           if (_section !== 'security') { clearInterval(_keyStreamTimer); _keyStreamTimer = null; return; }
           keyStream.textContent = gen();
@@ -2537,12 +2538,21 @@ const App = (() => {
     return `${hr}h ago`;
   }
 
-  function startLiveNotifications() {
-    // Initial notifications
-    addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
-    addNotification('fa-robot', 'ai', 'AI Engine:', ' All neural models loaded and calibrated');
+  async function _loadServerNotifications() {
+    if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn() || !UserAuth.getNotifications) return;
+    const items = await UserAuth.getNotifications();
+    items.slice(0, 10).forEach((n) => {
+      addNotification('fa-bullhorn', 'sec', n.subject || 'Announcement:', ` ${(n.message || '').substring(0, 80)}`);
+    });
+  }
 
-    // Generate periodic live notifications
+  function startLiveNotifications() {
+    addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
+    _loadServerNotifications();
+
+    const useDemoFeed = !(typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn());
+    if (!useDemoFeed) return;
+
     const _notifTypes = [
       () => {
         const assets = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'AVAX'];
@@ -3146,6 +3156,21 @@ const App = (() => {
     const form = $('register-form');
     if (!form) return;
 
+    if (typeof UserAuth !== 'undefined' && UserAuth.getPlatformConfig) {
+      UserAuth.getPlatformConfig().then((cfg) => {
+        if (cfg && (cfg.registration === false || cfg.maintenance)) {
+          const errBox = $('register-error');
+          if (errBox) {
+            errBox.textContent = cfg.maintenance
+              ? 'Registration is closed during maintenance.'
+              : 'New registrations are temporarily closed.';
+            errBox.classList.add('visible');
+          }
+          form.querySelectorAll('input, button, select').forEach((el) => { el.disabled = true; });
+        }
+      }).catch(() => {});
+    }
+
     // Tier selection
     window.selectRegTier = (el) => {
       document.querySelectorAll('.tier-opt').forEach(o => o.classList.remove('selected'));
@@ -3560,6 +3585,95 @@ const App = (() => {
     }
   }
 
+  function openWithdrawModal() {
+    const m = $('withdraw-modal');
+    if (m) m.style.display = 'flex';
+  }
+  function closeWithdrawModal() {
+    const m = $('withdraw-modal');
+    if (m) m.style.display = 'none';
+  }
+  async function submitWithdraw(e) {
+    e.preventDefault();
+    const amount = parseFloat($('withdraw-amount')?.value);
+    const method = $('withdraw-method')?.value;
+    const address = ($('withdraw-address')?.value || '').trim();
+    if (!amount || amount < 10) return showToast('Minimum withdrawal is $10', 'error');
+    if (method.startsWith('crypto_') && !address) return showToast('Payout address is required', 'error');
+    const result = await UserAuth.requestWithdrawal(amount, method, address);
+    if (!result.ok) return showToast(result.error || 'Withdrawal failed', 'error');
+    showToast('Withdrawal submitted — pending admin approval', 'success', 6000);
+    closeWithdrawModal();
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+      await InvestmentReturns.forceBalanceSync();
+    }
+  }
+
+  function _fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function refreshKycStatus() {
+    if (typeof UserAuth === 'undefined' || !UserAuth.getKYCStatus) return;
+    const data = await UserAuth.getKYCStatus();
+    const label = $('kyc-status-label');
+    const badge = $('kyc-status-badge');
+    const status = (data?.kyc_status || data?.kycStatus || 'none').toLowerCase();
+    if (label) label.textContent = status.replace('_', ' ');
+    if (badge) {
+      badge.textContent = status.toUpperCase();
+      badge.className = 'sec-status ' + (status === 'verified' ? 'green' : status === 'rejected' ? 'red' : '');
+    }
+  }
+
+  async function submitKyc(e) {
+    e.preventDefault();
+    const docType = $('kyc-doc-type')?.value;
+    const frontFile = $('kyc-doc-front')?.files?.[0];
+    const selfieFile = $('kyc-selfie')?.files?.[0];
+    if (!frontFile || !selfieFile) return showToast('Please upload ID and selfie', 'error');
+    try {
+      const doc_front = await _fileToBase64(frontFile);
+      const selfie = await _fileToBase64(selfieFile);
+      const result = await UserAuth.submitKYC({ doc_type: docType, doc_front, selfie });
+      if (!result.ok) return showToast(result.error || 'KYC submit failed', 'error');
+      showToast('Documents submitted for review', 'success');
+      refreshKycStatus();
+    } catch (err) {
+      showToast('Could not read image files', 'error');
+    }
+  }
+
+  async function changePassword(e) {
+    e.preventDefault();
+    const currentPassword = $('cp-current')?.value;
+    const newPassword = $('cp-new')?.value;
+    const result = await UserAuth.changePassword(currentPassword, newPassword);
+    if (!result.ok) return showToast(result.error || 'Password update failed', 'error');
+    showToast('Password updated successfully', 'success');
+    e.target.reset();
+  }
+
+  async function reportCryptoDeposit() {
+    if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) {
+      return showToast('Sign in to report a transfer', 'error');
+    }
+    const amount = parseFloat(prompt('Amount sent (USD equivalent):', '1000'));
+    if (!amount || amount <= 0) return;
+    const method = prompt('Asset sent (btc, eth, usdt, usdc, sol):', 'usdt') || 'usdt';
+    const ref = prompt('Transaction hash or reference (optional):', '') || '';
+    const map = { btc: 'crypto_btc', eth: 'crypto_eth', usdt: 'crypto_usdt', usdc: 'crypto_usdc', sol: 'crypto_sol' };
+    const m = map[method.toLowerCase().replace(/[^a-z]/g, '')] || 'crypto_usdt';
+    const result = await UserAuth.requestDeposit(amount, m, ref);
+    if (!result.ok) return showToast(result.error || 'Could not submit deposit request', 'error');
+    showToast('Deposit reported — pending admin verification', 'success', 6000);
+  }
+
   // ── Admin Panel (moved to standalone admin.html) ───────
 
   return {
@@ -3569,6 +3683,8 @@ const App = (() => {
     closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
     claimFundPool, claimAllFunds, claimDailyBonus,
     loadActiveSessions, revokeAllOtherSessions,
+    openWithdrawModal, closeWithdrawModal, submitWithdraw,
+    submitKyc, refreshKycStatus, changePassword, reportCryptoDeposit,
     getActiveSymbol() { return _sym; },
   };
 })();

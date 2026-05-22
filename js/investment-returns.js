@@ -368,6 +368,12 @@ const InvestmentReturns = (() => {
         if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
       }
 
+      if (apiPendingEarnings > 0 && Math.abs(apiPendingEarnings - (state.unclaimedInterest || 0)) > 0.01) {
+        state.unclaimedInterest = apiPendingEarnings;
+        saveState();
+        if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
+      }
+
       lastKnownBalance = apiBalance;
 
     } catch (err) {
@@ -746,18 +752,14 @@ const InvestmentReturns = (() => {
     // Call backend API to claim earnings — this updates the real wallet balance
     try {
       if (typeof UserAuth !== 'undefined') {
-        const result = await UserAuth._api('/wallet/claim', {
-          method: 'POST',
-          body: { amount, pool },
-          auth: true,
-        });
+        const result = await UserAuth.claimEarnings(amount, pool);
 
         if (result.ok) {
-          // Update local state to match backend
           const balanceBefore = state.walletBalance;
-          state.walletBalance = result.balanceAfter;
-          state[p.field] = Math.max(0, state[p.field] - amount);
-          state.totalClaimed += amount;
+          const claimedAmt = result.claimed || amount;
+          state.walletBalance = result.balanceAfter ?? (balanceBefore + claimedAmt);
+          state[p.field] = Math.max(0, state[p.field] - claimedAmt);
+          state.totalClaimed += claimedAmt;
 
           // Update claim streak
           const today = new Date().toDateString();

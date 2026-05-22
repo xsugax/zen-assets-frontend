@@ -4145,6 +4145,7 @@ body:has(#sidebar.collapsed) #main-content { left: 64px; }
   letter-spacing: 0.3px; text-transform: uppercase;
 }
 .fmc-badge.instant { background: rgba(95,179,142,0.12); color: #5fb38e; }
+.fmc-badge.pending { background: rgba(240,160,48,0.12); color: #e8b960; }
 
 .fmc-details { margin-bottom: 12px; }
 .fmc-row {

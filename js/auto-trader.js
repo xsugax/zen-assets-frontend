@@ -260,6 +260,13 @@ const AutoTrader = (() => {
     // Keep compound stats panel refreshed every 5 seconds
     setInterval(_updateCompoundStats, 5000);
     
+    if (typeof UserAuth !== 'undefined' && UserAuth.getPlatformConfig) {
+      UserAuth.getPlatformConfig().then((cfg) => {
+        if (cfg && cfg.autoTrader === false) CONFIG.enabled = false;
+        if (cfg && cfg.trading === false) CONFIG.enabled = false;
+      }).catch(() => {});
+    }
+
     // Only auto-start if account is funded by admin
     if (CONFIG.enabled && typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && InvestmentReturns.isActivated()) {
       start();

@@ -113,8 +113,9 @@ const UserAuth = (() => {
       localStorage.setItem('zen_data_version', DATA_VERSION);
     },
 
-    // Seed built-in admin on first run
+    // Seed built-in admin on first run (dev/offline only — never in production API mode)
     ensureAdmin() {
+      if (IS_PRODUCTION_API) return;
       const existing = this.findByEmail('admin@zenassets.com');
       if (existing) return;
       const users = this.getAll();
@@ -893,7 +894,76 @@ const UserAuth = (() => {
   }
 
   async function claimEarnings(amount, pool = 'all') {
-    return _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
+    const result = await _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
+    if (result.ok) {
+      return {
+        ok: true,
+        claimed: result.claimed,
+        balanceAfter: result.balanceAfter,
+        pendingEarnings: result.pendingEarnings,
+      };
+    }
+    return result;
+  }
+
+  async function adminGetDeposits() {
+    if (!isAdmin()) return [];
+    const result = await _api('/admin/deposits');
+    return result.ok ? (result.deposits || []) : [];
+  }
+
+  async function adminApproveDeposit(txId) {
+    return _api(`/admin/deposits/${txId}/approve`, { method: 'POST' });
+  }
+
+  async function adminRejectDeposit(txId, reason = '') {
+    return _api(`/admin/deposits/${txId}/reject`, { method: 'POST', body: { reason } });
+  }
+
+  async function adminGetConfig() {
+    const result = await _api('/admin/config');
+    return result.ok ? result.config : null;
+  }
+
+  async function adminSaveConfig(config) {
+    const result = await _api('/admin/config', { method: 'PATCH', body: config });
+    return result.ok ? { ok: true, config: result.config } : result;
+  }
+
+  async function adminGetPendingKyc() {
+    if (!isAdmin()) return [];
+    const result = await _api('/kyc/pending');
+    return result.ok ? (result.pending || []) : [];
+  }
+
+  async function adminReviewKyc(id, decision, notes = '') {
+    return _api(`/kyc/${id}/review`, { method: 'PATCH', body: { decision, notes } });
+  }
+
+  async function adminSendBroadcast({ subject, message, recipients }) {
+    return _api('/admin/broadcasts', { method: 'POST', body: { subject, message, recipients } });
+  }
+
+  async function getNotifications() {
+    const result = await _api('/notifications');
+    return result.ok ? (result.notifications || []) : [];
+  }
+
+  async function getPlatformConfig() {
+    try {
+      const resp = await fetch(`${API_BASE}/platform/config`);
+      const data = await resp.json();
+      return data.config || {};
+    } catch {
+      return { registration: true, trading: true, withdrawals: true, maintenance: false };
+    }
+  }
+
+  async function changePassword(currentPassword, newPassword) {
+    return _api('/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+    });
   }
 
   async function getTransactions(params = {}) {
@@ -1136,6 +1206,10 @@ const UserAuth = (() => {
     refreshSession,
     getWallet, getCachedWallet,
     requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
+    changePassword, getPlatformConfig,
+    adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
+    adminGetConfig, adminSaveConfig, adminGetPendingKyc, adminReviewKyc, adminSendBroadcast,
+    getNotifications,
     adminGetAllUsers, adminGetUser, adminUpdateUser, adminCreateUser, adminDeleteUser,
     adminCreditUser, adminDebitUser,
     adminGetWithdrawals, adminApproveWithdrawal, adminRejectWithdrawal,
