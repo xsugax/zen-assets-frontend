@@ -3322,18 +3322,16 @@
           <div class="glass-card wallet-funding-card" style="padding:16px;margin-top:12px">
             <div class="card-header" style="margin-bottom:16px">
               <span class="ch-title"><i class="fa fa-wallet"></i> Fund Trading Wallet</span>
-              <span class="badge-count glow">8 METHODS</span>
+              <span class="badge-count glow">CRYPTO + E-WALLETS</span>
             </div>
 
             <div class="wallet-intro">
-              <p>Fund your account through multiple secure channels. Crypto and manual transfers are credited after admin verification; card deposits confirm via Stripe.</p>
+              <p>Fund your account with crypto or e-wallets. All deposits are credited after admin verification (typically within 24 hours).</p>
             </div>
 
             <!-- Funding Method Tabs -->
             <div class="fund-method-tabs">
               <button class="fm-tab active" data-fm="crypto" onclick="switchFundingMethod('crypto',this)"><i class="fab fa-bitcoin"></i> Crypto</button>
-
-              <button class="fm-tab" data-fm="card" onclick="switchFundingMethod('card',this)"><i class="fa fa-credit-card"></i> Card</button>
               <button class="fm-tab" data-fm="ewallet" onclick="switchFundingMethod('ewallet',this)"><i class="fa fa-wallet"></i> E-Wallets</button>
             </div>
 
@@ -3444,40 +3442,6 @@
                     <div class="wtb-icon"><i class="fa fa-c" style="font-size:20px;color:#02558B"></i></div>
                     <div class="wtb-name">Crypto.com</div><div class="wtb-desc">Card payments</div>
                   </a>
-                </div>
-              </div>
-            </div>
-
-            <!-- --- CARD PAYMENTS --- -->
-            <div class="fund-panel" id="fm-card">
-              <div class="fund-method-grid">
-                <div class="fund-method-card card-payment-form">
-                  <div class="fmc-header">
-                    <div class="fmc-icon card"><i class="fa fa-credit-card"></i></div>
-                    <div class="fmc-title">Credit / Debit Card</div>
-                    <div class="fmc-badge pending">Stripe</div>
-                  </div>
-                  <div class="card-brands">
-                    <span class="card-brand"><i class="fab fa-cc-visa"></i></span>
-                    <span class="card-brand"><i class="fab fa-cc-mastercard"></i></span>
-                    <span class="card-brand"><i class="fab fa-cc-amex"></i></span>
-                    <span class="card-brand"><i class="fab fa-cc-discover"></i></span>
-                    <span class="card-brand"><i class="fab fa-cc-jcb"></i></span>
-                  </div>
-                  <p class="fund-honesty-note">Card payments are processed securely by Stripe. Enter the amount below — you will be redirected to Stripe Checkout (no card details are stored on this site).</p>
-                  <form class="card-form" id="card-deposit-form" onsubmit="submitCardDeposit(event)">
-                    <div class="cf-row">
-                      <div class="cf-field full">
-                        <label>Deposit Amount (USD)</label>
-                        <input type="number" placeholder="1000" min="10" step="0.01" required id="card-deposit-amount" />
-                      </div>
-                    </div>
-                    <button type="submit" class="btn-fund-submit"><i class="fa fa-lock"></i> Continue to Stripe Checkout</button>
-                    <div class="card-form-security">
-                      <i class="fa fa-shield-check"></i> Powered by Stripe — funds credit after payment confirmation
-                    </div>
-                  </form>
-                  <div class="fmc-limits">Min: $10 — Max: $50,000 — Fee: <span style="color:#e8b960">2.9% + $0.30</span></div>
                 </div>
               </div>
             </div>
@@ -3616,7 +3580,7 @@
                   <li><strong>Choose</strong> your preferred e-wallet platform above</li>
                   <li><strong>Copy</strong> the recipient email/ID and send funds from your wallet</li>
                   <li><strong>Include</strong> your ZEN reference code in the transaction note</li>
-                  <li><strong>Funds</strong> are credited after payment confirmation (card via Stripe) or admin verification (crypto/manual), typically within 24 hours</li>
+                  <li><strong>Funds</strong> are credited after admin verification, typically within 24 hours</li>
                 </ol>
                 <div class="fi-warning"><i class="fa fa-exclamation-triangle"></i>
                   <span><strong>Important:</strong> Always use the same name on your e-wallet and ZEN ASSETS account. Mismatched names may delay verification.</span>

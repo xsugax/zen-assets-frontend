@@ -1062,33 +1062,6 @@ const UserAuth = (() => {
     return _api('/kyc/status');
   }
 
-  // ── Stripe Deposits ──────────────────────────────────────
-  async function getStripePublishableKey() {
-    const result = await _api('/stripe/publishable-key');
-    return result.key || null;
-  }
-
-  async function createStripeSession(amount) {
-    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
-    if (!amount || isNaN(amount) || Number(amount) < 10) {
-      return { ok: false, error: 'Minimum deposit is $10.' };
-    }
-    return _api('/stripe/create-session', { method: 'POST', body: { amount: Number(amount) } });
-  }
-
-  // ── Redirect to Stripe Checkout ──────────────────────────
-  async function redirectToStripe(amount) {
-    const result = await createStripeSession(amount);
-    if (!result.ok && !result.url) {
-      return { ok: false, error: result.error || 'Failed to create payment session.' };
-    }
-    if (result.url) {
-      window.location.href = result.url;
-      return { ok: true };
-    }
-    return result;
-  }
-
   // ── Email via backend admin API (authenticated) ──────────
   async function adminNotifyEmail(type, data) {
     if (!isAdmin()) return { ok: false };
@@ -1217,7 +1190,6 @@ const UserAuth = (() => {
     requestUpgrade,
     saveTrade, getTrades, getTradeStats,
     submitKYC, getKYCStatus,
-    getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
     sendEmailNotification: _sendEmail, adminNotifyEmail,
     hashPassword: _simpleHash,

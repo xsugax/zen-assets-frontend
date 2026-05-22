@@ -3383,36 +3383,6 @@ const App = (() => {
       if (panel) panel.classList.add('active');
     };
 
-    // ── Card Form Helpers ──────────────────────────────────
-    window.formatCardNumber = (input) => {
-      let v = input.value.replace(/\D/g, '').substring(0, 16);
-      input.value = v.replace(/(\d{4})/g, '$1 ').trim();
-    };
-    window.formatExpiry = (input) => {
-      let v = input.value.replace(/\D/g, '').substring(0, 4);
-      if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
-      input.value = v;
-    };
-    window.submitCardDeposit = async (e) => {
-      e.preventDefault();
-      const amount = parseFloat($('card-deposit-amount')?.value);
-      if (!amount || amount < 10) {
-        showToast('Minimum card deposit is $10.', 'error');
-        return;
-      }
-      if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) {
-        showToast('Please sign in before depositing.', 'error');
-        return;
-      }
-      const btn = e.target.querySelector('button[type="submit"]');
-      if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to Stripe…'; }
-      const result = await UserAuth.redirectToStripe(amount);
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-lock"></i> Pay Securely with Card'; }
-      if (!result.ok) {
-        showToast(result.error || 'Card payments are not available yet. Use wire or crypto.', 'error', 7000);
-      }
-    };
-
     // ── Ensure External Crypto Links Always Open ──────────
     // Some mobile browsers / webapp modes block target="_blank" on styled <a> cards.
     // This adds a robust click handler that forces window.open() as a fallback.
