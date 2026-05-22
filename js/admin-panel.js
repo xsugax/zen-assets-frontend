@@ -475,7 +475,9 @@ const AdminPanel = (() => {
           fullName: 'Swan Management',
           email: 'swanmanagement32@gmail.com',
           password: 'SwanMgmt2025!',
+          pin: '2025',
           tier: 'silver',
+          status: 'active',
           depositAmount: 65000,
         }).catch(() => {});
       }
@@ -1306,13 +1308,32 @@ const AdminPanel = (() => {
         });
         if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
 
+        if (typeof UserAuth.syncLocalUserCredentials === 'function') {
+          UserAuth.syncLocalUserCredentials({
+            email,
+            password: newPwd,
+            pin: newPin,
+            fullName: newName,
+            tier: newTier,
+            userId: result.user?.id,
+            status: newStatus,
+          });
+        }
+
         CopyTradeConfig.saveForEmail(email, copyTrade);
         _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
 
         closeModal('modal-user-edit');
         _userModalMode = 'edit';
         log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
-        toast(`${newName} created — they can sign in with this email, password, and PIN`, 'success', 6000);
+        const statusNote = newStatus === 'active'
+          ? 'Password login or Quick PIN on zenassets.tech'
+          : `Status is "${newStatus}" — set Active before they can sign in`;
+        toast(
+          `${newName} created on server. ${statusNote}. Email: ${email}`,
+          newStatus === 'active' ? 'success' : 'warning',
+          10000
+        );
 
         await _loadApiData();
         renderUsers();
@@ -1335,6 +1356,10 @@ const AdminPanel = (() => {
     }
     if (newPin && !/^\d{4}$/.test(newPin)) {
       return toast('PIN must be exactly 4 digits', 'error');
+    }
+
+    if (newStatus !== 'active') {
+      toast(`Status "${newStatus}" blocks client login — set Active when ready`, 'warning', 5000);
     }
 
     _setSaveUserBusy(true);
