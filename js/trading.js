@@ -258,13 +258,12 @@ const Trading = (() => {
     } catch {}
 
     // Toast notification
+    const pnlStr = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+    const toastMsg = typeof ZenCopy !== 'undefined'
+      ? `Copy ${trader.name}: ${cp.sym} — ${pnl >= 0 ? ZenCopy.trade.closedPositive(pnlStr) : ZenCopy.trade.closedNegative(pnlStr)}`
+      : `Copy ${trader.name}: ${cp.sym} closed · ${pnlStr}`;
     if (typeof createToast !== 'undefined') {
-      const icon = pnl >= 0 ? '✅' : '🔻';
-      createToast(
-        `${icon} Copy ${trader.name}: ${cp.sym}`,
-        `${cp.side.toUpperCase()} closed ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
-        pnl >= 0 ? 'success' : 'warning', 4000
-      );
+      createToast(toastMsg, '', pnl >= 0 ? 'success' : 'info', 4000);
     }
 
     _log(`COPY [${trader.name}] CLOSE ${cp.side.toUpperCase()} ${cp.sym} PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
@@ -400,7 +399,7 @@ const Trading = (() => {
     if (!t.active && !canAccessCopyTrader(id)) {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       if (typeof createToast !== 'undefined') {
-        createToast('🔒 Tier Locked', `${t.name} requires ${tierLabels[t.minTier] || t.minTier} tier or higher`, 'warning', 4000);
+        createToast('Tier requirement', `${t.name} requires ${tierLabels[t.minTier] || t.minTier} tier or higher`, 'info', 4000);
       }
       return;
     }

@@ -296,6 +296,19 @@ const UserAuth = (() => {
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
 
   function _saveSession(s) { const store = _getStore(); s ? store.setItem(STORAGE_SESSION, JSON.stringify(s)) : store.removeItem(STORAGE_SESSION); }
+
+  function _sessionFromUser(user) {
+    return {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tier: user.tier,
+      fullName: user.fullName,
+      loginAt: Date.now(),
+      tradingPaused: !!user.tradingPaused,
+      profitPaused: !!user.profitPaused,
+    };
+  }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
   function _saveRefresh(r) {
     if (r) {
@@ -558,14 +571,7 @@ const UserAuth = (() => {
       if (userStatus === 'suspended' || userStatus === 'frozen' || userStatus === 'blocked') {
         return { ok: false, error: 'Your account has been suspended. Please contact support.' };
       }
-      const session = {
-        userId: result.user.id,
-        email: result.user.email,
-        role: result.user.role,
-        tier: result.user.tier,
-        fullName: result.user.fullName,
-        loginAt: Date.now(),
-      };
+      const session = _sessionFromUser(result.user);
       _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
       _applyCopySettingsFromUser(result.user);
       console.log(`[AUTH] ✓ Login successful: ${email}`);
@@ -607,14 +613,7 @@ const UserAuth = (() => {
     });
 
     if (result.ok && result.token) {
-      const session = {
-        userId: result.user.id,
-        email: result.user.email,
-        role: result.user.role,
-        tier: result.user.tier,
-        fullName: result.user.fullName,
-        loginAt: Date.now(),
-      };
+      const session = _sessionFromUser(result.user);
       _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
       _applyCopySettingsFromUser(result.user);
       return { ok: true, user: result.user, session, wallet: result.wallet };
@@ -690,14 +689,8 @@ const UserAuth = (() => {
       if (refreshed) result = await _api('/auth/me');
     }
     if (result.ok && result.user) {
-      const session = {
-        userId: result.user.id,
-        email: result.user.email,
-        role: result.user.role,
-        tier: result.user.tier,
-        fullName: result.user.fullName,
-        loginAt: Date.now(),
-      };
+      const session = _sessionFromUser(result.user);
+      session.loginAt = Date.now();
       _saveSession(session);
       if (result.wallet) _saveWallet(result.wallet);
       if (typeof CopyTradeConfig !== 'undefined' && result.user) {

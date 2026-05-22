@@ -47,19 +47,48 @@ const ChartDataIndicator = (() => {
     return badge;
   }
 
+  function _styleBadge(badge, variant) {
+    badge.style.background = 'rgba(8,12,22,0.88)';
+    badge.style.borderRadius = '20px';
+    badge.style.display = 'inline-flex';
+    badge.classList.remove('feel-calibrating', 'feel-live', 'feel-loading');
+    if (variant === 'live') {
+      badge.classList.add('feel-live');
+      badge.style.border = '1px solid rgba(46,189,133,0.3)';
+      badge.style.color = '#2ebd85';
+    } else if (variant === 'calibrating') {
+      badge.classList.add('feel-calibrating');
+      badge.style.border = '1px solid rgba(201,162,39,0.35)';
+      badge.style.color = '#c9a227';
+    } else {
+      badge.classList.add('feel-loading');
+      badge.style.border = '1px solid rgba(122,143,168,0.25)';
+      badge.style.color = '#7a8fa8';
+    }
+  }
+
   // ── Update Badge Status ──────────────────────────────────
   function updateStatus(chartContainerId, isRealData, symbol = '', timeframe = '1h') {
     const badge = createBadge(chartContainerId);
     if (!badge) return;
 
-    // Always show live status — real market data feed
-    badge.innerHTML = `LIVE · ${symbol} · ${timeframe.toUpperCase()}`;
-    badge.style.background = 'rgba(8,12,22,0.88)';
-    badge.style.border = '1px solid rgba(46,189,133,0.3)';
-    badge.style.color = '#2ebd85';
-    badge.style.borderRadius = '20px';
+    if (isRealData) {
+      const text = typeof ZenCopy !== 'undefined'
+        ? ZenCopy.chart.live(symbol, timeframe)
+        : `Live · ${symbol} · ${timeframe.toUpperCase()}`;
+      badge.innerHTML = text;
+      _styleBadge(badge, 'live');
+    } else {
+      badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.calibrating : 'Calibrating feed…';
+      _styleBadge(badge, 'calibrating');
+    }
+  }
 
-    badge.style.display = 'inline-flex';
+  function setCalibrating(chartContainerId, symbol = '', timeframe = '1h') {
+    const badge = createBadge(chartContainerId);
+    if (!badge) return;
+    badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.calibrating : 'Calibrating feed…';
+    _styleBadge(badge, 'calibrating');
   }
 
   // ── Hide Badge ───────────────────────────────────────────
@@ -77,19 +106,15 @@ const ChartDataIndicator = (() => {
   function showLoading(chartContainerId) {
     const badge = createBadge(chartContainerId);
     if (!badge) return;
-
-    badge.innerHTML = `FETCHING ···`;
-    badge.style.background = 'rgba(8,12,22,0.88)';
-    badge.style.border = '1px solid rgba(139,152,173,0.2)';
-    badge.style.color = '#4a5568';
-    badge.style.borderRadius = '20px';
-    badge.style.display = 'inline-flex';
+    badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.loading : 'Updating live data…';
+    _styleBadge(badge, 'loading');
   }
 
   // ── Public API ───────────────────────────────────────────
   return {
     createBadge,
     updateStatus,
+    setCalibrating,
     hide,
     showLoading,
   };

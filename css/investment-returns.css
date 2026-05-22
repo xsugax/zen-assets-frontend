@@ -505,11 +505,11 @@
 
 /* Pending Pulse (total unclaimed badge) */
 .fm-pending-pulse {
-  animation: fmPendingPulse 1.5s ease-in-out infinite;
+  animation: fmPendingPulse 3s ease-in-out infinite;
 }
 @keyframes fmPendingPulse {
-  0%, 100% { color: #00e676; text-shadow: 0 0 4px rgba(0,230,118,0.2); }
-  50%      { color: #69f0ae; text-shadow: 0 0 12px rgba(0,230,118,0.5); }
+  0%, 100% { color: #5fb38e; text-shadow: none; }
+  50%      { color: #7ec9a8; text-shadow: 0 0 6px rgba(95,179,142,0.2); }
 }
 
 /* Extended Claimed Flash */

@@ -178,15 +178,25 @@ const App = (() => {
     let pct = 0;
     const fastBoot = isMobileView();
 
-    const MSGS = [
-      'INITIALIZING QUANTUM CORE...',
-      'CONNECTING NEURAL NETWORKS...',
-      'LOADING MARKET DATA FEEDS...',
-      'CALIBRATING AI MODELS...',
-      'ESTABLISHING SECURE TUNNEL...',
-      'MOUNTING ASSET UNIVERSE...',
-      'SYSTEM READY — WELCOME TO ZEN',
-    ];
+    const MSGS = typeof ZenCopy !== 'undefined'
+      ? [
+          ZenCopy.system.sessionSecured + '…',
+          ZenCopy.system.loadingPortfolio + '…',
+          ZenCopy.system.syncingMarkets + '…',
+          'Preparing workspace…',
+          'Loading market data…',
+          'Syncing account…',
+          'Ready',
+        ]
+      : [
+          'Securing session…',
+          'Loading portfolio…',
+          'Syncing market data…',
+          'Preparing workspace…',
+          'Loading market data…',
+          'Syncing account…',
+          'Ready',
+        ];
 
     const counterDur = fastBoot ? 1100 : 1800;
     animBootCounter('bm-nodes',  0, 2048,   counterDur);
@@ -596,6 +606,10 @@ const App = (() => {
   async function initCharts() {
     const symbol = _sym;
 
+    if (typeof ChartDataIndicator !== 'undefined') {
+      ChartDataIndicator.setCalibrating('main-price-chart', symbol.split('/')[0], _activeTimeframe);
+    }
+
     // ── Destroy any stale chart instance first ──────────────
     if (typeof AdvancedChartEngine !== 'undefined') {
       try { AdvancedChartEngine.destroy('main-price-chart'); } catch {}
@@ -677,16 +691,18 @@ const App = (() => {
     const healthEl = $('kpi-health-score');
     if (healthEl) healthEl.style.color = health.color;
 
-    // Live win rate from AutoTrader
-    let winRateStr = '73.2%';
+    // Live win rate from AutoTrader (honest empty state)
+    let winRateStr = typeof ZenCopy !== 'undefined' ? ZenCopy.system.winRateEmpty : '—';
     let tradeCountStr = '';
-    let sessionPnLStr = '';
+    let sessionPnLStr = typeof ZenCopy !== 'undefined' ? ZenCopy.system.sessionAwaiting : '';
     if (typeof AutoTrader !== 'undefined') {
       const atStats = AutoTrader.getStatistics();
       if (atStats.totalTrades > 0) {
         winRateStr = `${atStats.winRate.toFixed(1)}%`;
         tradeCountStr = `${atStats.totalTrades} trades`;
         sessionPnLStr = `${atStats.totalPnL >= 0 ? '+' : ''}$${fmt(Math.abs(atStats.totalPnL), 2)}`;
+      } else {
+        winRateStr = typeof ZenCopy !== 'undefined' ? ZenCopy.system.winRateCalibrating : 'Calibrating';
       }
     }
     setText('kpi-win-rate',   winRateStr);
@@ -784,7 +800,9 @@ const App = (() => {
     setText('fm-weekly-amount',   `$${fmt(fm.unclaimedWeekly, 2)}`);
     setText('fm-trading-amount',  `$${fmt(fm.unclaimedTrading, 2)}`);
     setText('fm-interest-amount', `$${fmt(fm.unclaimedInterest, 2)}`);
-    setText('fm-total-unclaimed', `Pending: $${fmt(fm.totalUnclaimed, 2)}`);
+    setText('fm-total-unclaimed', typeof ZenCopy !== 'undefined'
+      ? ZenCopy.funds.accruing('Accruing', `$${fmt(fm.totalUnclaimed, 2)}`)
+      : `Accruing: $${fmt(fm.totalUnclaimed, 2)}`);
     setText('fm-lifetime-total',  `$${fmt(fm.totalClaimed, 2)}`);
 
     // Color-code amounts: green glow if > 0
@@ -831,12 +849,17 @@ const App = (() => {
     const overlay = $('fm-claim-overlay');
     if (!overlay) { callback(); return; }
 
-    const steps = [
-      { text: 'Verifying pool balance...', icon: 'fa-shield-halved', delay: 600 },
-      { text: 'Calculating compound interest...', icon: 'fa-calculator', delay: 800 },
-      { text: 'Transferring to main wallet...', icon: 'fa-arrow-right-arrow-left', delay: 700 },
-      { text: 'Confirming transaction...', icon: 'fa-circle-check', delay: 500 },
-    ];
+    const steps = typeof ZenCopy !== 'undefined'
+      ? [
+          { text: ZenCopy.funds.claimStep1 + '…', icon: 'fa-shield-halved', delay: 600 },
+          { text: ZenCopy.funds.claimStep2 + '…', icon: 'fa-arrow-right-arrow-left', delay: 700 },
+          { text: ZenCopy.funds.claimStep3 + '…', icon: 'fa-circle-check', delay: 500 },
+        ]
+      : [
+          { text: 'Verifying balance…', icon: 'fa-shield-halved', delay: 600 },
+          { text: 'Transferring to wallet…', icon: 'fa-arrow-right-arrow-left', delay: 700 },
+          { text: 'Complete', icon: 'fa-circle-check', delay: 500 },
+        ];
 
     overlay.style.display = 'flex';
     overlay.classList.add('fm-overlay-active');
@@ -852,7 +875,7 @@ const App = (() => {
     function runStep() {
       if (stepIdx >= steps.length) {
         // Final success state
-        if (statusEl) statusEl.textContent = 'Transfer Complete!';
+        if (statusEl) statusEl.textContent = typeof ZenCopy !== 'undefined' ? ZenCopy.funds.claimStep3 : 'Complete';
         if (iconEl) { iconEl.className = 'fa fa-check-circle'; }
         if (barEl) barEl.style.width = '100%';
         overlay.classList.add('fm-process-success');
@@ -884,7 +907,10 @@ const App = (() => {
     const fm = InvestmentReturns.getFundManagerSnapshot();
     const poolAmounts = { daily: fm.unclaimedDaily, weekly: fm.unclaimedWeekly, trading: fm.unclaimedTrading, interest: fm.unclaimedInterest };
     const amount = poolAmounts[pool] || 0;
-    if (amount <= 0) { showToast('No pending funds in this pool', 'info'); return; }
+    if (amount <= 0) {
+      showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.funds.noPending : 'No accrued funds in this pool', 'info');
+      return;
+    }
 
     const labels = { daily: 'Daily Bonus', weekly: 'Weekly Bonus', trading: 'Trading Profits', interest: 'Compound Interest' };
 
@@ -900,16 +926,18 @@ const App = (() => {
           setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 1500);
         }
 
-        showToast(`✅ ${result.label}: +$${fmt(result.amount, 2)} transferred to wallet!`, 'success');
+        showToast(typeof ZenCopy !== 'undefined'
+          ? ZenCopy.funds.claimed(`$${fmt(result.amount, 2)}`)
+          : `${result.label}: +$${fmt(result.amount, 2)} transferred to wallet`, 'success');
         if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('💰 Fund Transfer', `${result.label}: $${fmt(result.amount, 2)} → Main Wallet (Balance: $${fmt(result.balanceAfter, 2)})`, 'success');
+          App.addNotification('fa-wallet', 'ai', 'Transfer recorded:', ` ${result.label} $${fmt(result.amount, 2)}`);
         }
         // Flash the pool card
         const card = document.querySelector(`.fm-pool-card[data-pool="${pool}"]`);
         if (card) { card.classList.add('fm-claimed-flash'); setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200); }
         // Streak notification
         if (result.streak > 1) {
-          setTimeout(() => showToast(`🔥 ${result.streak}-day claim streak! Keep it up!`, 'info'), 1800);
+          setTimeout(() => showToast(`${result.streak}-day claim streak recorded`, 'info'), 1800);
         }
         if (typeof Gamification !== 'undefined') Gamification.trackClaim();
         updateFundManagerUI();
@@ -923,7 +951,10 @@ const App = (() => {
   async function claimAllFunds() {
     if (typeof InvestmentReturns === 'undefined') return;
     const fm = InvestmentReturns.getFundManagerSnapshot();
-    if (fm.totalUnclaimed <= 0) { showToast('No pending funds to claim', 'info'); return; }
+    if (fm.totalUnclaimed <= 0) {
+      showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.funds.noPending : 'No accrued funds to claim', 'info');
+      return;
+    }
 
     _showClaimProcessing(fm.totalUnclaimed, 'All Earnings', async () => {
       const result = await InvestmentReturns.claimAll();
@@ -938,9 +969,11 @@ const App = (() => {
           setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 2000);
         }
 
-        showToast(`✅ All earnings claimed: +$${fmt(result.totalClaimed, 2)} → Wallet!`, 'success');
+        showToast(typeof ZenCopy !== 'undefined'
+          ? ZenCopy.funds.claimedAll(`$${fmt(result.totalClaimed, 2)}`)
+          : `All earnings transferred · +$${fmt(result.totalClaimed, 2)}`, 'success');
         if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('💰 Bulk Transfer', `$${fmt(result.totalClaimed, 2)} from ${result.claimed.length} pools → Main Wallet`, 'success');
+          App.addNotification('fa-wallet', 'ai', 'Bulk transfer recorded:', ` $${fmt(result.totalClaimed, 2)}`);
         }
         // Flash all pool cards
         document.querySelectorAll('.fm-pool-card').forEach(card => {
@@ -1174,7 +1207,7 @@ const App = (() => {
     list.innerHTML = _copyTraderBannerHtml() + posHtml + traders.map(t => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
-      const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const liveTag = t.active ? '<span class="ct-live-badge" title="' + (typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance') + '">Active</span>' : '';
       const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
       return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!unlocked ? 'ct-locked' : ''}">
@@ -1185,8 +1218,8 @@ const App = (() => {
           ${tradesInfo}
         </div>
         <div class="ct-stats">
-          <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
-          <small>30d PnL</small>
+          <span class="${clsPnl(parseFloat(t.pnl30d))} feel-metric" title="${typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance'}">${t.pnl30d}</span>
+          <small>30d indicative</small>
         </div>
         ${_copyTraderButton(t, unlocked)}
       </div>`;
@@ -1400,6 +1433,13 @@ const App = (() => {
     const banner = $('crisis-mode-banner'); if (!banner) return;
     const isCrisis = AIEngine.isCrisisMode();
     banner.classList.toggle('hidden', !isCrisis);
+    if (isCrisis) {
+      banner.classList.add('feel-stable');
+      const msg = $('crisis-msg');
+      if (msg && typeof ZenCopy !== 'undefined') {
+        msg.textContent = ZenCopy.system.crisisNeutral;
+      }
+    }
   }
 
   // ── Portfolio Section ──────────────────────────────────────
@@ -1551,7 +1591,7 @@ const App = (() => {
 
     container.innerHTML = positions.map(p => {
       const pnlCls = clsPnl(p.pnl);
-      const sideColor = p.side === 'long' ? '#00ff88' : '#ff4757';
+      const sideColor = p.side === 'long' ? 'var(--feel-up, #2ebd85)' : 'var(--feel-down, #7a8fa8)';
       const mktBadge = p.market ? `<span class="pos-market-badge mkt-${p.market}">${p.market}</span>` : '';
       return `<div class="position-row">
         ${mktBadge}<span class="pos-symbol">${p.sym}</span>
@@ -1592,7 +1632,7 @@ const App = (() => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
       const pnlClass = t.copiedBal >= 0 ? 'up' : 'down';
-      const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
+      const liveTag = t.active ? '<span class="ct-live-badge" title="' + (typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance') + '">Active</span>' : '';
       const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
       return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!unlocked ? 'ct-locked' : ''}">
@@ -1603,8 +1643,8 @@ const App = (() => {
           ${tradesInfo}
         </div>
         <div class="ct-stats">
-          <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
-          <small>30d PnL</small>
+          <span class="${clsPnl(parseFloat(t.pnl30d))} feel-metric" title="${typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance'}">${t.pnl30d}</span>
+          <small>30d indicative</small>
         </div>
         ${_copyTraderButton(t, unlocked)}
       </div>`;
@@ -1781,17 +1821,19 @@ const App = (() => {
     });
   }
 
-  function executeTrade(side) {
+  async function executeTrade(side) {
     const symEl  = $('order-symbol');  const sym  = symEl  ? symEl.value  : 'BTC/USD';
     const qtyEl  = $('order-qty');     const qty  = qtyEl  ? parseFloat(qtyEl.value) || 0.01 : 0.01;
     const slEl   = $('order-sl');      const sl   = slEl   ? parseFloat(slEl.value)  : undefined;
     const tpEl   = $('order-tp');      const tp   = tpEl   ? parseFloat(tpEl.value)  : undefined;
 
-    // Resolve asset ID from symbol
     const assetId = sym.split('/')[0];
     const market = _activeMarket;
+    const execMsg = typeof ZenCopy !== 'undefined' ? ZenCopy.trade.executing : 'Routing order…';
 
-    // Use TradeEngine for isolated market execution
+    showToast(execMsg, 'progress', 0);
+    await _assuredDelay(380);
+
     if (typeof TradeEngine !== 'undefined') {
       const result = TradeEngine.placeOrder({
         market,
@@ -1804,7 +1846,8 @@ const App = (() => {
       });
 
       if (result.error) {
-        showToast(`⚠️ ${result.error}`, 'warning');
+        dismissProgressToast();
+        showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.system.actionFailed : result.error, 'info', 5000);
         return;
       }
 
@@ -1812,27 +1855,28 @@ const App = (() => {
       const price = pos.entry;
       const value = pos.value.toFixed(2);
 
-      // Auto-fill entry price display
       const entryEl = $('order-entry');
       if (entryEl) entryEl.value = fmtPx(price);
 
-      // Update AI risk panel
       const arpText = $('arp-text');
       if (arpText) {
         const rr = ((pos.tp) - price) / (price - (pos.sl));
-        arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} [${market}] — Position value: $${value} — Risk managed.`;
+        arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} [${market}] — Position value: $${value} — Risk parameters set.`;
         const rrEl = $('rr-display');
         if (rrEl) rrEl.textContent = Math.abs(rr).toFixed(1) + ':1';
       }
 
-      showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(price)} ($${value}) — ${market} FILLED`, 'success');
-      addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} [${market}] @ $${fmtPx(price)}`);
+      dismissProgressToast();
+      const detail = typeof ZenCopy !== 'undefined'
+        ? ZenCopy.trade.confirmedDetail(side, qty, sym, fmtPx(price), value)
+        : `${side === 'long' ? 'Buy' : 'Sell'} ${qty} ${sym} @ $${fmtPx(price)}`;
+      showToast(typeof ZenCopy !== 'undefined' ? `${ZenCopy.trade.confirmed} — ${detail}` : `Order confirmed — ${detail}`, 'success');
+      addNotification('fa-check-circle', 'ai', 'Order confirmed:', ` ${side.toUpperCase()} ${qty} ${sym}`);
       if (typeof Gamification !== 'undefined') Gamification.trackTrade();
       renderPositions();
       return;
     }
 
-    // Fallback: legacy Trading module
     const a      = MarketData.getAllAssets().find(x => x.sym === sym || x.id === sym);
     const price  = a ? a.price : 100;
     const value  = (qty * price).toFixed(2);
@@ -1848,8 +1892,9 @@ const App = (() => {
     const entryEl = $('order-entry');
     if (entryEl) entryEl.value = price.toFixed(2);
 
-    showToast(`✅ ${side === 'long' ? 'BUY' : 'SELL'} ${qty} ${sym} @ $${fmtPx(order.price)} ($${value}) — FILLED`, 'success');
-    addNotification('fa-check-circle', 'ai', 'Trade Executed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
+    dismissProgressToast();
+    showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.trade.confirmed : 'Order confirmed', 'success');
+    addNotification('fa-check-circle', 'ai', 'Order confirmed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
     if (typeof Gamification !== 'undefined') Gamification.trackTrade();
     renderPositions();
   }
@@ -2407,20 +2452,63 @@ const App = (() => {
   }
 
   // ── Toast System ─────────────────────────────────────────
+  let _progressToastEl = null;
+
+  function dismissProgressToast() {
+    if (_progressToastEl) {
+      _progressToastEl.remove();
+      _progressToastEl = null;
+    }
+  }
+
+  function _assuredDelay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   function showToast(msg, type = 'info', duration = 4000) {
-    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+    const icons = {
+      success: 'fa-check-circle',
+      error: 'fa-times-circle',
+      warning: 'fa-circle-info',
+      info: 'fa-info-circle',
+      progress: 'fa-circle-notch fa-spin',
+    };
     const container = $('toast-container');
-    if (!container) return;
+    if (!container) return null;
+
+    if (type === 'progress') {
+      dismissProgressToast();
+      const t = document.createElement('div');
+      t.className = 'toast toast-progress';
+      t.innerHTML = `<i class="fa-solid ${icons.progress}"></i><span>${msg}</span>`;
+      container.prepend(t);
+      _progressToastEl = t;
+      requestAnimationFrame(() => { t.style.animation = 'toast-in .3s ease forwards'; t.style.opacity = '1'; });
+      return t;
+    }
+
+    dismissProgressToast();
     const t = document.createElement('div');
     t.className = `toast toast-${type}`;
     t.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${msg}</span>`;
     container.prepend(t);
     requestAnimationFrame(() => { t.style.animation = 'toast-in .3s ease forwards'; t.style.opacity = '1'; });
-    setTimeout(() => {
-      t.style.animation = 'toast-out .3s ease forwards';
-      setTimeout(() => t.remove(), 300);
-    }, duration);
+    if (duration > 0) {
+      setTimeout(() => {
+        t.style.animation = 'toast-out .3s ease forwards';
+        setTimeout(() => t.remove(), 300);
+      }, duration);
+    }
+    return t;
   }
+
+  window.createToast = function createToast(title, body, type = 'info', duration = 4000) {
+    const msg = body ? `${title}: ${body}` : title;
+    if (typeof App !== 'undefined' && App.showToast) {
+      return App.showToast(msg, type, duration);
+    }
+    return showToast(msg, type, duration);
+  };
 
   // ── Forgot / Reset Password ─────────────────────────────
   window.showForgotPassword = function() {
@@ -2541,16 +2629,23 @@ const App = (() => {
   async function _loadServerNotifications() {
     if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn() || !UserAuth.getNotifications) return;
     const items = await UserAuth.getNotifications();
-    items.slice(0, 10).forEach((n) => {
-      addNotification('fa-bullhorn', 'sec', n.subject || 'Announcement:', ` ${(n.message || '').substring(0, 80)}`);
+    items.slice(0, 8).forEach((n) => {
+      const snippet = (n.message || '').substring(0, 100);
+      addNotification('fa-bullhorn', 'sec', (n.subject || 'Announcement') + ':', ` ${snippet}`);
     });
   }
 
   function startLiveNotifications() {
-    addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
-    _loadServerNotifications();
+    const loggedIn = typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn();
+    if (loggedIn) {
+      addNotification('fa-shield', 'sec', 'Session:', ' Secured and active');
+      _loadServerNotifications();
+      return;
+    }
 
-    const useDemoFeed = !(typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn());
+    addNotification('fa-shield', 'sec', 'Security:', ' Session secured with 256-bit encryption');
+
+    const useDemoFeed = true;
     if (!useDemoFeed) return;
 
     const _notifTypes = [
@@ -2642,8 +2737,11 @@ const App = (() => {
     if (pos) {
       const pnlStr = `${pos.pnl >= 0 ? '+' : ''}$${Math.abs(pos.pnl).toFixed(2)}`;
       const mktTag = pos.market ? ` [${pos.market}]` : '';
-      showToast(`Position closed: ${pos.sym}${mktTag} ${pos.side.toUpperCase()} → P&L: ${pnlStr}`, pos.pnl >= 0 ? 'success' : 'warning');
-      addNotification(pos.pnl >= 0 ? 'fa-arrow-up' : 'fa-arrow-down', pos.pnl >= 0 ? 'ai' : 'whale', 'Position Closed:', ` ${pos.sym}${mktTag} ${pnlStr}`);
+      const closeMsg = typeof ZenCopy !== 'undefined'
+        ? (pos.pnl >= 0 ? ZenCopy.trade.closedPositive(pnlStr) : ZenCopy.trade.closedNegative(pnlStr))
+        : `Position closed · ${pnlStr}`;
+      showToast(`${pos.sym}${mktTag} ${closeMsg}`, pos.pnl >= 0 ? 'success' : 'info');
+      addNotification('fa-chart-line', 'ai', 'Position closed:', ` ${pos.sym}${mktTag} ${pnlStr}`);
       if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
     }
   }
@@ -3461,12 +3559,47 @@ const App = (() => {
     }, 200);
   }
 
+  function _updateFeelStatusBar(session) {
+    const dash = $('section-dashboard');
+    if (!dash) return;
+    let bar = $('feel-status-bar');
+    const tradingPaused = session && session.tradingPaused;
+    const profitPaused = session && session.profitPaused;
+    if (!tradingPaused && !profitPaused) {
+      if (bar) bar.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'feel-status-bar';
+      bar.className = 'feel-status-bar';
+      const header = dash.querySelector('.section-header');
+      if (header && header.nextSibling) {
+        dash.insertBefore(bar, header.nextSibling);
+      } else {
+        dash.prepend(bar);
+      }
+    }
+    const parts = [];
+    if (tradingPaused && typeof ZenCopy !== 'undefined') parts.push(ZenCopy.system.tradingPaused);
+    else if (tradingPaused) parts.push('Automated trading paused.');
+    if (profitPaused && typeof ZenCopy !== 'undefined') parts.push(ZenCopy.system.profitsPaused);
+    else if (profitPaused) parts.push('Earnings accrual paused.');
+    bar.innerHTML = `<i class="fa fa-pause-circle"></i><span>${parts.join(' ')}</span>`;
+  }
+
   // ── Sync User Badge & Tier ───────────────────────────────
-  function _syncUserUI() {
+  async function _syncUserUI() {
     if (typeof UserAuth === 'undefined') return;
+
+    if (UserAuth.refreshSession) {
+      try { await UserAuth.refreshSession(); } catch (_) { /* keep cached session */ }
+    }
 
     const session = UserAuth.getSession();
     if (!session) return;
+
+    _updateFeelStatusBar(session);
 
     // Update header badge
     const nameEl  = $('user-display-name');

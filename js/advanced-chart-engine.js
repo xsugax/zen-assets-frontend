@@ -292,6 +292,9 @@ const AdvancedChartEngine = (() => {
         const simCandles = MarketData.getOHLCV(assetId, tf.limit, timeframe) || [];
         if (simCandles.length > 0) {
           _renderCandles(containerId, candleSeries, volumeSeries, ma20Series, ma50Series, ema12Series, ema26Series, vwapSeries, bbUpperSeries, bbLowerSeries, simCandles, symbol, false, timeframe);
+          if (typeof ChartDataIndicator !== 'undefined') {
+            ChartDataIndicator.setCalibrating(containerId, assetId, timeframe);
+          }
           console.log(`📊 [${assetId}] Rendered ${simCandles.length} simulated candles`);
         } else {
           console.warn(`⚠️ [${assetId}] getOHLCV returned empty`);
@@ -309,6 +312,9 @@ const AdvancedChartEngine = (() => {
     // ── Step 2: Try upgrading to real Binance/Yahoo data in background ──
     if (typeof RealDataAdapter !== 'undefined') {
       const tryRealData = async () => {
+        if (typeof ChartDataIndicator !== 'undefined') {
+          ChartDataIndicator.showLoading(containerId);
+        }
         try {
           const real = await RealDataAdapter.fetchHistoricalCandles(assetId, tf.binance, tf.limit);
           if (real && real.length >= 5) {

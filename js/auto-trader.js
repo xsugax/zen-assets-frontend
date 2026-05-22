@@ -654,8 +654,8 @@ const AutoTrader = (() => {
       trade.durationLabel = _formatDuration(elapsed);
       trade.closedAt = Date.now();
       trade.closeReason = pnl >= 0
-        ? (pnlPct > 1.5 ? 'Take Profit hit — target reached' : 'AI confidence exit — securing gains')
-        : 'Stop Loss triggered — risk managed';
+        ? (pnlPct > 1.5 ? (typeof ZenCopy !== 'undefined' ? ZenCopy.trade.closeReasonTarget : 'Target reached') : 'Session exit — gains secured')
+        : (typeof ZenCopy !== 'undefined' ? ZenCopy.trade.closeReasonReview : 'Session review exit');
 
       // Balance updates are handled by backend API — frontend syncs periodically
       // Removed: InvestmentReturns.creditTradingProfit/debitTradingLoss calls
@@ -729,17 +729,16 @@ const AutoTrader = (() => {
         }).catch(() => {}); // fire-and-forget, never block the UI
       }
 
-      const icon = pnl >= 0 ? '✅' : '🔻';
-      console.log(`${icon} AUTO-CLOSE: ${trade.symbol} ${trade.side.toUpperCase()} | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`);
+      console.log(`AUTO-CLOSE: ${trade.symbol} ${trade.side.toUpperCase()} | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`);
 
-      // Notification
+      const pnlStr = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`;
+      const toastMsg = typeof ZenCopy !== 'undefined'
+        ? `${trade.symbol} — ${pnl >= 0 ? ZenCopy.trade.closedPositive(pnlStr) : ZenCopy.trade.closedNegative(pnlStr)}`
+        : `${trade.symbol} closed · ${pnlStr}`;
       if (typeof createToast !== 'undefined') {
-        createToast(
-          `${icon} Trade Closed: ${trade.symbol}`,
-          `PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`,
-          pnl >= 0 ? 'success' : 'warning',
-          4000
-        );
+        createToast(toastMsg, '', pnl >= 0 ? 'success' : 'info', 4000);
+      } else if (typeof App !== 'undefined' && App.showToast) {
+        App.showToast(toastMsg, pnl >= 0 ? 'success' : 'info');
       }
     });
   }
@@ -931,7 +930,7 @@ const AutoTrader = (() => {
       const displayPnlPct = isOpen ? (trade.runningPnlPct || 0) : trade.pnlPct;
       const pnlClass = displayPnl >= 0 ? 'profit' : 'loss';
       const statusClass = isOpen ? 'status-open' : (trade.pnl >= 0 ? 'status-won' : 'status-lost');
-      const statusLabel = isOpen ? '● LIVE' : (trade.pnl >= 0 ? '✓ WON' : '✗ LOSS');
+      const statusLabel = isOpen ? 'Active' : (trade.pnl >= 0 ? 'Closed +' : 'Closed −');
       const sideIcon = trade.side === 'long' ? '📈' : '📉';
       const stratIcon = trade.strategyIcon || '🤖';
       const elapsed = isOpen ? _formatDuration(Date.now() - trade.timestamp) : (trade.durationLabel || _formatDuration(trade.duration || 0));
