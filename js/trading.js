@@ -37,10 +37,64 @@ const Trading = (() => {
   const _activeCopyPositions = [];  // live tracked positions from copy traders
   let _copyPnlTimer = null;
 
+  function _getAdminCopyConfig() {
+    if (typeof CopyTradeConfig === 'undefined') {
+      return { enabled: false, mode: 'disabled', percent: 15 };
+    }
+    return CopyTradeConfig.getForCurrentUser();
+  }
+
+  function _isTraderAllowedByAdmin(traderId) {
+    const cfg = _getAdminCopyConfig();
+    if (!cfg.enabled || cfg.mode === 'disabled') return false;
+    const tier = _getUserTier();
+    const allowed = CopyTradeConfig.getTraderIdsForMode(cfg.mode, tier);
+    return allowed.includes(traderId);
+  }
+
+  /** Apply admin copy settings — activates only admin-selected trader(s) */
+  function syncAdminCopyTraders() {
+    const cfg = _getAdminCopyConfig();
+    const tier = _getUserTier();
+    const allowed = cfg.enabled && cfg.mode !== 'disabled'
+      ? CopyTradeConfig.getTraderIdsForMode(cfg.mode, tier)
+      : [];
+
+    copyTraders.forEach(t => {
+      t.active = allowed.includes(t.id);
+      if (!t.active) {
+        t.copiedBal = 0;
+        t.tradesExecuted = 0;
+      }
+    });
+
+    if (allowed.length > 0) startCopyTradeEngine();
+    else if (!copyTraders.some(c => c.active)) stopCopyTradeEngine();
+  }
+
+  function isCopyTradingAdminLocked() {
+    const cfg = _getAdminCopyConfig();
+    return cfg.enabled && cfg.mode !== 'disabled';
+  }
+
+  function getAdminCopySummary() {
+    const cfg = _getAdminCopyConfig();
+    if (!cfg.enabled || cfg.mode === 'disabled') {
+      return { active: false, label: 'Copy trading off', percent: 0, mode: 'disabled' };
+    }
+    return {
+      active: true,
+      label: CopyTradeConfig.modeLabel(cfg.mode),
+      percent: cfg.percent,
+      mode: cfg.mode,
+    };
+  }
+
   function startCopyTradeEngine() {
     if (_copyTradeTimer) return;
     _copyTradeTimer = setInterval(() => {
-      const active = copyTraders.filter(t => t.active);
+      syncAdminCopyTraders();
+      const active = copyTraders.filter(t => t.active && _isTraderAllowedByAdmin(t.id));
       if (active.length === 0) return;
 
       active.forEach(trader => {
@@ -83,6 +137,9 @@ const Trading = (() => {
   }
 
   function executeCopyTrade(trader) {
+    const cfg = _getAdminCopyConfig();
+    if (!cfg.enabled || cfg.mode === 'disabled' || !_isTraderAllowedByAdmin(trader.id)) return;
+
     const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'XRP/USD'];
     const sym = symbols[Math.floor(Math.random() * symbols.length)];
     const assetId = sym.split('/')[0];
@@ -99,8 +156,9 @@ const Trading = (() => {
     else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven';
     else outcome = 'loss';
 
-    // Position size: 0.7-2.2% of balance
-    const tradePct = 0.007 + Math.random() * 0.015;
+    // Position size: admin % of wallet (±15% variance per trade)
+    const basePct = (cfg.percent || 15) / 100;
+    const tradePct = basePct * (0.85 + Math.random() * 0.3);
     let portfolioValue = 100000;
     if (typeof InvestmentReturns !== 'undefined') {
       const snap = InvestmentReturns.getSnapshot();
@@ -325,6 +383,19 @@ const Trading = (() => {
     const t = copyTraders.find(c => c.id === id);
     if (!t) return;
 
+    const cfg = _getAdminCopyConfig();
+    if (cfg.enabled && cfg.mode !== 'disabled') {
+      if (typeof createToast !== 'undefined') {
+        createToast(
+          'Admin-Managed Copy',
+          `${CopyTradeConfig.modeLabel(cfg.mode)} @ ${cfg.percent}% — contact support to change`,
+          'info',
+          5000
+        );
+      }
+      return;
+    }
+
     // Tier gate — check before activation
     if (!t.active && !canAccessCopyTrader(id)) {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
@@ -372,6 +443,7 @@ const Trading = (() => {
     getPositions, getCopyTraders, getStrategies,
     getAuditLog, getOrderLog, calcFee, autoHedge,
     toggleCopyTrader, canAccessCopyTrader,
+    syncAdminCopyTraders, isCopyTradingAdminLocked, getAdminCopySummary,
     getActiveCopyPositions() { return _activeCopyPositions; },
   };
 })();

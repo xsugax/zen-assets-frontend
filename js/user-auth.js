@@ -308,6 +308,14 @@ const UserAuth = (() => {
   function _saveWallet(w)  { const store = _getStore(); w ? store.setItem(STORAGE_WALLET, JSON.stringify(w)) : store.removeItem(STORAGE_WALLET); }
 
   // ── Persist auth — localStorage for multi-device; sessionStorage only if remember unchecked ──
+  function _applyCopySettingsFromUser(user) {
+    if (!user?.email || typeof CopyTradeConfig === 'undefined') return;
+    CopyTradeConfig.applyFromApiUser(user);
+    if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+      try { Trading.syncAdminCopyTraders(); } catch (_) { /* trading may load later */ }
+    }
+  }
+
   function _persistAuth(token, session, wallet, remember = true, refreshToken = null) {
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
@@ -517,6 +525,7 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
+      _applyCopySettingsFromUser(result.user);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     if (result.ok) {
@@ -557,6 +566,7 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
+      _applyCopySettingsFromUser(result.user);
       console.log(`[AUTH] ✓ Login successful: ${email}`);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
@@ -605,6 +615,7 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
+      _applyCopySettingsFromUser(result.user);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
@@ -688,6 +699,12 @@ const UserAuth = (() => {
       };
       _saveSession(session);
       if (result.wallet) _saveWallet(result.wallet);
+      if (typeof CopyTradeConfig !== 'undefined' && result.user) {
+        CopyTradeConfig.applyFromApiUser(result.user);
+        if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+          Trading.syncAdminCopyTraders();
+        }
+      }
       return { user: result.user, wallet: result.wallet };
     }
     if (result.status === 401) {
@@ -806,10 +823,10 @@ const UserAuth = (() => {
     return _api(`/admin/users/${userId}`, { method: 'PATCH', body: updates });
   }
 
-  async function adminCreateUser({ email, fullName, password, pin, tier, status, kycStatus, depositAmount }) {
+  async function adminCreateUser({ email, fullName, password, pin, tier, status, kycStatus, depositAmount, copyTrade }) {
     const result = await _api('/admin/users', {
       method: 'POST',
-      body: { email, fullName, password, pin, tier, status, kycStatus, depositAmount },
+      body: { email, fullName, password, pin, tier, status, kycStatus, depositAmount, copyTrade },
     });
     if (result.ok && (result.success || result.user)) {
       return { ok: true, success: true, user: result.user, wallet: result.wallet };

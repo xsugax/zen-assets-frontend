@@ -1247,6 +1247,32 @@ body {
   color: var(--admin-text-muted);
 }
 .amb-field .req { color: var(--admin-orange); font-weight: 700; }
+.amb-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--admin-accent);
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border);
+}
+.amb-section-title i { margin-right: 6px; }
+.amb-check { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.amb-check input { width: 16px; height: 16px; }
+.amb-range { width: 100%; margin-top: 4px; accent-color: var(--admin-accent); }
+.copy-mode-hint { font-size: 11px; color: var(--admin-text-dim); margin: 6px 0 0; }
+.copy-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(212, 165, 116, 0.12);
+  color: var(--admin-accent);
+  white-space: nowrap;
+}
+.copy-chip.off { background: rgba(255,255,255,0.06); color: var(--admin-text-dim); }
 
 .amb-row {
   display: flex; gap: 16px; margin-bottom: 16px;

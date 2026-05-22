@@ -324,6 +324,14 @@ const App = (() => {
     if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.init();
       console.log('💰 Investment returns engine ACTIVE');
+
+      if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn && UserAuth.isLoggedIn()) {
+        UserAuth.refreshSession().then(() => {
+          if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+            Trading.syncAdminCopyTraders();
+          }
+        }).catch(() => {});
+      }
       
       // Update returns UI every 5 seconds
       setInterval(() => {
@@ -1142,6 +1150,7 @@ const App = (() => {
   // ── Dashboard Copy Traders ────────────────────────────────
   function renderDashCopyTraders() {
     const list = $('dash-copy-trade-list'); if (!list) return;
+    if (typeof Trading.syncAdminCopyTraders === 'function') Trading.syncAdminCopyTraders();
     const traders = Trading.getCopyTraders();
 
     // ── Live copy-trade positions strip ────────────────────
@@ -1162,11 +1171,9 @@ const App = (() => {
         '</div>';
     }
 
-    list.innerHTML = posHtml + traders.map(t => {
+    list.innerHTML = _copyTraderBannerHtml() + posHtml + traders.map(t => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
-      const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
-      const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
       const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
       const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
@@ -1181,7 +1188,7 @@ const App = (() => {
           <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
           <small>30d PnL</small>
         </div>
-        <button class="btn ${btnCls} btn-xs" onclick="App.toggleCopyTrader('${t.id}')">${btnTxt}</button>
+        ${_copyTraderButton(t, unlocked)}
       </div>`;
     }).join('');
   }
@@ -1558,13 +1565,32 @@ const App = (() => {
     }).join('');
   }
 
+  function _copyTraderBannerHtml() {
+    if (typeof Trading.getAdminCopySummary !== 'function') return '';
+    const s = Trading.getAdminCopySummary();
+    if (!s.active) return '';
+    return `<div class="ct-admin-banner"><i class="fa fa-shield-alt"></i> Admin-assigned: <strong>${s.label}</strong> · ${s.percent}% of wallet per trade</div>`;
+  }
+
+  function _copyTraderButton(t, unlocked) {
+    const adminLocked = typeof Trading.isCopyTradingAdminLocked === 'function' && Trading.isCopyTradingAdminLocked();
+    const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
+    if (adminLocked) {
+      return t.active
+        ? '<span class="ct-admin-badge">ACTIVE</span>'
+        : '<span class="ct-admin-badge">ASSIGNED</span>';
+    }
+    const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
+    const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
+    return `<button class="btn ${btnCls} btn-xs" onclick="App.toggleCopyTrader('${t.id}')">${btnTxt}</button>`;
+  }
+
   function renderCopyTraders() {
     const list = $('copy-trade-list'); if (!list) return;
-    list.innerHTML = Trading.getCopyTraders().map(t => {
+    if (typeof Trading.syncAdminCopyTraders === 'function') Trading.syncAdminCopyTraders();
+    list.innerHTML = _copyTraderBannerHtml() + Trading.getCopyTraders().map(t => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
-      const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
-      const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
       const pnlClass = t.copiedBal >= 0 ? 'up' : 'down';
       const liveTag = t.active ? '<span class="ct-live-badge">● LIVE</span>' : '';
       const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
@@ -1580,7 +1606,7 @@ const App = (() => {
           <span class="${clsPnl(parseFloat(t.pnl30d))}">${t.pnl30d}</span>
           <small>30d PnL</small>
         </div>
-        <button class="btn ${btnCls} btn-xs" onclick="App.toggleCopyTrader('${t.id}')">${btnTxt}</button>
+        ${_copyTraderButton(t, unlocked)}
       </div>`;
     }).join('');
   }

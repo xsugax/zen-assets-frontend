@@ -239,6 +239,9 @@ const AdminPanel = (() => {
       deposit:         parseFloat(u.balance) || parseFloat(u.depositAmount) || 0,
       totalDeposited:  parseFloat(u.total_deposited) || parseFloat(u.totalDeposited) || parseFloat(u.depositAmount) || 0,
       tradeCount:      u.trade_count || u.tradeCount || 0,
+      copyTrade:       (typeof CopyTradeConfig !== 'undefined' && u.copyTrade)
+                         ? CopyTradeConfig.normalize(u.copyTrade)
+                         : { enabled: false, mode: 'disabled', percent: 15 },
     };
   }
 
@@ -988,7 +991,7 @@ const AdminPanel = (() => {
     if (!tbody) return;
 
     if (pageItems.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty-row"><i class="fa fa-users-slash"></i> No users found</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-row"><i class="fa fa-users-slash"></i> No users found</td></tr>`;
     } else {
       tbody.innerHTML = pageItems.map(u => {
         const tierInfo = TIERS[u.tier] || TIERS.bronze;
@@ -1017,6 +1020,7 @@ const AdminPanel = (() => {
                 <span class="sc-dot"></span>${u.status}
               </span>
             </td>
+            <td>${_copyTradeCell(u)}</td>
             <td class="text-muted">${fmtDate(u.createdAt)}</td>
             <td class="text-muted">${timeAgo(u.lastLogin)}</td>
             <td><span class="risk-badge ${riskClass}">${riskScore}</span></td>
@@ -1245,6 +1249,7 @@ const AdminPanel = (() => {
     $('edit-user-earnings').value = user.earningsOverride || '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
+    _fillCopyTradeForm(user.copyTrade || _getAdminControls(email).copyTrade);
 
     openModal('modal-user-edit');
   }
@@ -1263,6 +1268,7 @@ const AdminPanel = (() => {
     const newPin    = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
     const newPwd    = $('edit-user-password') ? $('edit-user-password').value.trim() : '';
     const deposit   = parseFloat($('edit-user-deposit').value) || 0;
+    const copyTrade = _readCopyTradeForm();
 
     // ── CREATE NEW USER ──
     if (isCreate) {
@@ -1281,8 +1287,12 @@ const AdminPanel = (() => {
           status: newStatus,
           kycStatus: newKyc,
           depositAmount: deposit,
+          copyTrade,
         });
         if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
+
+        CopyTradeConfig.saveForEmail(email, copyTrade);
+        _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
 
         closeModal('modal-user-edit');
         _userModalMode = 'edit';
@@ -1325,6 +1335,7 @@ const AdminPanel = (() => {
         kycStatus: newKyc !== 'none' ? newKyc : undefined,
         balance: deposit ? newTotalBalance : undefined,
         depositAmount: deposit ? newTotalBalance : undefined,
+        copyTrade,
       });
       if (!result.ok) {
         toast(result.error || 'Server update failed', 'error');
@@ -1342,6 +1353,8 @@ const AdminPanel = (() => {
     user.tier     = newTier;
     user.status   = newStatus;
     if (newKyc) user.kycStatus = newKyc;
+    user.copyTrade = copyTrade;
+    _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
     if (deposit) { user.deposit = newTotalBalance; user.totalDeposited = newTotalBalance; }
 
     // Also persist to local store so changes survive refreshes
@@ -1446,6 +1459,7 @@ const AdminPanel = (() => {
     $('edit-user-earnings').value = '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
+    _fillCopyTradeForm({ enabled: false, mode: 'disabled', percent: 15 });
     _setSaveUserBusy(false);
     openModal('modal-user-edit');
   }
@@ -1591,13 +1605,102 @@ const AdminPanel = (() => {
 
   // ── Admin God-Mode Controls (per-user trade & profit pause) ──
   function _getAdminControls(email) {
+    const key = email.toLowerCase();
+    const fromUser = loadUsers()[key]?.copyTrade;
     try {
-      const raw = localStorage.getItem('zen_admin_controls_' + email.toLowerCase());
-      return raw ? JSON.parse(raw) : { tradingPaused: false, profitPaused: false };
-    } catch { return { tradingPaused: false, profitPaused: false }; }
+      const raw = localStorage.getItem('zen_admin_controls_' + key);
+      const base = raw ? JSON.parse(raw) : { tradingPaused: false, profitPaused: false };
+      if (fromUser && typeof CopyTradeConfig !== 'undefined') {
+        base.copyTrade = CopyTradeConfig.normalize(fromUser);
+      }
+      return base;
+    } catch {
+      return {
+        tradingPaused: false,
+        profitPaused: false,
+        copyTrade: fromUser || { enabled: false, mode: 'disabled', percent: 15 },
+      };
+    }
   }
   function _setAdminControls(email, controls) {
-    localStorage.setItem('zen_admin_controls_' + email.toLowerCase(), JSON.stringify(controls));
+    const key = email.toLowerCase();
+    localStorage.setItem('zen_admin_controls_' + key, JSON.stringify(controls));
+    if (controls.copyTrade && typeof CopyTradeConfig !== 'undefined') {
+      CopyTradeConfig.saveForEmail(key, controls.copyTrade);
+    }
+  }
+
+  let _copyFormBound = false;
+  function _bindCopyTradeFormOnce() {
+    if (_copyFormBound) return;
+    _copyFormBound = true;
+    const pct = $('edit-user-copy-percent');
+    const range = $('edit-user-copy-percent-range');
+    const mode = $('edit-user-copy-mode');
+    const enabled = $('edit-user-copy-enabled');
+    const sync = () => {
+      if (pct && range) range.value = pct.value;
+      _updateCopyHint();
+    };
+    if (range && pct) {
+      range.addEventListener('input', () => { pct.value = range.value; _updateCopyHint(); });
+      pct.addEventListener('input', sync);
+    }
+    if (mode) mode.addEventListener('change', _updateCopyHint);
+    if (enabled) enabled.addEventListener('change', _updateCopyHint);
+  }
+
+  function _updateCopyHint() {
+    const hint = $('edit-user-copy-hint');
+    const mode = $('edit-user-copy-mode');
+    if (!hint || !mode || typeof CopyTradeConfig === 'undefined') return;
+    const m = CopyTradeConfig.MODES[mode.value];
+    const pct = $('edit-user-copy-percent')?.value || 0;
+    const on = $('edit-user-copy-enabled')?.checked;
+    hint.textContent = on && mode.value !== 'disabled' && m
+      ? `${m.desc} — each trade uses ~${pct}% of wallet balance.`
+      : 'Copy trading is off for this user.';
+  }
+
+  function _fillCopyTradeForm(copyTrade) {
+    _bindCopyTradeFormOnce();
+    const norm = typeof CopyTradeConfig !== 'undefined'
+      ? CopyTradeConfig.normalize(copyTrade || {})
+      : { enabled: false, mode: 'disabled', percent: 15 };
+    const en = $('edit-user-copy-enabled');
+    const mode = $('edit-user-copy-mode');
+    const pct = $('edit-user-copy-percent');
+    const range = $('edit-user-copy-percent-range');
+    if (en) en.checked = norm.enabled && norm.mode !== 'disabled';
+    if (mode) mode.value = norm.mode;
+    if (pct) pct.value = norm.percent;
+    if (range) range.value = norm.percent;
+    _updateCopyHint();
+  }
+
+  function _readCopyTradeForm() {
+    const enabled = !!$('edit-user-copy-enabled')?.checked;
+    const mode = $('edit-user-copy-mode')?.value || 'disabled';
+    const percent = parseFloat($('edit-user-copy-percent')?.value) || 0;
+    if (typeof CopyTradeConfig === 'undefined') {
+      return { enabled, mode: enabled ? mode : 'disabled', percent };
+    }
+    return CopyTradeConfig.normalize({
+      enabled,
+      mode: enabled ? mode : 'disabled',
+      percent,
+    });
+  }
+
+  function _copyTradeCell(u) {
+    const ct = u.copyTrade || _getAdminControls(u.email).copyTrade || {};
+    if (ct.enabled && ct.mode && ct.mode !== 'disabled') {
+      const label = typeof CopyTradeConfig !== 'undefined'
+        ? CopyTradeConfig.modeLabel(ct.mode)
+        : ct.mode;
+      return `<span class="copy-chip" title="${label}">${label} · ${ct.percent}%</span>`;
+    }
+    return '<span class="copy-chip off">Off</span>';
   }
 
   function _renderPauseButtons(email) {
