@@ -10,13 +10,8 @@ const Trading = (() => {
   const randI = (lo, hi) => Math.floor(rand(lo, hi + 1));
   const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
 
-  // ── Open Positions ───────────────────────────────────────
-  let positions = [
-    { id: 'pos1', sym: 'BTC/USD', side: 'long', qty: 0.42, entry: 65200, cur: 67420, sl: 63000, tp: 72000 },
-    { id: 'pos2', sym: 'ETH/USD', side: 'long', qty: 4.2,  entry: 3380,  cur: 3524,  sl: 3200,  tp: 4000  },
-    { id: 'pos3', sym: 'NVDA',    side: 'long', qty: 12,   entry: 812,   cur: 875,   sl: 780,   tp: 1000  },
-    { id: 'pos4', sym: 'EUR/USD', side: 'short',qty: 20000,entry: 1.0930,cur: 1.0842,sl: 1.1050,tp: 1.0600},
-  ];
+  // ── Open Positions (empty until account is funded & trades run) ──
+  let positions = [];
 
   // ── Order History ────────────────────────────────────────
   const orderLog = [];
@@ -56,6 +51,18 @@ const Trading = (() => {
   function syncAdminCopyTraders() {
     const cfg = _getAdminCopyConfig();
     const tier = _getUserTier();
+    const engineLive = typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.isEngineActive(cfg);
+
+    if (!engineLive) {
+      copyTraders.forEach(t => {
+        t.active = false;
+        t.copiedBal = 0;
+        t.tradesExecuted = 0;
+      });
+      stopCopyTradeEngine();
+      return;
+    }
+
     const allowed = cfg.enabled && cfg.mode !== 'disabled'
       ? CopyTradeConfig.getTraderIdsForMode(cfg.mode, tier)
       : [];
@@ -69,30 +76,50 @@ const Trading = (() => {
     });
 
     if (allowed.length > 0) startCopyTradeEngine();
-    else if (!copyTraders.some(c => c.active)) stopCopyTradeEngine();
+    else stopCopyTradeEngine();
   }
 
   function isCopyTradingAdminLocked() {
-    const cfg = _getAdminCopyConfig();
-    return cfg.enabled && cfg.mode !== 'disabled';
+    return true;
   }
 
   function getAdminCopySummary() {
     const cfg = _getAdminCopyConfig();
-    if (!cfg.enabled || cfg.mode === 'disabled') {
-      return { active: false, label: 'Copy trading off', percent: 0, mode: 'disabled' };
+    const status = typeof CopyTradeConfig !== 'undefined'
+      ? CopyTradeConfig.getEngineStatus(cfg)
+      : 'locked';
+    const tier = _getUserTier();
+    const fee = typeof CopyTradeConfig !== 'undefined'
+      ? CopyTradeConfig.resolveActivationFee(cfg, tier)
+      : 0;
+
+    if (status === 'active') {
+      return {
+        active: true,
+        status,
+        label: CopyTradeConfig.modeLabel(cfg.mode),
+        percent: cfg.percent,
+        mode: cfg.mode,
+        activationFee: fee,
+      };
     }
+
     return {
-      active: true,
-      label: CopyTradeConfig.modeLabel(cfg.mode),
-      percent: cfg.percent,
-      mode: cfg.mode,
+      active: false,
+      status,
+      label: status === 'pending_clearance' ? 'Pending clearance'
+        : status === 'awaiting_payment' ? 'Awaiting authorization'
+        : 'Engine locked',
+      percent: cfg.percent || 0,
+      mode: cfg.mode || 'disabled',
+      activationFee: fee,
     };
   }
 
   function startCopyTradeEngine() {
     if (_copyTradeTimer) return;
     _copyTradeTimer = setInterval(() => {
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) return;
       syncAdminCopyTraders();
       const active = copyTraders.filter(t => t.active && _isTraderAllowedByAdmin(t.id));
       if (active.length === 0) return;
@@ -139,6 +166,7 @@ const Trading = (() => {
   function executeCopyTrade(trader) {
     const cfg = _getAdminCopyConfig();
     if (!cfg.enabled || cfg.mode === 'disabled' || !_isTraderAllowedByAdmin(trader.id)) return;
+    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) return;
 
     const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'XRP/USD'];
     const sym = symbols[Math.floor(Math.random() * symbols.length)];
@@ -156,14 +184,14 @@ const Trading = (() => {
     else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven';
     else outcome = 'loss';
 
-    // Position size: admin % of wallet (±15% variance per trade)
+    // Position size: admin % of principal (±15% variance per trade)
     const basePct = (cfg.percent || 15) / 100;
+    if (basePct <= 0) return;
     const tradePct = basePct * (0.85 + Math.random() * 0.3);
-    let portfolioValue = 100000;
-    if (typeof InvestmentReturns !== 'undefined') {
-      const snap = InvestmentReturns.getSnapshot();
-      if (snap.walletBalance > 0) portfolioValue = snap.walletBalance;
-    }
+    const portfolioValue = (typeof InvestmentReturns !== 'undefined')
+      ? InvestmentReturns.getSnapshot().walletBalance
+      : 0;
+    if (portfolioValue <= 0) return;
     const tradeValue = portfolioValue * tradePct;
     const quantity = tradeValue / livePrice;
 
@@ -230,13 +258,29 @@ const Trading = (() => {
 
     _activeCopyPositions.splice(idx, 1);
 
-    // Credit/debit to wallet
-    if (typeof InvestmentReturns !== 'undefined') {
-      if (pnl > 0.01) {
-        InvestmentReturns.creditTradingProfit(pnl, { symbol: cp.sym, side: cp.side, source: `Copy: ${trader.name}` });
-      } else if (pnl < -0.01) {
-        InvestmentReturns.debitTradingLoss(Math.abs(pnl), { symbol: cp.sym, side: cp.side, source: `Copy: ${trader.name}` });
-      }
+    if (typeof InvestmentReturns !== 'undefined' && pnl > 0.01) {
+      InvestmentReturns.creditTradingProfit(pnl, { symbol: cp.sym, side: cp.side, source: `Copy: ${trader.name}` });
+    }
+
+    if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
+      UserAuth.saveTrade({
+        symbol: cp.sym,
+        side: cp.side === 'long' ? 'buy' : 'sell',
+        order_type: 'market',
+        quantity: cp.quantity,
+        entry_price: cp.entryPrice,
+        exit_price: livePrice,
+        pnl,
+        status: 'closed',
+        strategy: `Copy: ${trader.name}`,
+        notes: `Copy trade ${cp.side}`,
+        opened_at: new Date(cp.openedAt).toISOString(),
+        closed_at: new Date().toISOString(),
+      }).then(() => {
+        if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+          InvestmentReturns.forceBalanceSync();
+        }
+      }).catch(() => {});
     }
 
     trader.totalCopied += Math.abs(pnl);

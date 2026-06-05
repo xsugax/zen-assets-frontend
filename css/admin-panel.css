@@ -1273,6 +1273,9 @@ body {
   white-space: nowrap;
 }
 .copy-chip.off { background: rgba(255,255,255,0.06); color: var(--admin-text-dim); }
+.copy-chip.assigned { background: rgba(100, 149, 237, 0.15); color: #7eb8ff; }
+.copy-chip.pending { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+.copy-chip.live { background: rgba(0, 255, 136, 0.12); color: #00ff88; }
 
 .amb-row {
   display: flex; gap: 16px; margin-bottom: 16px;

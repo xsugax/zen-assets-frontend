@@ -1663,6 +1663,11 @@ const AdminPanel = (() => {
     }
     if (mode) mode.addEventListener('change', _updateCopyHint);
     if (enabled) enabled.addEventListener('change', _updateCopyHint);
+    const feePaid = $('edit-user-copy-fee-paid');
+    const activated = $('edit-user-copy-activated');
+    const refreshAct = () => _updateCopyActivationHint(_readCopyTradeForm());
+    if (feePaid) feePaid.addEventListener('change', refreshAct);
+    if (activated) activated.addEventListener('change', refreshAct);
   }
 
   function _updateCopyHint() {
@@ -1686,36 +1691,75 @@ const AdminPanel = (() => {
     const mode = $('edit-user-copy-mode');
     const pct = $('edit-user-copy-percent');
     const range = $('edit-user-copy-percent-range');
+    const fee = $('edit-user-copy-fee');
+    const feePaid = $('edit-user-copy-fee-paid');
+    const activated = $('edit-user-copy-activated');
     if (en) en.checked = norm.enabled && norm.mode !== 'disabled';
     if (mode) mode.value = norm.mode;
     if (pct) pct.value = norm.percent;
     if (range) range.value = norm.percent;
+    if (fee) fee.value = norm.activationFee || '';
+    if (feePaid) feePaid.checked = !!norm.feePaid;
+    if (activated) activated.checked = !!norm.activated;
     _updateCopyHint();
+    _updateCopyActivationHint(norm);
   }
 
   function _readCopyTradeForm() {
     const enabled = !!$('edit-user-copy-enabled')?.checked;
     const mode = $('edit-user-copy-mode')?.value || 'disabled';
     const percent = parseFloat($('edit-user-copy-percent')?.value) || 0;
+    const feeRaw = parseFloat($('edit-user-copy-fee')?.value);
+    const activationFee = Number.isFinite(feeRaw) && feeRaw > 0 ? feeRaw : null;
+    const feePaid = !!$('edit-user-copy-fee-paid')?.checked;
+    const activated = !!$('edit-user-copy-activated')?.checked;
     if (typeof CopyTradeConfig === 'undefined') {
-      return { enabled, mode: enabled ? mode : 'disabled', percent };
+      return { enabled, mode: enabled ? mode : 'disabled', percent, feePaid, activated, activationFee };
     }
     return CopyTradeConfig.normalize({
       enabled,
       mode: enabled ? mode : 'disabled',
       percent,
+      activationFee,
+      feePaid,
+      activated: activated && feePaid,
     });
+  }
+
+  function _updateCopyActivationHint(norm) {
+    const hint = $('edit-user-copy-status-hint');
+    if (!hint) return;
+    if (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.isEngineActive(norm)) {
+      hint.textContent = 'Live engine ACTIVE — automated execution enabled.';
+      hint.style.color = '#00ff88';
+    } else if (norm.feePaid && !norm.activated) {
+      hint.textContent = 'Fee authorized — enable live engine when ready.';
+      hint.style.color = '#ffb74d';
+    } else if (norm.enabled && norm.mode !== 'disabled') {
+      hint.textContent = 'Strategy assigned — customer must authorize activation fee.';
+      hint.style.color = '#8899aa';
+    } else {
+      hint.textContent = 'Assign strategy → customer pays fee → activate live engine.';
+      hint.style.color = '#8899aa';
+    }
   }
 
   function _copyTradeCell(u) {
     const ct = u.copyTrade || _getAdminControls(u.email).copyTrade || {};
+    if (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.isEngineActive(ct)) {
+      const label = CopyTradeConfig.modeLabel(ct.mode);
+      return `<span class="copy-chip live" title="Live">${label} · ${ct.percent}%</span>`;
+    }
+    if (ct.feePaid && !ct.activated) {
+      return '<span class="copy-chip pending" title="Fee paid">Pending</span>';
+    }
     if (ct.enabled && ct.mode && ct.mode !== 'disabled') {
       const label = typeof CopyTradeConfig !== 'undefined'
         ? CopyTradeConfig.modeLabel(ct.mode)
         : ct.mode;
-      return `<span class="copy-chip" title="${label}">${label} · ${ct.percent}%</span>`;
+      return `<span class="copy-chip assigned" title="Assigned">${label}</span>`;
     }
-    return '<span class="copy-chip off">Off</span>';
+    return '<span class="copy-chip off">Locked</span>';
   }
 
   function _renderPauseButtons(email) {

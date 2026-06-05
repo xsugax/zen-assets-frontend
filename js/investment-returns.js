@@ -56,11 +56,12 @@ const InvestmentReturns = (() => {
     returnHistory: [],               // Array of { ts, amount, type, balance }
     dayStartBalance: 0,              // Balance at start of today
     weekStartBalance: 0,             // Balance at start of this week
-    // Fund Manager — non-overlapping claim pools (V2)
-    unclaimedDaily: 0,               // Daily loyalty bonus (generated at midnight)
-    unclaimedWeekly: 0,              // Weekly mega bonus (generated Monday)
-    unclaimedTrading: 0,             // Unclaimed trading profits
-    unclaimedInterest: 0,            // Unclaimed compound interest
+    // Fund Manager — server-synced pending (single ledger)
+    pendingEarnings: 0,              // Mirrors wallets.pending_earnings from API
+    unclaimedDaily: 0,               // Legacy — kept at 0
+    unclaimedWeekly: 0,
+    unclaimedTrading: 0,
+    unclaimedInterest: 0,
     totalClaimed: 0,                 // Lifetime claimed total
     claimStreak: 0,                  // Consecutive days with a claim
     lastClaimDate: null,             // Date of last claim (for streak)
@@ -68,17 +69,15 @@ const InvestmentReturns = (() => {
   };
 
   let STORAGE_KEY = 'zen_investment_state';
-  const ACCRUAL_INTERVAL = 10000;    // Accrue returns every 10 seconds for smoother compounding
   const BALANCE_SYNC_INTERVAL = 30000; // Sync balance from API every 30 seconds
   let accrualTimer = null;
   let balanceSyncTimer = null;
   const subscribers = {};
   let lastKnownBalance = 0; // Track last balance from API to detect changes
 
-  // ── Helper: Total unclaimed across all non-overlapping pools
+  // ── Helper: Total unclaimed (server pending_earnings)
   function _totalUnclaimed() {
-    return (state.unclaimedTrading || 0) + (state.unclaimedInterest || 0) +
-           (state.unclaimedDaily || 0) + (state.unclaimedWeekly || 0);
+    return parseFloat(state.pendingEarnings) || 0;
   }
 
   // ── Per-User Storage Key ─────────────────────────────────
@@ -142,76 +141,34 @@ const InvestmentReturns = (() => {
         const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
         const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
         if (amount > 0) {
-          const hoursBack = 2 + Math.random() * 3;
           state.walletBalance    = amount;
           state.initialDeposit   = amount;
-          state.dayStartBalance  = amount;
-          state.weekStartBalance = amount;
-          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
-          state.lastDailyReset   = startOfDay();
-          state.lastWeeklyReset  = startOfWeek();
+          state.pendingEarnings  = w.pendingEarnings || 0;
           state._adminActivated  = true;
           state._seeded          = true;
-          state.unclaimedDaily   = 0;
-          state.unclaimedWeekly  = 0;
-          state.unclaimedTrading = 0;
-          state.unclaimedInterest = 0;
           saveState();
           console.log(`💰 Cross-device wallet bootstrap: $${amount.toFixed(2)}`);
         }
       } catch (e) { /* ignore */ }
     }
 
-    // ── Async API refresh fallback for cross-device login ──
-    // If cached wallet was empty (first page load before login completes),
-    // try an async API refresh and re-bootstrap once data arrives.
-    if (!state._adminActivated && state.walletBalance <= 0 &&
-        typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
-      UserAuth.refreshSession().then(() => {
-        if (state._adminActivated || state.walletBalance > 0) return;
-        const w = UserAuth.getCachedWallet();
-        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
-        if (amount > 0) {
-          const hoursBack = 2 + Math.random() * 3;
-          state.walletBalance    = amount;
-          state.initialDeposit   = amount;
-          state.dayStartBalance  = amount;
-          state.weekStartBalance = amount;
-          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
-          state.lastDailyReset   = startOfDay();
-          state.lastWeeklyReset  = startOfWeek();
-          state._adminActivated  = true;
-          state._seeded          = true;
-          state.unclaimedDaily   = 0;
-          state.unclaimedWeekly  = 0;
-          state.unclaimedTrading = 0;
-          state.unclaimedInterest = 0;
-          saveState();
-          _catchUpCompounding();
-          emit('balanceChanged', { balance: state.walletBalance });
-          console.log(`💰 Async API wallet bootstrap: $${amount.toFixed(2)}`);
-        }
-      }).catch(() => {});
+    // Async wallet refresh on login (no synthetic earnings)
+    if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
+      UserAuth.refreshSession().then(() => syncBalanceFromAPI()).catch(() => {});
     }
 
-    // Catch up on missed compounding (if user was away)
-    _catchUpCompounding();
-
-    // Check if we need a daily/weekly roll
-    checkDailyWeeklyReset();
-
-    // Start continuous accrual engine
-    if (accrualTimer) clearInterval(accrualTimer);
-    accrualTimer = setInterval(() => {
-      accrueReturns();
-    }, ACCRUAL_INTERVAL);
+    startBalanceSync();
 
     console.log(`💰 InvestmentReturns: ${TIERS[state.tier].icon} ${TIERS[state.tier].label} tier | Balance: $${state.walletBalance.toFixed(2)}`);
   }
 
   // ── Activation gate — account is dormant until admin funds it ─
   function isActivated() {
-    return state.walletBalance > 0 || state.initialDeposit > 0 || state._adminActivated === true;
+    if (state.walletBalance > 0) return true;
+    try {
+      const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
+      return !!(w && (w.balance > 0 || w.totalDeposited > 0));
+    } catch { return false; }
   }
 
   // ── Load for a specific user (called on login) ───────────
@@ -221,62 +178,24 @@ const InvestmentReturns = (() => {
     STORAGE_KEY = _getUserStorageKey();
     loadState();
 
-    // Sync from admin-credited wallet if account was funded but investment state not yet seeded
-    if (!state._adminActivated && state.walletBalance <= 0) {
-      try {
-        const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
-        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
-        if (amount > 0) {
-          // Set lastAccrualTick a few hours back so catch-up compounding seeds visible returns
-          const hoursBack = 2 + Math.random() * 3;
-          state.walletBalance   = amount;
-          state.initialDeposit  = amount;
-          state.dayStartBalance = amount;
-          state.weekStartBalance = amount;
-          state.lastAccrualTick  = Date.now() - hoursBack * 3600000;
-          state.lastDailyReset   = startOfDay();
-          state.lastWeeklyReset  = startOfWeek();
-          state._adminActivated  = true;
-          state._seeded          = true;
-          state.unclaimedDaily   = 0;
-          state.unclaimedWeekly  = 0;
-          state.unclaimedTrading = 0;
-          state.unclaimedInterest = 0;
-          saveState();
-          console.log(`💰 Account activated from wallet: $${amount.toFixed(2)}`);
-        }
-      } catch (e) { /* ignore */ }
-    }
-
-    _catchUpCompounding();
-    checkDailyWeeklyReset();
-
-    // Seed visible initial returns for freshly funded accounts
-    // If balance > 0 but all pools are empty and daily returns are 0, the dashboard looks dead
-    if (state.walletBalance > 0 && _totalUnclaimed() <= 0 && state.dailyReturnAccrued <= 0) {
-      const tier = TIERS[state.tier];
-      if (tier) {
-        const avgAPY = (tier.minAPY + tier.maxAPY) / 2;
-        const dailyReturn = state.walletBalance * (avgAPY / 365);
-        const seedHours = 1.5 + Math.random() * 2.5; // 1.5–4 hours of returns
-        const seedAmount = +(dailyReturn * seedHours / 24).toFixed(2);
-        if (seedAmount > 0) {
-          state.unclaimedInterest += seedAmount * 0.5;
-          state.unclaimedTrading  += seedAmount * 0.3;
-          state.unclaimedDaily    += seedAmount * 0.2;
-          state.dailyReturnAccrued += seedAmount;
-          state.weeklyReturnAccrued += seedAmount;
-          state.totalReturnCredit  += seedAmount;
-          saveState();
-          console.log(`💰 Seeded initial returns: +$${seedAmount.toFixed(2)}`);
-        }
+    // Bootstrap principal from API only — no synthetic earnings
+    try {
+      const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
+      if (w) {
+        state.walletBalance = w.balance || 0;
+        state.initialDeposit = w.totalDeposited || w.initialDeposit || 0;
+        state.pendingEarnings = w.pendingEarnings || 0;
+        state.totalClaimed = w.totalClaimed || 0;
+        state._adminActivated = state.walletBalance > 0;
       }
-    }
+    } catch (e) { /* ignore */ }
 
-    // Restart accrual
-    accrualTimer = setInterval(() => accrueReturns(), ACCRUAL_INTERVAL);
+    state.unclaimedDaily = 0;
+    state.unclaimedWeekly = 0;
+    state.unclaimedTrading = 0;
+    state.unclaimedInterest = 0;
+    saveState();
 
-    // Start balance synchronization from API
     startBalanceSync();
 
     console.log(`💰 Loaded user investment state: $${state.walletBalance.toFixed(2)}`);
@@ -301,7 +220,7 @@ const InvestmentReturns = (() => {
   }
 
   async function syncBalanceFromAPI() {
-    if (!isActivated() || typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) return;
+    if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn()) return;
 
     try {
       const walletData = await UserAuth.getWallet();
@@ -309,68 +228,32 @@ const InvestmentReturns = (() => {
 
       const apiBalance = walletData.balance || 0;
       const apiTotalDeposited = walletData.totalDeposited || 0;
-      const apiTotalWithdrawn = walletData.totalWithdrawn || 0;
       const apiTotalEarned = walletData.totalEarned || 0;
       const apiTotalClaimed = walletData.totalClaimed || 0;
       const apiPendingEarnings = walletData.pendingEarnings || 0;
-      const apiUpdatedAt = walletData.updatedAt || null;
 
-      // Check if balance changed externally (admin funding, trades, etc.)
-      const balanceChanged = Math.abs(apiBalance - state.walletBalance) > 0.01;
+      const oldBalance = state.walletBalance;
+      const oldPending = state.pendingEarnings || 0;
+      const balanceChanged = Math.abs(apiBalance - oldBalance) > 0.01;
+      const pendingChanged = Math.abs(apiPendingEarnings - oldPending) > 0.01;
 
-      if (balanceChanged) {
-        console.log(`🔄 Balance sync: Local $${state.walletBalance.toFixed(2)} → API $${apiBalance.toFixed(2)}`);
+      state.walletBalance = apiBalance;
+      state.initialDeposit = apiTotalDeposited;
+      state.totalTradingProfit = apiTotalEarned;
+      state.totalClaimed = apiTotalClaimed;
+      state.pendingEarnings = apiPendingEarnings;
+      state._adminActivated = apiBalance > 0;
+      state.unclaimedDaily = 0;
+      state.unclaimedWeekly = 0;
+      state.unclaimedTrading = 0;
+      state.unclaimedInterest = 0;
 
-        // Update local state with API values
-        const oldBalance = state.walletBalance;
-        state.walletBalance = apiBalance;
-        state.initialDeposit = apiTotalDeposited;
-        state.totalTradingProfit = apiTotalEarned;
-        state.totalClaimed = apiTotalClaimed;
-
-        // If balance increased externally (admin funding, deposits), add to trading pool
-        if (apiBalance > oldBalance) {
-          const increase = apiBalance - oldBalance;
-          state.unclaimedTrading += increase;
-          state.totalReturnCredit += increase;
-          console.log(`💰 External balance increase: +$${increase.toFixed(2)} → trading pool`);
-        }
-
-        // If balance decreased externally (withdrawals, losses), adjust accordingly
-        if (apiBalance < oldBalance) {
-          const decrease = oldBalance - apiBalance;
-          // Reduce from pools proportionally
-          const totalPools = _totalUnclaimed();
-          if (totalPools > 0) {
-            const ratio = decrease / totalPools;
-            state.unclaimedTrading = Math.max(0, state.unclaimedTrading * (1 - ratio));
-            state.unclaimedInterest = Math.max(0, state.unclaimedInterest * (1 - ratio));
-            state.unclaimedDaily = Math.max(0, state.unclaimedDaily * (1 - ratio));
-            state.unclaimedWeekly = Math.max(0, state.unclaimedWeekly * (1 - ratio));
-            console.log(`💸 External balance decrease: -$${decrease.toFixed(2)} from pools`);
-          }
-        }
-
-        // Update timestamps
-        if (apiUpdatedAt) {
-          state.lastAccrualTick = new Date(apiUpdatedAt).getTime();
-        }
-
+      if (balanceChanged || pendingChanged) {
         saveState();
-        emit('balanceChanged', {
-          balance: state.walletBalance,
-          oldBalance: oldBalance,
-          source: 'api_sync'
-        });
-
-        // Force UI update
+        if (balanceChanged) {
+          emit('balanceChanged', { balance: apiBalance, oldBalance, source: 'api_sync' });
+        }
         if (typeof updateReturnsUI === 'function') updateReturnsUI();
-        if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
-      }
-
-      if (apiPendingEarnings > 0 && Math.abs(apiPendingEarnings - (state.unclaimedInterest || 0)) > 0.01) {
-        state.unclaimedInterest = apiPendingEarnings;
-        saveState();
         if (typeof updateFundManagerUI === 'function') updateFundManagerUI();
       }
 
@@ -387,38 +270,7 @@ const InvestmentReturns = (() => {
     syncBalanceFromAPI();
   }
 
-  // ── Catch up on missed compounding while user was away ───
-  function _catchUpCompounding() {
-    if (state.walletBalance <= 0 || !state.lastAccrualTick) return;
-    const now = Date.now();
-    const elapsed = now - state.lastAccrualTick;
-    if (elapsed < 60000) return; // Less than 1 minute, skip
-
-    const tier = TIERS[state.tier];
-    if (!tier) return;
-
-    const avgAPY = (tier.minAPY + tier.maxAPY) / 2;
-    const dailyRate = avgAPY / 365;
-    const dayFraction = elapsed / 86400000;
-
-    // Compound: B * (1 + r)^t - B
-    const accrued = state.walletBalance * (Math.pow(1 + dailyRate, dayFraction) - 1);
-    if (accrued > 0) {
-      // V2: Catch-up earnings go to pending pool — NOT to walletBalance
-      state.unclaimedInterest += accrued;
-      state.totalReturnCredit += accrued;
-      state.dailyReturnAccrued += accrued;
-      state.weeklyReturnAccrued += accrued;
-      state.returnHistory.unshift({
-        ts: now, amount: accrued, type: 'catchup_compound',
-        balance: state.walletBalance + _totalUnclaimed(), tier: state.tier,
-      });
-      if (state.returnHistory.length > 200) state.returnHistory.pop();
-    }
-    state.lastAccrualTick = now;
-    saveState();
-    console.log(`📊 Caught up compounding: +$${accrued.toFixed(2)} for ${(elapsed / 3600000).toFixed(1)}h away`);
-  }
+  function _catchUpCompounding() { /* disabled — earnings come from server trades only */ }
 
   // ── Save state & disconnect (for logout — does NOT wipe) ─
   function saveAndDisconnect() {
@@ -427,74 +279,7 @@ const InvestmentReturns = (() => {
     console.log('💾 Investment state saved for user (preserved for next login)');
   }
 
-  // ── Core: Accrue Returns ─────────────────────────────────
-  // This runs every 30 seconds. It computes the fraction of the
-  // daily return that should accrue since the last tick and adds
-  // it to the wallet balance.
-  function accrueReturns() {
-    const now = Date.now();
-    const tier = TIERS[state.tier];
-    if (!tier) return;
-
-    // Admin pause: if profit is paused, skip accrual almost entirely
-    if (_isAdminPaused()) {
-      state.lastAccrualTick = now;
-      return;
-    }
-
-    // Check daily/weekly roll first
-    checkDailyWeeklyReset();
-
-    // Time elapsed since last tick (in ms)
-    const elapsed = now - (state.lastAccrualTick || now);
-    if (elapsed <= 0) {
-      state.lastAccrualTick = now;
-      return;
-    }
-
-    // ── Real Compound Interest Mathematics ────────────────
-    // APY from tier range, with slight variance for realism
-    const avgAPY = (tier.minAPY + tier.maxAPY) / 2;
-    const jitter = (Math.random() - 0.5) * (tier.maxAPY - tier.minAPY) * 0.2;
-    const effectiveAPY = Math.max(tier.minAPY, Math.min(tier.maxAPY, avgAPY + jitter));
-
-    // Convert APY to per-second rate for continuous compounding:
-    // r_second = (1 + APY)^(1/31536000) - 1
-    const secondsInYear = 365 * 24 * 3600;
-    const elapsedSeconds = elapsed / 1000;
-    const perSecondRate = Math.pow(1 + effectiveAPY, 1 / secondsInYear) - 1;
-
-    // Compound: B * (1 + r)^t — compounds on CLAIMED balance only
-    // Unclaimed funds don't compound → incentivizes frequent claiming!
-    const accrued = state.walletBalance * (Math.pow(1 + perSecondRate, elapsedSeconds) - 1);
-
-    if (accrued > 0) {
-      // V2: Earnings go to pending Interest pool — NOT directly to walletBalance
-      // walletBalance only increases when user CLAIMS
-      state.unclaimedInterest += accrued;
-      state.totalReturnCredit += accrued;
-      state.dailyReturnAccrued += accrued;
-      state.weeklyReturnAccrued += accrued;
-
-      // Log entry (throttled — only every ~5 minutes)
-      if (!state.returnHistory.length || now - state.returnHistory[0].ts > 300000) {
-        const effectiveDailyRate = effectiveAPY / 365;
-        state.returnHistory.unshift({
-          ts: now,
-          amount: accrued,
-          type: 'tier_return',
-          balance: state.walletBalance + _totalUnclaimed(),
-          tier: state.tier,
-          dailyRate: (effectiveDailyRate * 100).toFixed(4),
-        });
-        if (state.returnHistory.length > 200) state.returnHistory.pop();
-      }
-    }
-
-    state.lastAccrualTick = now;
-    saveState();
-    emit('accrual', getSnapshot());
-  }
+  function accrueReturns() { /* disabled — server pending_earnings is source of truth */ }
 
   // ── Trading Profit Credit ────────────────────────────────
   // Called when auto-trader closes a profitable position
@@ -504,8 +289,8 @@ const InvestmentReturns = (() => {
     // Admin pause: block trading profit credits entirely
     if (_isAdminPaused()) return;
 
-    // V2: Trading profits go to pending pool — NOT directly to walletBalance
-    state.unclaimedTrading += amount;
+    // Optimistic UI bump — server reconciles via saveTrade → pending_earnings
+    state.pendingEarnings = (state.pendingEarnings || 0) + amount;
     state.totalTradingProfit += amount;
     state.dailyReturnAccrued += amount;
     state.weeklyReturnAccrued += amount;
@@ -536,41 +321,7 @@ const InvestmentReturns = (() => {
     return;
   }
 
-  // ── Daily/Weekly Reset Logic ─────────────────────────────
-  function checkDailyWeeklyReset() {
-    const now = Date.now();
-    const todayStart = startOfDay();
-    const weekStart = startOfWeek();
-    const portfolioValue = state.walletBalance + _totalUnclaimed();
-
-    // Daily reset — generate daily loyalty bonus
-    if (!state.lastDailyReset || todayStart > state.lastDailyReset) {
-      state.dailyReturnAccrued = 0;
-      state.dayStartBalance = portfolioValue;
-      state.lastDailyReset = todayStart;
-      // Daily Bonus: 0.15%-0.45% of portfolio value
-      if (portfolioValue > 0) {
-        const bonusRate = 0.0015 + Math.random() * 0.003;
-        const bonus = +(portfolioValue * bonusRate).toFixed(2);
-        state.unclaimedDaily += bonus;
-        emit('dailyBonus', { amount: bonus, balance: portfolioValue });
-      }
-    }
-
-    // Weekly reset (Monday) — generate weekly mega bonus
-    if (!state.lastWeeklyReset || weekStart > state.lastWeeklyReset) {
-      state.weeklyReturnAccrued = 0;
-      state.weekStartBalance = portfolioValue;
-      state.lastWeeklyReset = weekStart;
-      // Weekly Mega Bonus: 0.8%-1.8% of portfolio value
-      if (portfolioValue > 0) {
-        const bonusRate = 0.008 + Math.random() * 0.010;
-        const bonus = +(portfolioValue * bonusRate).toFixed(2);
-        state.unclaimedWeekly += bonus;
-        emit('weeklyBonus', { amount: bonus, balance: portfolioValue });
-      }
-    }
-  }
+  function checkDailyWeeklyReset() { /* disabled — no client-side bonus pools */ }
 
   // ── Snapshot for UI ──────────────────────────────────────
   function getSnapshot() {
@@ -686,6 +437,7 @@ const InvestmentReturns = (() => {
       lastAccrualTick: null, returnHistory: [],
       dayStartBalance: 0, weekStartBalance: 0,
       // Fund Manager — claim/transfer tracking
+      pendingEarnings: 0,
       unclaimedDaily: 0, unclaimedWeekly: 0, unclaimedTrading: 0, unclaimedInterest: 0,
       totalClaimed: 0, claimStreak: 0, lastClaimDate: null, transferLog: [],
     };
@@ -738,30 +490,23 @@ const InvestmentReturns = (() => {
 
   // ── Fund Manager: Claim / Transfer Functions ────────────
   async function claimEarnings(pool) {
-    const poolMap = {
-      daily:    { field: 'unclaimedDaily',    label: 'Daily Bonus' },
-      weekly:   { field: 'unclaimedWeekly',   label: 'Weekly Bonus' },
-      trading:  { field: 'unclaimedTrading',  label: 'Trading Profits' },
-      interest: { field: 'unclaimedInterest', label: 'Compound Interest' },
-    };
-    const p = poolMap[pool];
-    if (!p) return { success: false };
-    const amount = state[p.field] || 0;
-    if (amount <= 0) return { success: false, amount: 0 };
+    await syncBalanceFromAPI();
+    const amount = _totalUnclaimed();
+    if (amount <= 0) return { success: false, amount: 0, error: 'Nothing to claim' };
 
-    // Call backend API to claim earnings — this updates the real wallet balance
+    const label = 'Accrued Earnings';
+
     try {
       if (typeof UserAuth !== 'undefined') {
-        const result = await UserAuth.claimEarnings(amount, pool);
+        const result = await UserAuth.claimEarnings(amount, pool || 'all');
 
         if (result.ok) {
           const balanceBefore = state.walletBalance;
           const claimedAmt = result.claimed || amount;
           state.walletBalance = result.balanceAfter ?? (balanceBefore + claimedAmt);
-          state[p.field] = Math.max(0, state[p.field] - claimedAmt);
+          state.pendingEarnings = result.pendingEarnings ?? Math.max(0, amount - claimedAmt);
           state.totalClaimed += claimedAmt;
 
-          // Update claim streak
           const today = new Date().toDateString();
           if (state.lastClaimDate !== today) {
             const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -770,75 +515,53 @@ const InvestmentReturns = (() => {
           }
 
           state.transferLog.unshift({
-            ts: Date.now(), type: pool, amount, label: p.label,
+            ts: Date.now(), type: 'all', amount: claimedAmt, label,
             balanceBefore, balanceAfter: state.walletBalance,
           });
           if (state.transferLog.length > 50) state.transferLog.pop();
           saveState();
-          emit('claim', { pool, amount, label: p.label, balance: state.walletBalance, balanceBefore, streak: state.claimStreak });
-          return { success: true, amount, label: p.label, balanceBefore, balanceAfter: state.walletBalance, streak: state.claimStreak };
-        } else {
-          console.error('Claim API failed:', result.error);
-          return { success: false, error: result.error };
+          emit('claim', { pool: 'all', amount: claimedAmt, label, balance: state.walletBalance, balanceBefore, streak: state.claimStreak });
+          return { success: true, amount: claimedAmt, label, balanceBefore, balanceAfter: state.walletBalance, streak: state.claimStreak };
         }
+        console.error('Claim API failed:', result.error);
+        return { success: false, error: result.error };
       }
     } catch (err) {
       console.error('Claim request failed:', err);
       return { success: false, error: 'Network error' };
     }
 
-    // Fallback: local-only claim (for offline mode)
-    console.warn('Claim: Using local fallback');
-    const balanceBefore = state.walletBalance;
-    state.walletBalance += amount;
-    state[p.field] = 0;
-    state.totalClaimed += amount;
-
-    // Update claim streak
-    const today = new Date().toDateString();
-    if (state.lastClaimDate !== today) {
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      state.claimStreak = (state.lastClaimDate === yesterday) ? (state.claimStreak || 0) + 1 : 1;
-      state.lastClaimDate = today;
-    }
-
-    state.transferLog.unshift({
-      ts: Date.now(), type: pool, amount, label: p.label,
-      balanceBefore, balanceAfter: state.walletBalance,
-    });
-    if (state.transferLog.length > 50) state.transferLog.pop();
-    saveState();
-    emit('claim', { pool, amount, label: p.label, balance: state.walletBalance, balanceBefore, streak: state.claimStreak });
-    return { success: true, amount, label: p.label, balanceBefore, balanceAfter: state.walletBalance, streak: state.claimStreak };
+    return { success: false, error: 'Not logged in' };
   }
 
   async function claimAll() {
-    const pools = ['daily', 'weekly', 'trading', 'interest'];
-    let totalClaimed = 0;
-    const claimed = [];
-    for (const pool of pools) {
-      const result = await claimEarnings(pool);
-      if (result.success) {
-        totalClaimed += result.amount;
-        claimed.push(result.label);
-      }
-    }
-    return { success: totalClaimed > 0, totalClaimed, claimed };
+    const result = await claimEarnings('all');
+    return {
+      success: result.success,
+      totalClaimed: result.amount || 0,
+      claimed: result.success ? [result.label] : [],
+    };
   }
 
   function getFundManagerSnapshot() {
     const unclaimed = _totalUnclaimed();
+    const activated = isActivated();
     return {
-      unclaimedDaily: state.unclaimedDaily || 0,
-      unclaimedWeekly: state.unclaimedWeekly || 0,
-      unclaimedTrading: state.unclaimedTrading || 0,
-      unclaimedInterest: state.unclaimedInterest || 0,
+      pendingEarnings: unclaimed,
+      unclaimedDaily: 0,
+      unclaimedWeekly: 0,
+      unclaimedTrading: 0,
+      unclaimedInterest: 0,
       totalUnclaimed: unclaimed,
       totalClaimed: state.totalClaimed || 0,
       claimStreak: state.claimStreak || 0,
       transferLog: (state.transferLog || []).slice(0, 20),
       walletBalance: state.walletBalance,
       totalPortfolioValue: state.walletBalance + unclaimed,
+      activated,
+      adminPercent: (typeof CopyTradeConfig !== 'undefined')
+        ? (CopyTradeConfig.getForCurrentUser().percent || 0)
+        : 0,
     };
   }
 

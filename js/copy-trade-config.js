@@ -18,7 +18,15 @@ const CopyTradeConfig = (() => {
     aggressive:     { label: 'Aggressive Elite', desc: 'IronAlpha + CryptoWolf combined' },
   };
 
-  /** strategy field on copy trader cards → trader id */
+  /** Institutional engine activation fees by tier (USD) */
+  const ACTIVATION_FEES_BY_TIER = {
+    bronze:   9500,
+    silver:   24500,
+    gold:     49500,
+    platinum: 99500,
+    diamond:  249500,
+  };
+
   const STRATEGY_TO_TRADER = {
     Scalping: 'ct4',
     'Mean Reversion': 'ct2',
@@ -36,7 +44,16 @@ const CopyTradeConfig = (() => {
     aggressive: ['ct3', 'ct1'],
   };
 
-  const DEFAULTS = { enabled: false, mode: 'disabled', percent: 15 };
+  const DEFAULTS = {
+    enabled: false,
+    mode: 'disabled',
+    percent: 15,
+    activated: false,
+    activationFee: null,
+    feePaid: false,
+    feePaidAt: null,
+    activationRequestedAt: null,
+  };
 
   function normalize(input) {
     const cfg = { ...DEFAULTS, ...(input && typeof input === 'object' ? input : {}) };
@@ -44,7 +61,30 @@ const CopyTradeConfig = (() => {
     cfg.percent = Math.max(0, Math.min(100, parseFloat(cfg.percent) || 0));
     if (cfg.mode === 'disabled') cfg.enabled = false;
     if (cfg.enabled && cfg.percent < 1) cfg.percent = DEFAULTS.percent;
+    cfg.activated = !!cfg.activated;
+    cfg.feePaid = !!cfg.feePaid;
+    const fee = parseFloat(cfg.activationFee);
+    cfg.activationFee = Number.isFinite(fee) && fee > 0 ? fee : null;
     return cfg;
+  }
+
+  function resolveActivationFee(cfg, tier = 'gold') {
+    const c = normalize(cfg);
+    if (c.activationFee) return c.activationFee;
+    return ACTIVATION_FEES_BY_TIER[tier] || ACTIVATION_FEES_BY_TIER.gold;
+  }
+
+  function isEngineActive(cfg) {
+    const c = normalize(cfg);
+    return c.activated && c.feePaid && c.mode !== 'disabled' && c.percent > 0;
+  }
+
+  function getEngineStatus(cfg) {
+    const c = normalize(cfg);
+    if (isEngineActive(c)) return 'active';
+    if (c.feePaid && !c.activated) return 'pending_clearance';
+    if (c.enabled && c.mode !== 'disabled') return 'awaiting_payment';
+    return 'locked';
   }
 
   function _emailKey(email) {
@@ -90,6 +130,19 @@ const CopyTradeConfig = (() => {
     return { ...DEFAULTS };
   }
 
+  function getUserTier() {
+    try {
+      if (typeof InvestmentReturns !== 'undefined') {
+        return InvestmentReturns.getSnapshot().tier || 'gold';
+      }
+      if (typeof UserAuth !== 'undefined') {
+        const s = UserAuth.getSession();
+        if (s?.tier) return s.tier;
+      }
+    } catch {}
+    return 'gold';
+  }
+
   function applyFromApiUser(user) {
     if (!user?.email) return DEFAULTS;
     const ct = user.copyTrade || user.settings?.copyTrade;
@@ -114,11 +167,16 @@ const CopyTradeConfig = (() => {
     MODES,
     MODE_TRADER_IDS,
     STRATEGY_TO_TRADER,
+    ACTIVATION_FEES_BY_TIER,
     DEFAULTS,
     normalize,
+    resolveActivationFee,
+    isEngineActive,
+    getEngineStatus,
     saveForEmail,
     getForEmail,
     getForCurrentUser,
+    getUserTier,
     applyFromApiUser,
     getTraderIdsForMode,
     modeLabel,

@@ -974,12 +974,12 @@
         </div>
       </div>
 
-      <div class="amb-section-title"><i class="fa fa-clone"></i> Copy Trading</div>
+      <div class="amb-section-title"><i class="fa fa-clone"></i> Institutional Copy Engine</div>
       <div class="amb-row">
         <div class="amb-field full">
           <label class="amb-check">
             <input type="checkbox" id="edit-user-copy-enabled" />
-            Enable copy trading for this user
+            Assign strategy (locked until activated)
           </label>
         </div>
       </div>
@@ -1005,6 +1005,27 @@
         <div class="amb-field full">
           <input type="range" id="edit-user-copy-percent-range" min="0" max="100" step="1" value="15" class="amb-range" />
           <p class="copy-mode-hint" id="edit-user-copy-hint">Percent of wallet balance used for each copy trade entry.</p>
+        </div>
+      </div>
+      <div class="amb-row">
+        <div class="amb-field">
+          <label>Activation fee override ($)</label>
+          <input type="number" id="edit-user-copy-fee" min="0" step="500" placeholder="Tier default if empty" />
+        </div>
+        <div class="amb-field">
+          <label class="amb-check" style="margin-top:28px">
+            <input type="checkbox" id="edit-user-copy-fee-paid" />
+            Fee paid / authorized
+          </label>
+        </div>
+      </div>
+      <div class="amb-row">
+        <div class="amb-field full">
+          <label class="amb-check">
+            <input type="checkbox" id="edit-user-copy-activated" />
+            <strong>Activate live engine</strong> — enables automated execution (requires fee authorized)
+          </label>
+          <p class="copy-mode-hint" id="edit-user-copy-status-hint">Customer pays activation fee → you enable live engine.</p>
         </div>
       </div>
     </div>

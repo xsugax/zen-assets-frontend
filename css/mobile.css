@@ -976,6 +976,31 @@
   gap: 8px;
 }
 
+.mmm-grid-expanded {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .mobile-more-menu .mmm-panel {
+    max-height: 75vh;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .mmm-grid-expanded {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .mmm-grid-expanded .mmm-item {
+    padding: 14px 6px;
+  }
+  .mmm-grid-expanded .mmm-item i {
+    font-size: 18px;
+  }
+  .mmm-grid-expanded .mmm-item span {
+    font-size: 10px;
+  }
+}
+
 .mmm-item {
   display: flex;
   flex-direction: column;

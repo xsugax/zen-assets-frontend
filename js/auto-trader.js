@@ -34,6 +34,16 @@ const AutoTrader = (() => {
     diamond:  { intervalMs: 25000, maxPos: 5, sizePct: 2.0, winBias: 0.76, avgWin: 1.1, avgLoss: 0.4 },
   };
 
+  function _getAdminTradePercent() {
+    try {
+      if (typeof CopyTradeConfig !== 'undefined') {
+        const cfg = CopyTradeConfig.getForCurrentUser();
+        if (cfg.enabled && cfg.percent > 0) return cfg.percent;
+      }
+    } catch {}
+    return 0;
+  }
+
   function _applyTierProfile() {
     let tier = 'gold';
     try {
@@ -267,11 +277,26 @@ const AutoTrader = (() => {
       }).catch(() => {});
     }
 
-    // Only auto-start if account is funded by admin
-    if (CONFIG.enabled && typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && InvestmentReturns.isActivated()) {
+    _tryAutoStart();
+  }
+
+  function _canRunEngine() {
+    if (!CONFIG.enabled) return false;
+    if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.isActivated || !InvestmentReturns.isActivated()) {
+      return false;
+    }
+    if (typeof CopyTradeConfig !== 'undefined') {
+      return CopyTradeConfig.isEngineActive(CopyTradeConfig.getForCurrentUser());
+    }
+    return false;
+  }
+
+  function _tryAutoStart() {
+    if (_canRunEngine()) {
       start();
     } else {
-      console.log('⏸️ AutoTrader: Account not yet funded — waiting for admin activation');
+      console.log('⏸️ AutoTrader: Copy engine locked — awaiting institutional activation');
+      stop();
     }
   }
 
@@ -438,12 +463,13 @@ const AutoTrader = (() => {
     }
     
     // Position size from wallet balance — only trade on funded, activated accounts
-    if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.isActivated || !InvestmentReturns.isActivated()) {
-      return; // Account not yet funded — keep balance at $0
-    }
+    if (!_canRunEngine()) return;
     const portfolioValue = InvestmentReturns.getSnapshot().walletBalance;
-    if (portfolioValue <= 0) return; // Safety guard
-    const positionSize = (portfolioValue * CONFIG.positionSizePercent) / 100;
+    if (portfolioValue <= 0) return;
+    const adminPct = _getAdminTradePercent();
+    if (adminPct <= 0) return;
+    const tradePct = adminPct * (0.85 + Math.random() * 0.3);
+    const positionSize = (portfolioValue * tradePct) / 100;
     const quantity = positionSize / price;
     
     // Calculate SL/TP levels
@@ -726,7 +752,11 @@ const AutoTrader = (() => {
           notes:        trade.closeReason || '',
           opened_at:    new Date(trade.openedAt || Date.now() - trade.duration).toISOString(),
           closed_at:    new Date(trade.closedAt || Date.now()).toISOString(),
-        }).catch(() => {}); // fire-and-forget, never block the UI
+        }).then(() => {
+          if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+            InvestmentReturns.forceBalanceSync();
+          }
+        }).catch(() => {});
       }
 
       console.log(`AUTO-CLOSE: ${trade.symbol} ${trade.side.toUpperCase()} | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`);
@@ -903,7 +933,11 @@ const AutoTrader = (() => {
 
     // Don't show trade history for unfunded accounts
     if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) {
-      container.innerHTML = '<div class="no-history">⏳ Account awaiting activation — trading begins after admin funding</div>';
+      container.innerHTML = '<div class="no-history">Account awaiting funding — no execution until principal is credited</div>';
+      return;
+    }
+    if (!_canRunEngine()) {
+      container.innerHTML = '<div class="no-history">Institutional copy engine locked — authorize activation to begin execution</div>';
       return;
     }
     
@@ -1017,10 +1051,18 @@ const AutoTrader = (() => {
   }
 
   // ── Public API ───────────────────────────────────────────
+  function refreshEngine() {
+    _tryAutoStart();
+    if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+      Trading.syncAdminCopyTraders();
+    }
+  }
+
   return {
     init,
     start,
     stop,
+    refreshEngine,
     evaluateAndTrade,
     isRunning: () => isRunning,
     getHistory: () => tradeHistory,

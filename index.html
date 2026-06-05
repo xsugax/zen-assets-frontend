@@ -1144,6 +1144,30 @@
           <div class="login-btn-sub">Sovereign-grade encryption &#8212; Two-factor verification enabled</div>
         </form>
 
+        <div id="login-otp-step" style="display:none">
+          <div class="otp-header">
+            <div class="otp-icon"><i class="fa fa-envelope-open-text"></i></div>
+            <h3>Check Your Email</h3>
+            <p class="otp-desc">We sent a 6-digit login code to <strong id="login-otp-email"></strong></p>
+          </div>
+          <div id="login-error-otp" class="login-error" role="alert"></div>
+          <form id="login-otp-form">
+            <div class="form-group">
+              <label for="login-otp-code">Verification Code</label>
+              <input type="text" id="login-otp-code" class="form-input otp-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-login">
+              <span>Verify &amp; Sign In</span>
+              <i class="fa fa-check"></i>
+            </button>
+          </form>
+          <div class="otp-resend">
+            <span id="login-otp-timer">Resend code in 60s</span>
+            <a href="#" id="login-otp-resend" style="display:none">Resend code</a>
+          </div>
+          <a href="#" class="otp-back-link" id="login-otp-back"><i class="fa fa-arrow-left"></i> Back to login</a>
+        </div>
+
         <div class="login-divider"><span>or</span></div>
 
         <div class="login-alt-actions">
@@ -1335,6 +1359,28 @@
           <i class="fa fa-rocket"></i> Initialize Position
         </button>
       </form>
+
+      <div id="register-otp-step" style="display:none">
+        <div class="otp-header">
+          <div class="otp-icon"><i class="fa fa-envelope-circle-check"></i></div>
+          <h3>Verify Your Email</h3>
+          <p class="otp-desc">Enter the 6-digit code we sent to <strong id="reg-otp-email"></strong> to activate your account.</p>
+        </div>
+        <form id="register-otp-form">
+          <div class="form-group">
+            <label for="register-otp-code">Verification Code</label>
+            <input type="text" id="register-otp-code" class="form-input otp-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" required />
+          </div>
+          <button type="submit" class="btn-register">
+            <i class="fa fa-check"></i> Verify &amp; Activate Account
+          </button>
+        </form>
+        <div class="otp-resend">
+          <span id="reg-otp-timer">Resend code in 60s</span>
+          <a href="#" id="reg-otp-resend" style="display:none">Resend code</a>
+        </div>
+        <p style="text-align:center;color:#64748b;font-size:12px;margin-top:16px">A welcome email is sent after verification.</p>
+      </div>
 
       <div class="register-login-link">
         Already have an account? <a href="#" id="back-to-login-link" onclick="AuthManager.switchView('login'); return false;">Access Node ?</a>
@@ -2072,68 +2118,32 @@
 
         <div class="fm-info-bar">
           <i class="fa fa-circle-info"></i>
-          <span>Earnings accrue into separate pools. <strong>Claim to transfer into your main wallet</strong> ï¿½ only claimed funds earn compound interest.</span>
+          <span id="fm-status-text">New accounts start at <strong>$0</strong>. Admin funds your account, trades run at your assigned %, profits accrue here — <strong>claim to move to your wallet</strong>.</span>
         </div>
 
-        <div class="fm-pools-grid">
-          <!-- Daily Bonus Pool -->
-          <div class="fm-pool-card" data-pool="daily">
-            <div class="fm-pool-icon"><i class="fa fa-gift"></i></div>
-            <div class="fm-pool-info">
-              <div class="fm-pool-label">Daily Bonus</div>
-              <div class="fm-pool-amount" id="fm-daily-amount">$0.00</div>
-              <div class="fm-pool-sub">Loyalty reward ï¿½ refreshes at midnight</div>
+        <div class="fm-simple-ledger">
+          <div class="fm-ledger-card">
+            <div class="fm-ledger-row">
+              <div class="fm-ledger-item">
+                <span class="fm-ledger-label">Wallet Balance</span>
+                <span class="fm-ledger-value" id="fm-wallet-balance">$0.00</span>
+                <span class="fm-ledger-sub">Principal — spendable after claim</span>
+              </div>
+              <div class="fm-ledger-divider"><i class="fa fa-arrow-right"></i></div>
+              <div class="fm-ledger-item fm-ledger-accruing">
+                <span class="fm-ledger-label">Accruing</span>
+                <span class="fm-ledger-value fm-pool-amount" id="fm-accruing-amount">$0.00</span>
+                <span class="fm-ledger-sub" id="fm-admin-pct-label">Awaiting admin funding</span>
+              </div>
             </div>
-            <button class="fm-claim-btn" id="fm-claim-daily" onclick="App.claimFundPool('daily')">
-              <i class="fa fa-download"></i> Claim
-            </button>
-          </div>
-
-          <!-- Weekly Mega Bonus Pool -->
-          <div class="fm-pool-card" data-pool="weekly">
-            <div class="fm-pool-icon"><i class="fa fa-trophy"></i></div>
-            <div class="fm-pool-info">
-              <div class="fm-pool-label">Weekly Bonus</div>
-              <div class="fm-pool-amount" id="fm-weekly-amount">$0.00</div>
-              <div class="fm-pool-sub">Weekly performance reward ï¿½ refreshes Monday</div>
-            </div>
-            <button class="fm-claim-btn" id="fm-claim-weekly" onclick="App.claimFundPool('weekly')">
-              <i class="fa fa-download"></i> Claim
-            </button>
-          </div>
-
-          <!-- Trading Profits Pool -->
-          <div class="fm-pool-card" data-pool="trading">
-            <div class="fm-pool-icon"><i class="fa fa-chart-line"></i></div>
-            <div class="fm-pool-info">
-              <div class="fm-pool-label">Trading Profits</div>
-              <div class="fm-pool-amount" id="fm-trading-amount">$0.00</div>
-              <div class="fm-pool-sub">AI & manual trade earnings ï¿½ claim anytime</div>
-            </div>
-            <button class="fm-claim-btn" id="fm-claim-trading" onclick="App.claimFundPool('trading')">
-              <i class="fa fa-download"></i> Claim
-            </button>
-          </div>
-
-          <!-- Compound Interest Pool -->
-          <div class="fm-pool-card" data-pool="interest">
-            <div class="fm-pool-icon"><i class="fa fa-coins"></i></div>
-            <div class="fm-pool-info">
-              <div class="fm-pool-label">Compound Interest</div>
-              <div class="fm-pool-amount" id="fm-interest-amount">$0.00</div>
-              <div class="fm-pool-sub">Tier-based auto-compounding returns</div>
-            </div>
-            <button class="fm-claim-btn" id="fm-claim-interest" onclick="App.claimFundPool('interest')">
-              <i class="fa fa-download"></i> Claim
+            <button class="fm-claim-all-btn fm-claim-single" id="fm-claim-all" onclick="App.claimAllFunds()">
+              <i class="fa fa-download"></i> Claim to Wallet
             </button>
           </div>
         </div>
 
-        <!-- Claim All + Add Funds Row -->
+        <!-- Actions Row -->
         <div class="fm-claim-all-row">
-          <button class="fm-claim-all-btn" id="fm-claim-all" onclick="App.claimAllFunds()">
-            <i class="fa fa-wallet"></i> Transfer All to Main Wallet
-          </button>
           <button type="button" class="btn btn-outline fm-withdraw-btn" onclick="App.openWithdrawModal()">
             <i class="fa fa-arrow-up-from-bracket"></i> Request Withdrawal
           </button>
@@ -3969,14 +3979,19 @@
       <span>Navigation</span>
       <button class="icon-btn" onclick="document.getElementById('mobile-more-menu').classList.remove('open')"><i class="fa fa-times"></i></button>
     </div>
-    <div class="mmm-grid">
+    <div class="mmm-grid mmm-grid-expanded">
+      <div class="mmm-item" data-action="fund-manager"><i class="fa fa-vault"></i><span>Fund Manager</span></div>
+      <div class="mmm-item" data-section="buy-crypto"><i class="fa fa-coins"></i><span>Deposit</span></div>
+      <div class="mmm-item" data-action="withdraw"><i class="fa fa-arrow-up-from-bracket"></i><span>Withdraw</span></div>
+      <div class="mmm-item" data-section="trading"><i class="fa fa-copy"></i><span>Copy Trading</span></div>
       <div class="mmm-item" data-section="ai-engine"><i class="fa fa-brain"></i><span>Deploy Engine</span></div>
-      <div class="mmm-item" data-section="buy-crypto"><i class="fa fa-coins"></i><span>Buy Crypto</span></div>
       <div class="mmm-item" data-section="analytics"><i class="fa fa-chart-bar"></i><span>Analytics</span></div>
       <div class="mmm-item" data-section="signals"><i class="fa fa-satellite-dish"></i><span>Signals</span></div>
-      <div class="mmm-item" data-section="plugins"><i class="fa fa-plug"></i><span>Plugins</span></div>
+      <div class="mmm-item" data-action="notifications"><i class="fa fa-bell"></i><span>Alerts</span></div>
+      <div class="mmm-item" data-section="security"><i class="fa fa-user-shield"></i><span>Profile & KYC</span></div>
       <div class="mmm-item" data-section="transparency"><i class="fa fa-link"></i><span>Audit</span></div>
-      <div class="mmm-item" data-section="security"><i class="fa fa-shield-alt"></i><span>Security</span></div>
+      <div class="mmm-item" data-section="plugins"><i class="fa fa-plug"></i><span>Plugins</span></div>
+      <div class="mmm-item" data-section="markets"><i class="fa fa-globe"></i><span>Markets</span></div>
     </div>
   </div>
 </div>

@@ -422,7 +422,14 @@ const UserAuth = (() => {
             if (refreshed) return _api(endpoint, { method, body, auth, _retried: true });
           }
         }
-        return { ok: false, status: resp.status, error: data.error || 'Request failed', code: data.code };
+        return {
+          ok: false,
+          status: resp.status,
+          error: data.error || 'Request failed',
+          code: data.code,
+          userId: data.userId,
+          needsVerification: data.needsVerification,
+        };
       } catch (err) {
         console.warn(`⚡ API attempt ${i + 1}/${attempts.length} failed (${endpoint}):`, err.message);
         if (i < attempts.length - 1) {
@@ -528,7 +535,17 @@ const UserAuth = (() => {
       auth: false,
     });
 
-    // Backend now returns token directly (no OTP)
+    if (result.ok && result.needsVerification) {
+      return {
+        ok: true,
+        needsVerification: true,
+        userId: result.userId,
+        email: result.email || cleanEmail,
+        message: result.message,
+        devCode: result.devCode,
+      };
+    }
+
     if (result.ok && result.token) {
       const session = {
         userId: result.user.id,
@@ -589,6 +606,15 @@ const UserAuth = (() => {
 
     if (result.status === 401) {
       return { ok: false, error: 'Invalid email or password. Please check your credentials and try again.' };
+    }
+
+    if (result.status === 403 && result.code === 'EMAIL_NOT_VERIFIED') {
+      return {
+        ok: false,
+        needsVerification: true,
+        userId: result.userId,
+        error: result.error || 'Please verify your email before signing in.',
+      };
     }
 
     if (result.status >= 500) {
@@ -886,6 +912,23 @@ const UserAuth = (() => {
     return result;
   }
 
+  async function getCopyEngineStatus() {
+    if (!isLoggedIn()) return null;
+    return _api('/wallet/copy-engine');
+  }
+
+  async function payCopyActivation() {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    const result = await _api('/wallet/copy-activation', { method: 'POST' });
+    if (result.ok && result.copyTrade && typeof CopyTradeConfig !== 'undefined') {
+      const s = getSession();
+      if (s?.email) CopyTradeConfig.saveForEmail(s.email, result.copyTrade);
+      if (typeof AutoTrader !== 'undefined' && AutoTrader.refreshEngine) AutoTrader.refreshEngine();
+      if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) Trading.syncAdminCopyTraders();
+    }
+    return result;
+  }
+
   async function claimEarnings(amount, pool = 'all') {
     const result = await _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
     if (result.ok) {
@@ -1172,6 +1215,7 @@ const UserAuth = (() => {
     refreshSession,
     getWallet, getCachedWallet,
     requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
+    getCopyEngineStatus, payCopyActivation,
     changePassword, getPlatformConfig,
     adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
     adminGetConfig, adminSaveConfig, adminGetPendingKyc, adminReviewKyc, adminSendBroadcast,

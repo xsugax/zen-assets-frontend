@@ -49,9 +49,20 @@ const ZenCopy = (() => {
     },
   };
 
+  const engine = {
+    locked: 'Institutional copy engine locked',
+    awaitingPayment: 'Activation fee required',
+    pendingClearance: 'Clearance in progress — account manager enabling execution',
+    live: 'Institutional engine live',
+    authorizeConfirm(fee) {
+      return `Authorize engine access · ${fee} one-time from wallet`;
+    },
+  };
+
   const system = {
     actionFailed: "Couldn't complete that step. Try again.",
     tradingPaused: 'Portfolio management mode — automated trading paused.',
+    engineLocked: 'Automated execution requires institutional engine activation.',
     profitsPaused: 'Earnings accrual paused — contact your account manager.',
     sessionSecured: 'Session secured',
     loadingPortfolio: 'Loading portfolio',
@@ -78,6 +89,7 @@ const ZenCopy = (() => {
   return {
     trade,
     funds,
+    engine,
     chart,
     system,
     notifications,

@@ -340,6 +340,9 @@ const App = (() => {
           if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
             Trading.syncAdminCopyTraders();
           }
+          if (typeof AutoTrader !== 'undefined' && AutoTrader.refreshEngine) {
+            AutoTrader.refreshEngine();
+          }
         }).catch(() => {});
       }
       
@@ -479,7 +482,14 @@ const App = (() => {
     const sidebarToggle = $('sidebar-toggle');
     const sidebar       = $('sidebar');
     if (sidebarToggle && sidebar) {
-      sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+      sidebarToggle.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          const moreMenu = $('mobile-more-menu');
+          if (moreMenu) moreMenu.classList.add('open');
+          return;
+        }
+        sidebar.classList.toggle('collapsed');
+      });
     }
 
     // BULLETPROOF: Event delegation on sidebar (catches clicks even if direct handlers fail)
@@ -566,6 +576,26 @@ const App = (() => {
         navigate(item.dataset.section);
         const moreMenu = $('mobile-more-menu');
         if (moreMenu) moreMenu.classList.remove('open');
+      });
+    });
+
+    $$('.mmm-item[data-action]').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        const moreMenu = $('mobile-more-menu');
+        if (moreMenu) moreMenu.classList.remove('open');
+        if (action === 'fund-manager') {
+          navigate('dashboard');
+          setTimeout(() => {
+            const panel = $('fund-manager-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 200);
+        } else if (action === 'withdraw') {
+          openWithdrawModal();
+        } else if (action === 'notifications') {
+          const panel = $('notif-panel');
+          if (panel) panel.classList.toggle('open');
+        }
       });
     });
   }
@@ -796,43 +826,64 @@ const App = (() => {
     if (typeof InvestmentReturns === 'undefined' || !InvestmentReturns.getFundManagerSnapshot) return;
     const fm = InvestmentReturns.getFundManagerSnapshot();
 
-    setText('fm-daily-amount',    `$${fmt(fm.unclaimedDaily, 2)}`);
-    setText('fm-weekly-amount',   `$${fmt(fm.unclaimedWeekly, 2)}`);
-    setText('fm-trading-amount',  `$${fmt(fm.unclaimedTrading, 2)}`);
-    setText('fm-interest-amount', `$${fmt(fm.unclaimedInterest, 2)}`);
+    setText('fm-wallet-balance', `$${fmt(fm.walletBalance, 2)}`);
+    setText('fm-accruing-amount', `$${fmt(fm.totalUnclaimed, 2)}`);
     setText('fm-total-unclaimed', typeof ZenCopy !== 'undefined'
       ? ZenCopy.funds.accruing('Accruing', `$${fmt(fm.totalUnclaimed, 2)}`)
       : `Accruing: $${fmt(fm.totalUnclaimed, 2)}`);
-    setText('fm-lifetime-total',  `$${fmt(fm.totalClaimed, 2)}`);
+    setText('fm-lifetime-total', `$${fmt(fm.totalClaimed, 2)}`);
 
-    // Color-code amounts: green glow if > 0
-    ['fm-daily-amount', 'fm-weekly-amount', 'fm-trading-amount', 'fm-interest-amount'].forEach(id => {
-      const el = $(id);
-      if (el) el.className = 'fm-pool-amount' + (parseFloat(el.textContent.replace(/[^0-9.]/g, '')) > 0 ? ' fm-has-funds' : '');
-    });
+    const accruingEl = $('fm-accruing-amount');
+    if (accruingEl) {
+      accruingEl.className = 'fm-ledger-value fm-pool-amount' + (fm.totalUnclaimed > 0 ? ' fm-has-funds' : '');
+    }
 
-    // Pulse total if pending
+    const pctEl = $('fm-admin-pct-label');
+    if (pctEl) {
+      const engStatus = (typeof CopyTradeConfig !== 'undefined')
+        ? CopyTradeConfig.getEngineStatus(CopyTradeConfig.getForCurrentUser())
+        : 'locked';
+      if (!fm.activated) {
+        pctEl.textContent = 'Awaiting admin funding';
+      } else if (engStatus === 'active' && fm.adminPercent > 0) {
+        pctEl.textContent = `Engine live · ${fm.adminPercent}% per execution`;
+      } else if (engStatus === 'pending_clearance') {
+        pctEl.textContent = 'Engine clearance in progress';
+      } else if (engStatus === 'awaiting_payment') {
+        const fee = CopyTradeConfig.resolveActivationFee(CopyTradeConfig.getForCurrentUser(), CopyTradeConfig.getUserTier());
+        pctEl.textContent = `Authorize engine · $${fee.toLocaleString()}`;
+      } else {
+        pctEl.textContent = 'Copy engine locked — contact account manager';
+      }
+    }
+
+    const statusEl = $('fm-status-text');
+    if (statusEl) {
+      if (!fm.activated) {
+        statusEl.innerHTML = 'Your account starts at <strong>$0</strong>. Contact admin to fund — no trades run until funded.';
+      } else if (fm.totalUnclaimed > 0) {
+        statusEl.innerHTML = 'Profits from trades are <strong>accruing</strong>. Claim to transfer into your main wallet balance.';
+      } else {
+        statusEl.innerHTML = 'Account funded. Trades run at your admin-assigned %. Profits will appear here when trades close.';
+      }
+    }
+
     const totalEl = $('fm-total-unclaimed');
     if (totalEl) totalEl.classList.toggle('fm-pending-pulse', fm.totalUnclaimed > 0.5);
 
-    // Enable/disable claim buttons
-    const pools = { daily: fm.unclaimedDaily, weekly: fm.unclaimedWeekly, trading: fm.unclaimedTrading, interest: fm.unclaimedInterest };
-    Object.entries(pools).forEach(([key, val]) => {
-      const btn = $(`fm-claim-${key}`);
-      if (btn) { btn.disabled = val <= 0; btn.classList.toggle('fm-btn-active', val > 0); }
-    });
     const allBtn = $('fm-claim-all');
-    if (allBtn) { allBtn.disabled = fm.totalUnclaimed <= 0; allBtn.classList.toggle('fm-btn-active', fm.totalUnclaimed > 0); }
+    if (allBtn) {
+      allBtn.disabled = fm.totalUnclaimed <= 0;
+      allBtn.classList.toggle('fm-btn-active', fm.totalUnclaimed > 0);
+    }
 
-    // Transfer log
     const logList = $('fm-log-list');
     if (logList && fm.transferLog.length > 0) {
       logList.innerHTML = fm.transferLog.map(entry => {
         const time = new Date(entry.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const icons = { daily: 'fa-gift', weekly: 'fa-trophy', trading: 'fa-chart-line', interest: 'fa-coins' };
         const balInfo = entry.balanceBefore != null ? ` ($${fmt(entry.balanceBefore, 2)} → $${fmt(entry.balanceAfter, 2)})` : '';
         return `<div class="fm-log-item">
-          <i class="fa ${icons[entry.type] || 'fa-arrow-right'}"></i>
+          <i class="fa fa-wallet"></i>
           <span class="fm-log-label">${entry.label}</span>
           <span class="fm-log-amount">+$${fmt(entry.amount, 2)}</span>
           <span class="fm-log-arrow">→ Wallet${balInfo}</span>
@@ -840,7 +891,7 @@ const App = (() => {
         </div>`;
       }).join('');
     } else if (logList) {
-      logList.innerHTML = '<div class="fm-log-empty">No transfers yet. Claim your earnings above.</div>';
+      logList.innerHTML = '<div class="fm-log-empty">No claims yet. Earnings appear here after trades close.</div>';
     }
   }
 
@@ -902,21 +953,12 @@ const App = (() => {
 
   // ── Fund Manager: Claim Pool ─────────────────────────────
   async function claimFundPool(pool) {
-    if (typeof InvestmentReturns === 'undefined') return;
-    // Pre-check if there's anything to claim
-    const fm = InvestmentReturns.getFundManagerSnapshot();
-    const poolAmounts = { daily: fm.unclaimedDaily, weekly: fm.unclaimedWeekly, trading: fm.unclaimedTrading, interest: fm.unclaimedInterest };
-    const amount = poolAmounts[pool] || 0;
-    if (amount <= 0) {
-      showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.funds.noPending : 'No accrued funds in this pool', 'info');
-      return;
-    }
+    return claimAllFunds();
+  }
 
-    const labels = { daily: 'Daily Bonus', weekly: 'Weekly Bonus', trading: 'Trading Profits', interest: 'Compound Interest' };
-
-    // Show processing animation then execute claim
-    _showClaimProcessing(amount, labels[pool] || pool, async () => {
-      const result = await InvestmentReturns.claimEarnings(pool);
+  async function _executeClaim(amount) {
+    _showClaimProcessing(amount, 'Accrued Earnings', async () => {
+      const result = await InvestmentReturns.claimEarnings('all');
       if (result.success) {
         // Animate wallet balance counting up
         const walletEl = $('ret-wallet-bal');
@@ -932,8 +974,7 @@ const App = (() => {
         if (typeof App !== 'undefined' && App.addNotification) {
           App.addNotification('fa-wallet', 'ai', 'Transfer recorded:', ` ${result.label} $${fmt(result.amount, 2)}`);
         }
-        // Flash the pool card
-        const card = document.querySelector(`.fm-pool-card[data-pool="${pool}"]`);
+        const card = document.querySelector('.fm-ledger-card');
         if (card) { card.classList.add('fm-claimed-flash'); setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200); }
         // Streak notification
         if (result.streak > 1) {
@@ -944,6 +985,8 @@ const App = (() => {
         updateReturnsUI();
         updateDashKPIs(Portfolio.computeMetrics());
         updateGamificationUI();
+      } else if (result.error) {
+        showToast(result.error, 'error');
       }
     });
   }
@@ -955,38 +998,7 @@ const App = (() => {
       showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.funds.noPending : 'No accrued funds to claim', 'info');
       return;
     }
-
-    _showClaimProcessing(fm.totalUnclaimed, 'All Earnings', async () => {
-      const result = await InvestmentReturns.claimAll();
-      if (result.success) {
-        // Animate wallet balance
-        const snap = InvestmentReturns.getSnapshot();
-        const walletEl = $('ret-wallet-bal');
-        if (walletEl && typeof Gamification !== 'undefined') {
-          const before = snap.walletBalance - result.totalClaimed;
-          Gamification.animateCounter(walletEl, before, snap.walletBalance, 2000, '$', 2);
-          walletEl.classList.add('gm-value-pulse');
-          setTimeout(() => walletEl.classList.remove('gm-value-pulse'), 2000);
-        }
-
-        showToast(typeof ZenCopy !== 'undefined'
-          ? ZenCopy.funds.claimedAll(`$${fmt(result.totalClaimed, 2)}`)
-          : `All earnings transferred · +$${fmt(result.totalClaimed, 2)}`, 'success');
-        if (typeof App !== 'undefined' && App.addNotification) {
-          App.addNotification('fa-wallet', 'ai', 'Bulk transfer recorded:', ` $${fmt(result.totalClaimed, 2)}`);
-        }
-        // Flash all pool cards
-        document.querySelectorAll('.fm-pool-card').forEach(card => {
-          card.classList.add('fm-claimed-flash');
-          setTimeout(() => card.classList.remove('fm-claimed-flash'), 1200);
-        });
-        if (typeof Gamification !== 'undefined') Gamification.trackClaimAll();
-        updateFundManagerUI();
-        updateReturnsUI();
-        updateDashKPIs(Portfolio.computeMetrics());
-        updateGamificationUI();
-      }
-    });
+    await _executeClaim(fm.totalUnclaimed);
   }
 
   function updateChartStats(rawId) {
@@ -1184,6 +1196,13 @@ const App = (() => {
   function renderDashCopyTraders() {
     const list = $('dash-copy-trade-list'); if (!list) return;
     if (typeof Trading.syncAdminCopyTraders === 'function') Trading.syncAdminCopyTraders();
+    const engineLive = typeof CopyTradeConfig !== 'undefined'
+      && CopyTradeConfig.isEngineActive(CopyTradeConfig.getForCurrentUser());
+    const gate = _copyEngineGateHtml();
+    if (!engineLive) {
+      list.innerHTML = gate;
+      return;
+    }
     const traders = Trading.getCopyTraders();
 
     // ── Live copy-trade positions strip ────────────────────
@@ -1605,29 +1624,103 @@ const App = (() => {
     }).join('');
   }
 
-  function _copyTraderBannerHtml() {
-    if (typeof Trading.getAdminCopySummary !== 'function') return '';
+  function _copyEngineGateHtml() {
+    if (typeof CopyTradeConfig === 'undefined' || typeof Trading.getAdminCopySummary !== 'function') return '';
+    const cfg = CopyTradeConfig.getForCurrentUser();
     const s = Trading.getAdminCopySummary();
-    if (!s.active) return '';
-    return `<div class="ct-admin-banner"><i class="fa fa-shield-alt"></i> Admin-assigned: <strong>${s.label}</strong> · ${s.percent}% of wallet per trade</div>`;
+    const tier = CopyTradeConfig.getUserTier();
+    const fee = CopyTradeConfig.resolveActivationFee(cfg, tier);
+    const feeFmt = fee.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const bal = (typeof InvestmentReturns !== 'undefined') ? InvestmentReturns.getSnapshot().walletBalance : 0;
+    const balFmt = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (s.status === 'active') {
+      return `<div class="copy-engine-gate copy-engine-live">
+        <div class="ceg-icon"><i class="fa fa-bolt"></i></div>
+        <div class="ceg-body">
+          <div class="ceg-title">Institutional Engine — LIVE</div>
+          <div class="ceg-desc"><strong>${s.label}</strong> · ${s.percent}% deployment per execution</div>
+        </div>
+        <span class="ceg-badge live">ACTIVE</span>
+      </div>`;
+    }
+
+    if (s.status === 'pending_clearance') {
+      return `<div class="copy-engine-gate copy-engine-pending">
+        <div class="ceg-icon"><i class="fa fa-hourglass-half"></i></div>
+        <div class="ceg-body">
+          <div class="ceg-title">Clearance in Progress</div>
+          <div class="ceg-desc">Activation fee authorized. Your account manager is enabling live execution.</div>
+        </div>
+        <span class="ceg-badge pending">PENDING</span>
+      </div>`;
+    }
+
+    if (s.status === 'awaiting_payment') {
+      const canPay = bal >= fee;
+      return `<div class="copy-engine-gate copy-engine-locked">
+        <div class="ceg-icon"><i class="fa fa-lock"></i></div>
+        <div class="ceg-body">
+          <div class="ceg-title">Institutional Copy Engine</div>
+          <div class="ceg-desc">Strategy assigned: <strong>${CopyTradeConfig.modeLabel(cfg.mode)}</strong> · ${cfg.percent}% per trade. One-time activation required.</div>
+          <div class="ceg-fee">Activation: <strong>${feeFmt}</strong> <span class="ceg-bal">Wallet: ${balFmt}</span></div>
+        </div>
+        <button class="ceg-btn ${canPay ? '' : 'disabled'}" ${canPay ? 'onclick="App.authorizeCopyEngine()"' : 'disabled'}>
+          ${canPay ? 'Authorize Access' : 'Insufficient Balance'}
+        </button>
+      </div>`;
+    }
+
+    return `<div class="copy-engine-gate copy-engine-locked">
+      <div class="ceg-icon"><i class="fa fa-lock"></i></div>
+      <div class="ceg-body">
+        <div class="ceg-title">Engine Locked</div>
+        <div class="ceg-desc">Automated execution requires institutional clearance. Contact your account manager to assign a strategy.</div>
+        <div class="ceg-fee">Activation from <strong>${feeFmt}</strong> when assigned</div>
+      </div>
+      <span class="ceg-badge locked">LOCKED</span>
+    </div>`;
+  }
+
+  function _copyTraderBannerHtml() {
+    return _copyEngineGateHtml();
+  }
+
+  async function authorizeCopyEngine() {
+    if (typeof UserAuth === 'undefined' || !UserAuth.payCopyActivation) return;
+    const cfg = CopyTradeConfig.getForCurrentUser();
+    const fee = CopyTradeConfig.resolveActivationFee(cfg, CopyTradeConfig.getUserTier());
+    const ok = confirm(`Authorize institutional copy engine access?\n\nOne-time fee: $${fee.toLocaleString()}\nDebited from your wallet balance.`);
+    if (!ok) return;
+
+    const result = await UserAuth.payCopyActivation();
+    if (result.ok) {
+      showToast('Activation authorized — awaiting account manager clearance', 'success');
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+        InvestmentReturns.forceBalanceSync();
+      }
+      renderDashCopyTraders();
+      renderCopyTraders();
+      updateFundManagerUI();
+    } else {
+      showToast(result.error || 'Authorization failed', 'error');
+    }
   }
 
   function _copyTraderButton(t, unlocked) {
-    const adminLocked = typeof Trading.isCopyTradingAdminLocked === 'function' && Trading.isCopyTradingAdminLocked();
-    const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
-    if (adminLocked) {
-      return t.active
-        ? '<span class="ct-admin-badge">ACTIVE</span>'
-        : '<span class="ct-admin-badge">ASSIGNED</span>';
-    }
-    const btnTxt = t.active ? '⏹ Stop' : unlocked ? '▶ Copy' : `🔒 ${tierLabels[t.minTier] || 'Upgrade'}`;
-    const btnCls = t.active ? 'btn-danger' : unlocked ? 'btn-primary' : 'btn-disabled';
-    return `<button class="btn ${btnCls} btn-xs" onclick="App.toggleCopyTrader('${t.id}')">${btnTxt}</button>`;
+    if (t.active) return '<span class="ct-admin-badge">EXECUTING</span>';
+    return '<span class="ct-admin-badge">MANAGED</span>';
   }
 
   function renderCopyTraders() {
     const list = $('copy-trade-list'); if (!list) return;
     if (typeof Trading.syncAdminCopyTraders === 'function') Trading.syncAdminCopyTraders();
+    const engineLive = typeof CopyTradeConfig !== 'undefined'
+      && CopyTradeConfig.isEngineActive(CopyTradeConfig.getForCurrentUser());
+    if (!engineLive) {
+      list.innerHTML = _copyEngineGateHtml();
+      return;
+    }
     list.innerHTML = _copyTraderBannerHtml() + Trading.getCopyTraders().map(t => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
@@ -2860,6 +2953,9 @@ const App = (() => {
         if (result.ok) {
           console.log(`[LOGIN] ✓ Success: ${email}`);
           _dismissLoginScreen();
+        } else if (result.needsVerification && result.userId) {
+          AuthManager.switchView('register');
+          _showRegisterOTPStep(email, result.userId);
         } else {
           console.warn(`[LOGIN] ✗ Failed: ${email} - ${result.error}`);
           _showLoginError(result.error || 'Login failed. Please try again.');
@@ -3300,7 +3396,9 @@ const App = (() => {
       if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Creating account...'; btn.disabled = true; }
 
       const result = await UserAuth.register({ fullName, email, password, tier, pin });
-      if (result.ok) {
+      if (result.ok && result.needsVerification) {
+        _showRegisterOTPStep(email, result.userId);
+      } else if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
       } else {
@@ -3317,8 +3415,15 @@ const App = (() => {
     const otpStep  = $('register-otp-step');
     if (!regForm || !otpStep) return;
 
+    const errBox = $('register-error');
+    if (errBox) { errBox.textContent = ''; errBox.classList.remove('visible'); }
+
     regForm.style.display  = 'none';
     otpStep.style.display  = 'block';
+    const regHeader = document.querySelector('#register-overlay .register-header');
+    const regBadges = document.querySelector('#register-overlay .register-trust-badges');
+    if (regHeader) regHeader.style.display = 'none';
+    if (regBadges) regBadges.style.display = 'none';
     const emailLabel = $('reg-otp-email');
     if (emailLabel) emailLabel.textContent = email;
 
@@ -3784,7 +3889,7 @@ const App = (() => {
     // Public
     quickTrade, togglePlugin, installPlugin, uninstallPlugin,
     closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
-    claimFundPool, claimAllFunds, claimDailyBonus,
+    claimFundPool, claimAllFunds, claimDailyBonus, authorizeCopyEngine,
     loadActiveSessions, revokeAllOtherSessions,
     openWithdrawModal, closeWithdrawModal, submitWithdraw,
     submitKyc, refreshKycStatus, changePassword, reportCryptoDeposit,
