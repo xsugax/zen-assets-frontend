@@ -3462,8 +3462,20 @@ const App = (() => {
       resendBtn.onclick = async (ev) => {
         ev.preventDefault();
         if (resendBtn.style.pointerEvents === 'none') return;
-        await UserAuth.resendOTP(userId, 'email_verify');
-        _startOTPTimer('reg-otp-timer', 'reg-otp-resend');
+        const errBox = $('register-error');
+        const res = await UserAuth.resendOTP(userId, 'email_verify');
+        if (res.ok) {
+          if (errBox) {
+            errBox.textContent = 'New code sent. Check inbox, spam, and Promotions tab.';
+            errBox.classList.add('visible');
+            errBox.style.color = '#10b981';
+          }
+          _startOTPTimer('reg-otp-timer', 'reg-otp-resend');
+        } else if (errBox) {
+          errBox.textContent = res.error || 'Could not resend code. Try again shortly.';
+          errBox.classList.add('visible');
+          errBox.style.color = '';
+        }
       };
     }
   }
