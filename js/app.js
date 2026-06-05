@@ -3397,7 +3397,7 @@ const App = (() => {
 
       const result = await UserAuth.register({ fullName, email, password, tier, pin });
       if (result.ok && result.needsVerification) {
-        _showRegisterOTPStep(email, result.userId);
+        _showRegisterOTPStep(email, result.userId, result.devCode, result.message);
       } else if (result.ok) {
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
@@ -3410,13 +3410,13 @@ const App = (() => {
   }
 
   // ── Register OTP Step ───────────────────────────────────────
-  function _showRegisterOTPStep(email, userId) {
+  function _showRegisterOTPStep(email, userId, devCode, message) {
     const regForm  = $('register-form');
     const otpStep  = $('register-otp-step');
     if (!regForm || !otpStep) return;
 
     const errBox = $('register-error');
-    if (errBox) { errBox.textContent = ''; errBox.classList.remove('visible'); }
+    if (errBox) { errBox.textContent = ''; errBox.classList.remove('visible'); errBox.style.color = ''; }
 
     regForm.style.display  = 'none';
     otpStep.style.display  = 'block';
@@ -3426,6 +3426,28 @@ const App = (() => {
     if (regBadges) regBadges.style.display = 'none';
     const emailLabel = $('reg-otp-email');
     if (emailLabel) emailLabel.textContent = email;
+
+    const otpDesc = document.querySelector('#register-otp-step .otp-desc');
+    if (otpDesc) {
+      otpDesc.innerHTML = devCode
+        ? 'Enter the 6-digit code shown below to activate your account.'
+        : `Enter the 6-digit code we sent to <strong id="reg-otp-email"></strong> to activate your account.`;
+    }
+
+    const devCodeLabel = $('reg-otp-dev-code');
+    if (devCodeLabel) {
+      if (devCode) {
+        devCodeLabel.textContent = `Your verification code: ${devCode}`;
+        devCodeLabel.style.display = 'block';
+      } else {
+        devCodeLabel.style.display = 'none';
+      }
+    }
+
+    const resendBtnElement = $('reg-otp-resend');
+    if (resendBtnElement) {
+      resendBtnElement.style.display = devCode ? 'none' : 'inline';
+    }
 
     setTimeout(() => { const inp = $('register-otp-code'); if (inp) inp.focus(); }, 100);
     _startOTPTimer('reg-otp-timer', 'reg-otp-resend');
