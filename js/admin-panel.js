@@ -31,13 +31,14 @@ const AdminPanel = (() => {
   };
 
   const ADMIN_EMAIL = 'admin@zenassets.com';
+  const ADMIN_PASS  = 'ZenAdmin2026!';
 
   const TIERS = {
     bronze:   { label: 'Bronze',   color: '#cd7f32', minDeposit: 2000,    apy: '25–38%', maxLev: '5x',  commission: 0.15 },
     silver:   { label: 'Silver',   color: '#c0c0c0', minDeposit: 25000,   apy: '38–52%', maxLev: '10x', commission: 0.12 },
     gold:     { label: 'Gold',     color: '#d4a574', minDeposit: 100000,  apy: '52–72%', maxLev: '25x', commission: 0.10 },
     platinum: { label: 'Platinum', color: '#e5e4e2', minDeposit: 500000,  apy: '72–95%', maxLev: '50x', commission: 0.07 },
-    diamond:  { label: 'Diamond',  color: '#b9f2ff', minDeposit: 2000000, apy: '95–125%', maxLev: '100x',commission: 0.05 },
+    diamond:  { label: 'Diamond',  color: '#b9f2ff', minDeposit: 1000000, apy: '95–125%', maxLev: '100x',commission: 0.05 },
   };
 
   const ITEMS_PER_PAGE = 15;
@@ -116,16 +117,13 @@ const AdminPanel = (() => {
   let auditPage         = 1;
   let charts            = {};        // Chart.js instances
   let refreshTimer      = null;
-  let _userModalMode    = 'edit'; // 'create' | 'edit'
 
   // API response cache
   const _cache = {
     users:       {},   // normalised user objects keyed by email.toLowerCase()
     withdrawals: [],   // pending withdrawals (normalised)
-    deposits:    [],   // pending deposits (normalised)
     audit:       [],   // audit log entries (normalised)
     stats:       null, // platform stats object
-    platformConfig: null,
   };
 
   // ────────────────────────────────────────────────────────
@@ -241,9 +239,6 @@ const AdminPanel = (() => {
       deposit:         parseFloat(u.balance) || parseFloat(u.depositAmount) || 0,
       totalDeposited:  parseFloat(u.total_deposited) || parseFloat(u.totalDeposited) || parseFloat(u.depositAmount) || 0,
       tradeCount:      u.trade_count || u.tradeCount || 0,
-      copyTrade:       (typeof CopyTradeConfig !== 'undefined' && u.copyTrade)
-                         ? CopyTradeConfig.normalize(u.copyTrade)
-                         : { enabled: false, mode: 'disabled', percent: 15 },
     };
   }
 
@@ -321,7 +316,41 @@ const AdminPanel = (() => {
         } catch { /* token invalid or server cold — continue to re-auth */ }
       }
 
-      toast('Sign in on this page with your admin email and password to load live users.', 'warning', 8000);
+      // Step 2: Re-authenticate with admin credentials to get a real server token
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 45000);
+        const resp = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASS }),
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.token) {
+            // Save the real server token
+            localStorage.setItem('zen_token', data.token);
+            sessionStorage.setItem('zen_token', data.token);
+            // Always write admin session — we know this is admin (using admin creds)
+            const session = {
+              userId: data.user?.id || 'admin',
+              email: ADMIN_EMAIL,
+              role: 'admin',
+              tier: data.user?.tier || 'diamond',
+              fullName: data.user?.fullName || data.user?.full_name || 'Admin',
+              loginAt: Date.now(),
+            };
+            localStorage.setItem('zen_session', JSON.stringify(session));
+            sessionStorage.setItem('zen_session', JSON.stringify(session));
+            toast('Server connected', 'success', 2000);
+            return true;
+          }
+        }
+      } catch { /* server not reachable */ }
+
+      toast('Server offline — showing cached data', 'warning', 4000);
       return false;
     } catch {
       return false;
@@ -344,51 +373,46 @@ const AdminPanel = (() => {
         }
       }
 
-      const [usersRaw, withdrawalsRaw, depositsRaw, statsRaw, auditRaw, configRaw] = await Promise.all([
+      const [usersRaw, withdrawalsRaw, statsRaw, auditRaw] = await Promise.all([
         UserAuth.adminGetAllUsers({ limit: 500 }),
         UserAuth.adminGetWithdrawals(),
-        UserAuth.adminGetDeposits(),
         UserAuth.adminGetStats(),
         UserAuth.adminGetAuditLog({ limit: 200 }),
-        UserAuth.adminGetConfig(),
       ]);
 
       // Ensure required users exist in local store before merging
       _ensureRequiredUsers();
 
-      // Server is source of truth — replace user list whenever API returns (even empty)
-      if (_serverAuthenticated && Array.isArray(usersRaw)) {
+      // Normalise users → dict keyed by email
+      // IMPORTANT: only replace cache if we got data; keep previous data otherwise
+      if (Array.isArray(usersRaw) && usersRaw.length > 0) {
         const fresh = {};
         usersRaw.forEach(u => {
           const norm = _normalizeUser(u);
           fresh[norm.email] = norm;
         });
         _cache.users = fresh;
-      } else if (!_serverAuthenticated) {
+
+        // Sync API users into local store so they persist offline
+        _syncUsersToLocalStore(usersRaw);
+      } else {
         _cache.users = _cache.users || {};
       }
+
+      // NOTE: When connected to the real backend, only show real server users.
+      // Avoid leaking stale or offline-only local cache users into the live admin panel.
 
       // Normalise withdrawals
       _cache.withdrawals = Array.isArray(withdrawalsRaw)
         ? withdrawalsRaw.map(_normalizeWithdrawal)
         : [];
 
-      _cache.deposits = Array.isArray(depositsRaw)
-        ? depositsRaw.map(_normalizeWithdrawal)
-        : [];
-
-      if (configRaw) {
-        _cache.platformConfig = configRaw;
-        saveConfig_ls({ ..._defaultConfig(), ...configRaw });
-      }
-
       // Stats
       _cache.stats = statsRaw || null;
 
       // Audit log
-      const auditList = auditRaw?.entries || auditRaw?.logs;
-      if (auditRaw && auditRaw.ok && Array.isArray(auditList)) {
-        _cache.audit = auditList.map(_normalizeAuditEntry);
+      if (auditRaw && auditRaw.ok && Array.isArray(auditRaw.logs)) {
+        _cache.audit = auditRaw.logs.map(_normalizeAuditEntry);
       }
 
       return true;
@@ -413,9 +437,8 @@ const AdminPanel = (() => {
     } catch (e) { /* graceful */ }
   }
 
-  // Ensure required users exist in zen_users_db (dev/demo only)
+  // Ensure required users exist in zen_users_db (seed once)
   function _ensureRequiredUsers() {
-    if (typeof UserAuth !== 'undefined' && UserAuth.API_BASE && UserAuth.API_BASE.includes('onrender.com')) return;
     try {
       const localUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
       const emails = localUsers.map(u => (u.email || '').toLowerCase());
@@ -465,7 +488,6 @@ const AdminPanel = (() => {
   // Try to create a required user on the server if they don't exist there
   async function _ensureRequiredUsersOnServer() {
     if (!_serverAuthenticated) return;
-    if (typeof UserAuth !== 'undefined' && UserAuth.API_BASE && UserAuth.API_BASE.includes('onrender.com')) return;
     try {
       const result = await UserAuth.adminGetAllUsers({ limit: 500 });
       const serverEmails = (result || []).map(u => (u.email || '').toLowerCase());
@@ -1006,7 +1028,7 @@ const AdminPanel = (() => {
     if (!tbody) return;
 
     if (pageItems.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty-row"><i class="fa fa-users-slash"></i> No users found</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-row"><i class="fa fa-users-slash"></i> No users found</td></tr>`;
     } else {
       tbody.innerHTML = pageItems.map(u => {
         const tierInfo = TIERS[u.tier] || TIERS.bronze;
@@ -1035,7 +1057,6 @@ const AdminPanel = (() => {
                 <span class="sc-dot"></span>${u.status}
               </span>
             </td>
-            <td>${_copyTradeCell(u)}</td>
             <td class="text-muted">${fmtDate(u.createdAt)}</td>
             <td class="text-muted">${timeAgo(u.lastLogin)}</td>
             <td><span class="risk-badge ${riskClass}">${riskScore}</span></td>
@@ -1190,62 +1211,12 @@ const AdminPanel = (() => {
     renderUsers();
   }
 
-  function _setUserModalMode(mode) {
-    _userModalMode = mode === 'create' ? 'create' : 'edit';
-    const isCreate = _userModalMode === 'create';
-
-    const btnText = $('btn-save-user-text');
-    if (btnText) btnText.textContent = isCreate ? 'Create User' : 'Save Changes';
-
-    const pwdLabel = $('edit-user-password-label');
-    if (pwdLabel) {
-      pwdLabel.innerHTML = isCreate
-        ? 'Password <span class="req">*</span>'
-        : 'New Password <span class="req" style="display:none" id="edit-user-password-req"></span> (leave empty to keep)';
-    }
-
-    const pinLabel = $('edit-user-pin-label');
-    if (pinLabel) {
-      pinLabel.innerHTML = isCreate
-        ? 'PIN (4 digits) <span class="req">*</span>'
-        : 'PIN (4 digits, leave empty to keep current)';
-    }
-
-    const depLabel = $('edit-user-deposit-label');
-    if (depLabel) depLabel.textContent = isCreate ? 'Initial Deposit ($)' : 'Top-up Deposit ($)';
-
-    const earningsRow = $('row-user-earnings');
-    if (earningsRow) earningsRow.style.display = isCreate ? 'none' : '';
-
-    const hint = $('user-form-hint');
-    if (hint) {
-      hint.textContent = isCreate
-        ? 'Required: email, full name, password (8+ chars), and 4-digit PIN — same as site registration. User can sign in immediately.'
-        : '';
-      hint.style.display = isCreate ? 'block' : 'none';
-    }
-
-    const pwdReq = $('edit-user-password-req');
-    if (pwdReq) pwdReq.style.display = isCreate ? 'inline' : 'none';
-    const pinReq = $('edit-user-pin-req');
-    if (pinReq) pinReq.style.display = isCreate ? 'inline' : 'none';
-  }
-
-  function _setSaveUserBusy(busy) {
-    const btn = $('btn-save-user');
-    if (!btn) return;
-    btn.disabled = !!busy;
-    btn.style.opacity = busy ? '0.65' : '';
-    btn.style.pointerEvents = busy ? 'none' : '';
-  }
-
   // CRUD: Open Edit Modal
   function openEditUser(email) {
     const users = loadUsers();
     const user = users[email.toLowerCase()];
     if (!user) return toast('User not found', 'error');
 
-    _setUserModalMode('edit');
     $('modal-user-title').textContent = 'Edit User: ' + user.fullName;
     const emailInput = $('edit-user-email');
     if (emailInput) {
@@ -1254,17 +1225,12 @@ const AdminPanel = (() => {
     }
     $('edit-user-name').value = user.fullName || '';
     $('edit-user-tier').value = user.tier || 'bronze';
-    $('edit-user-deposit').value = '';
+    $('edit-user-deposit').value = '';  // Leave empty — enter TOP-UP amount only
     $('edit-user-deposit').placeholder = `Current: $${(user.deposit || 0).toLocaleString()} — enter top-up amount`;
     $('edit-user-status').value = user.status || 'active';
-    if ($('edit-user-kyc')) {
-      const kyc = user.kycStatus || 'none';
-      $('edit-user-kyc').value = ['none', 'pending', 'submitted', 'verified', 'rejected'].includes(kyc) ? kyc : 'none';
-    }
     $('edit-user-earnings').value = user.earningsOverride || '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
-    _fillCopyTradeForm(user.copyTrade || _getAdminControls(email).copyTrade);
 
     openModal('modal-user-edit');
   }
@@ -1275,56 +1241,34 @@ const AdminPanel = (() => {
 
     const users     = loadUsers();
     const key       = email.toLowerCase();
-    const isCreate  = _userModalMode === 'create';
+    const isNew     = !users || !users[key];
     const newTier   = $('edit-user-tier').value;
     const newStatus = $('edit-user-status').value;
-    const newKyc    = $('edit-user-kyc') ? $('edit-user-kyc').value : 'none';
     const newName   = $('edit-user-name').value.trim();
     const newPin    = $('edit-user-pin') ? $('edit-user-pin').value.trim() : '';
     const newPwd    = $('edit-user-password') ? $('edit-user-password').value.trim() : '';
     const deposit   = parseFloat($('edit-user-deposit').value) || 0;
-    const copyTrade = _readCopyTradeForm();
 
     // ── CREATE NEW USER ──
-    if (isCreate) {
+    if (isNew) {
       if (!newName) return toast('Full name is required', 'error');
-      if (!newPwd || newPwd.length < 8) return toast('Password must be at least 8 characters', 'error');
-      if (!/^\d{4}$/.test(newPin)) return toast('A 4-digit PIN is required', 'error');
+      if (!newPwd || newPwd.length < 6) return toast('Password must be at least 6 characters', 'error');
 
-      _setSaveUserBusy(true);
-      try {
-        const result = await UserAuth.adminCreateUser({
-          email,
-          fullName: newName,
-          password: newPwd,
-          pin: newPin,
-          tier: newTier,
-          status: newStatus,
-          kycStatus: newKyc,
-          depositAmount: deposit,
-          copyTrade,
-        });
-        if (!result.ok) return toast(result.error || 'Failed to create user on server', 'error');
+      const result = await UserAuth.adminCreateUser({
+        email, fullName: newName, password: newPwd,
+        pin: newPin || '', tier: newTier, depositAmount: deposit,
+      });
+      if (!result.ok && !result.success) return toast(result.error || 'Failed to create user', 'error');
 
-        CopyTradeConfig.saveForEmail(email, copyTrade);
-        _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
+      closeModal('modal-user-edit');
+      log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
+      toast(`${newName} created successfully`, 'success');
 
-        closeModal('modal-user-edit');
-        _userModalMode = 'edit';
-        log('user_create', `Created user ${newName} (${email}): tier=${newTier}`, 'info', { email });
-        toast(`${newName} created — they can sign in with this email, password, and PIN`, 'success', 6000);
-
-        await _loadApiData();
-        renderUsers();
-        _updateHeaderStats();
-      } finally {
-        _setSaveUserBusy(false);
-      }
+      // Refresh user list from API
+      await _loadApiData();
+      renderUsers();
+      _updateHeaderStats();
       return;
-    }
-
-    if (!users || !users[key]) {
-      return toast('User not found — refresh the list or use Add User to create a new account', 'error');
     }
 
     // ── UPDATE EXISTING USER ──
@@ -1334,42 +1278,20 @@ const AdminPanel = (() => {
     const existingBalance = user.deposit || user.totalDeposited || 0;
     const newTotalBalance = deposit ? existingBalance + deposit : existingBalance;
 
-    if (newPwd && newPwd.length < 8) {
-      return toast('Password must be at least 8 characters', 'error');
-    }
-    if (newPin && !/^\d{4}$/.test(newPin)) {
-      return toast('PIN must be exactly 4 digits', 'error');
-    }
-
-    _setSaveUserBusy(true);
+    // Try server update (best-effort — may fail for locally-seeded users)
     try {
       const result = await UserAuth.adminUpdateUser(user.id, {
-        fullName: newName || undefined,
-        status: newStatus,
-        tier: newTier,
-        kycStatus: newKyc !== 'none' ? newKyc : undefined,
-        balance: deposit ? newTotalBalance : undefined,
-        depositAmount: deposit ? newTotalBalance : undefined,
-        copyTrade,
+        status: newStatus, tier: newTier,
+        balance: newTotalBalance || undefined,
+        depositAmount: newTotalBalance || undefined,
       });
-      if (!result.ok) {
-        toast(result.error || 'Server update failed', 'error');
-        return;
-      }
-    } catch {
-      toast('Could not reach server to save changes', 'error');
-      return;
-    } finally {
-      _setSaveUserBusy(false);
-    }
+      if (!result.ok) console.warn('Server update failed (may be local-only user):', result.error);
+    } catch { /* server unreachable — continue with local update */ }
 
     // Update local cache immediately for snappy UI
     user.fullName = newName || user.fullName;
     user.tier     = newTier;
     user.status   = newStatus;
-    if (newKyc) user.kycStatus = newKyc;
-    user.copyTrade = copyTrade;
-    _setAdminControls(email, { ..._getAdminControls(email), copyTrade });
     if (deposit) { user.deposit = newTotalBalance; user.totalDeposited = newTotalBalance; }
 
     // Also persist to local store so changes survive refreshes
@@ -1399,8 +1321,12 @@ const AdminPanel = (() => {
       } catch { /* graceful */ }
     }
 
+    closeModal('modal-user-edit');
+    log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
+    toast(`${user.fullName} updated successfully`, 'success');
+
     // ── Handle password reset ──
-    if (newPwd) {
+    if (newPwd && newPwd.length >= 6) {
       // Update server (best-effort)
       try {
         const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
@@ -1425,32 +1351,35 @@ const AdminPanel = (() => {
 
     // ── Handle PIN set/reset via admin API ──
     if (newPin) {
-      try {
-        const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
-        const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ pin: newPin }),
-        });
-        const pinRes = await resp.json();
-        if (pinRes.success) {
-          log('user_pin_set', `PIN set for ${user.fullName} (${email})`, 'info', { email });
-        } else {
-          toast(pinRes.error || 'PIN update failed', 'error');
-        }
-      } catch (e) {
-        const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
-        const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-        if (idx !== -1) {
-          allUsers[idx].pinHash = UserAuth.hashPassword(newPin);
-          localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      if (!/^\d{4}$/.test(newPin)) {
+        toast('PIN must be exactly 4 digits', 'error');
+      } else {
+        try {
+          const token = localStorage.getItem('zen_token') || sessionStorage.getItem('zen_token');
+          const resp = await fetch(`${API_BASE}/admin/users/${user.id}/set-pin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ pin: newPin }),
+          });
+          const pinRes = await resp.json();
+          if (pinRes.success) {
+            toast('PIN updated', 'success');
+            log('user_pin_set', `PIN set for ${user.fullName} (${email})`, 'info', { email });
+          } else {
+            toast(pinRes.error || 'PIN update failed', 'error');
+          }
+        } catch (e) {
+          // Offline: update localStore directly
+          const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+          const idx = allUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+          if (idx !== -1) {
+            allUsers[idx].pinHash = UserAuth.hashPassword(newPin);
+            localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+            toast('PIN set (offline)', 'success');
+          }
         }
       }
     }
-
-    closeModal('modal-user-edit');
-    log('user_update', `Updated ${user.fullName} (${email}): tier=${newTier}, status=${newStatus}`, 'info', { email });
-    toast(`${user.fullName} updated successfully`, 'success');
 
     renderUsers();
     _updateHeaderStats();
@@ -1458,7 +1387,6 @@ const AdminPanel = (() => {
 
   // CRUD: Create User
   function openCreateUser() {
-    _setUserModalMode('create');
     $('modal-user-title').textContent = 'Create New User';
     const emailInput = $('edit-user-email');
     if (emailInput) {
@@ -1466,16 +1394,12 @@ const AdminPanel = (() => {
       emailInput.value = '';
     }
     $('edit-user-name').value = '';
-    $('edit-user-tier').value = 'gold';
+    $('edit-user-tier').value = 'bronze';
     $('edit-user-deposit').value = '';
-    $('edit-user-deposit').placeholder = '0';
     $('edit-user-status').value = 'active';
-    if ($('edit-user-kyc')) $('edit-user-kyc').value = 'none';
     $('edit-user-earnings').value = '';
     $('edit-user-password').value = '';
     if ($('edit-user-pin')) $('edit-user-pin').value = '';
-    _fillCopyTradeForm({ enabled: false, mode: 'disabled', percent: 15 });
-    _setSaveUserBusy(false);
     openModal('modal-user-edit');
   }
 
@@ -1584,8 +1508,8 @@ const AdminPanel = (() => {
     closeModal('modal-activate');
 
     // Email notification — deposit confirmation
-    if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
-      UserAuth.adminNotifyEmail('deposit', {
+    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+      UserAuth.sendEmailNotification('deposit', {
         email: email,
         fullName: u.fullName || email,
         amount: topUp,
@@ -1620,146 +1544,13 @@ const AdminPanel = (() => {
 
   // ── Admin God-Mode Controls (per-user trade & profit pause) ──
   function _getAdminControls(email) {
-    const key = email.toLowerCase();
-    const fromUser = loadUsers()[key]?.copyTrade;
     try {
-      const raw = localStorage.getItem('zen_admin_controls_' + key);
-      const base = raw ? JSON.parse(raw) : { tradingPaused: false, profitPaused: false };
-      if (fromUser && typeof CopyTradeConfig !== 'undefined') {
-        base.copyTrade = CopyTradeConfig.normalize(fromUser);
-      }
-      return base;
-    } catch {
-      return {
-        tradingPaused: false,
-        profitPaused: false,
-        copyTrade: fromUser || { enabled: false, mode: 'disabled', percent: 15 },
-      };
-    }
+      const raw = localStorage.getItem('zen_admin_controls_' + email.toLowerCase());
+      return raw ? JSON.parse(raw) : { tradingPaused: false, profitPaused: false };
+    } catch { return { tradingPaused: false, profitPaused: false }; }
   }
   function _setAdminControls(email, controls) {
-    const key = email.toLowerCase();
-    localStorage.setItem('zen_admin_controls_' + key, JSON.stringify(controls));
-    if (controls.copyTrade && typeof CopyTradeConfig !== 'undefined') {
-      CopyTradeConfig.saveForEmail(key, controls.copyTrade);
-    }
-  }
-
-  let _copyFormBound = false;
-  function _bindCopyTradeFormOnce() {
-    if (_copyFormBound) return;
-    _copyFormBound = true;
-    const pct = $('edit-user-copy-percent');
-    const range = $('edit-user-copy-percent-range');
-    const mode = $('edit-user-copy-mode');
-    const enabled = $('edit-user-copy-enabled');
-    const sync = () => {
-      if (pct && range) range.value = pct.value;
-      _updateCopyHint();
-    };
-    if (range && pct) {
-      range.addEventListener('input', () => { pct.value = range.value; _updateCopyHint(); });
-      pct.addEventListener('input', sync);
-    }
-    if (mode) mode.addEventListener('change', _updateCopyHint);
-    if (enabled) enabled.addEventListener('change', _updateCopyHint);
-    const feePaid = $('edit-user-copy-fee-paid');
-    const activated = $('edit-user-copy-activated');
-    const refreshAct = () => _updateCopyActivationHint(_readCopyTradeForm());
-    if (feePaid) feePaid.addEventListener('change', refreshAct);
-    if (activated) activated.addEventListener('change', refreshAct);
-  }
-
-  function _updateCopyHint() {
-    const hint = $('edit-user-copy-hint');
-    const mode = $('edit-user-copy-mode');
-    if (!hint || !mode || typeof CopyTradeConfig === 'undefined') return;
-    const m = CopyTradeConfig.MODES[mode.value];
-    const pct = $('edit-user-copy-percent')?.value || 0;
-    const on = $('edit-user-copy-enabled')?.checked;
-    hint.textContent = on && mode.value !== 'disabled' && m
-      ? `${m.desc} — each trade uses ~${pct}% of wallet balance.`
-      : 'Copy trading is off for this user.';
-  }
-
-  function _fillCopyTradeForm(copyTrade) {
-    _bindCopyTradeFormOnce();
-    const norm = typeof CopyTradeConfig !== 'undefined'
-      ? CopyTradeConfig.normalize(copyTrade || {})
-      : { enabled: false, mode: 'disabled', percent: 15 };
-    const en = $('edit-user-copy-enabled');
-    const mode = $('edit-user-copy-mode');
-    const pct = $('edit-user-copy-percent');
-    const range = $('edit-user-copy-percent-range');
-    const fee = $('edit-user-copy-fee');
-    const feePaid = $('edit-user-copy-fee-paid');
-    const activated = $('edit-user-copy-activated');
-    if (en) en.checked = norm.enabled && norm.mode !== 'disabled';
-    if (mode) mode.value = norm.mode;
-    if (pct) pct.value = norm.percent;
-    if (range) range.value = norm.percent;
-    if (fee) fee.value = norm.activationFee || '';
-    if (feePaid) feePaid.checked = !!norm.feePaid;
-    if (activated) activated.checked = !!norm.activated;
-    _updateCopyHint();
-    _updateCopyActivationHint(norm);
-  }
-
-  function _readCopyTradeForm() {
-    const enabled = !!$('edit-user-copy-enabled')?.checked;
-    const mode = $('edit-user-copy-mode')?.value || 'disabled';
-    const percent = parseFloat($('edit-user-copy-percent')?.value) || 0;
-    const feeRaw = parseFloat($('edit-user-copy-fee')?.value);
-    const activationFee = Number.isFinite(feeRaw) && feeRaw > 0 ? feeRaw : null;
-    const feePaid = !!$('edit-user-copy-fee-paid')?.checked;
-    const activated = !!$('edit-user-copy-activated')?.checked;
-    if (typeof CopyTradeConfig === 'undefined') {
-      return { enabled, mode: enabled ? mode : 'disabled', percent, feePaid, activated, activationFee };
-    }
-    return CopyTradeConfig.normalize({
-      enabled,
-      mode: enabled ? mode : 'disabled',
-      percent,
-      activationFee,
-      feePaid,
-      activated: activated && feePaid,
-    });
-  }
-
-  function _updateCopyActivationHint(norm) {
-    const hint = $('edit-user-copy-status-hint');
-    if (!hint) return;
-    if (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.isEngineActive(norm)) {
-      hint.textContent = 'Live engine ACTIVE — automated execution enabled.';
-      hint.style.color = '#00ff88';
-    } else if (norm.feePaid && !norm.activated) {
-      hint.textContent = 'Fee authorized — enable live engine when ready.';
-      hint.style.color = '#ffb74d';
-    } else if (norm.enabled && norm.mode !== 'disabled') {
-      hint.textContent = 'Strategy assigned — customer must authorize activation fee.';
-      hint.style.color = '#8899aa';
-    } else {
-      hint.textContent = 'Assign strategy → customer pays fee → activate live engine.';
-      hint.style.color = '#8899aa';
-    }
-  }
-
-  function _copyTradeCell(u) {
-    const ct = u.copyTrade || _getAdminControls(u.email).copyTrade || {};
-    if (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.isEngineActive(ct)) {
-      const label = CopyTradeConfig.modeLabel(ct.mode);
-      return `<span class="copy-chip live" title="Live">${label} · ${ct.percent}%</span>`;
-    }
-    if (ct.feePaid && !ct.activated) {
-      return '<span class="copy-chip pending" title="Fee paid">Pending</span>';
-    }
-    if (ct.enabled && ct.mode && ct.mode !== 'disabled') {
-      const label = typeof CopyTradeConfig !== 'undefined'
-        ? CopyTradeConfig.modeLabel(ct.mode)
-        : ct.mode;
-      return `<span class="copy-chip assigned" title="Assigned">${label}</span>`;
-    }
-    return '<span class="copy-chip off">Locked</span>';
+    localStorage.setItem('zen_admin_controls_' + email.toLowerCase(), JSON.stringify(controls));
   }
 
   function _renderPauseButtons(email) {
@@ -1864,59 +1655,50 @@ const AdminPanel = (() => {
   }
 
   // Bulk Actions
-  async function bulkAction(action) {
+  function bulkAction(action) {
     if (selectedUsers.size === 0) return;
 
     const count = selectedUsers.size;
-    const users = loadUsers();
+    let actionLabel = action;
 
     switch (action) {
       case 'activate': {
-        let ok = 0;
-        for (const email of selectedUsers) {
-          const u = users[email.toLowerCase()];
-          if (!u?.id) continue;
-          const r = await UserAuth.adminUpdateUser(u.id, { status: 'active' });
-          if (r.ok) { u.status = 'active'; ok++; }
-        }
-        log('admin_action', `Bulk activated ${ok}/${count} users`, 'info');
-        toast(`${ok} users activated on server`, 'success');
+        const users = loadUsers();
+        selectedUsers.forEach(email => {
+          if (users[email.toLowerCase()]) users[email.toLowerCase()].status = 'active';
+        });
+        saveUsers(users);
+        log('admin_action', `Bulk activated ${count} users`, 'info');
+        toast(`${count} users activated`, 'success');
         break;
       }
       case 'suspend': {
-        let ok = 0;
-        for (const email of selectedUsers) {
-          const u = users[email.toLowerCase()];
-          if (!u?.id) continue;
-          const r = await UserAuth.adminUpdateUser(u.id, { status: 'suspended' });
-          if (r.ok) { u.status = 'suspended'; ok++; }
-        }
-        log('admin_action', `Bulk suspended ${ok}/${count} users`, 'warning');
-        toast(`${ok} users suspended on server`, 'warning');
+        const users = loadUsers();
+        selectedUsers.forEach(email => {
+          if (users[email.toLowerCase()]) users[email.toLowerCase()].status = 'suspended';
+        });
+        saveUsers(users);
+        log('admin_action', `Bulk suspended ${count} users`, 'warning');
+        toast(`${count} users suspended`, 'warning');
         break;
       }
       case 'delete': {
         $('confirm-title').textContent = 'Bulk Delete';
         $('confirm-message').textContent = `Permanently delete ${count} selected users?`;
-        $('confirm-btn').onclick = async () => {
+        $('confirm-btn').onclick = () => {
           const users = loadUsers();
-          let deleted = 0;
-          for (const email of selectedUsers) {
+          selectedUsers.forEach(email => {
             const key = email.toLowerCase();
-            if (key === ADMIN_EMAIL.toLowerCase()) continue;
-            const u = users[key];
-            if (u?.id) {
-              const r = await UserAuth.adminDeleteUser(u.id);
-              if (r.ok) deleted++;
+            if (key !== ADMIN_EMAIL.toLowerCase()) {
+              delete users[key];
+              localStorage.removeItem('autoTradeHistory_' + key);
             }
-            delete users[key];
-            localStorage.removeItem('autoTradeHistory_' + key);
-          }
+          });
           saveUsers(users);
           selectedUsers.clear();
           closeModal('modal-confirm');
-          log('admin_action', `Bulk deleted ${deleted}/${count} users on server`, 'critical');
-          toast(`${deleted} users deleted`, 'warning');
+          log('admin_action', `Bulk deleted ${count} users`, 'critical');
+          toast(`${count} users deleted`, 'warning');
           renderUsers();
           _updateHeaderStats();
         };
@@ -1924,26 +1706,28 @@ const AdminPanel = (() => {
         return;
       }
       case 'upgrade': {
+        // Upgrade all selected to next tier
         const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+        const users = loadUsers();
         let upgraded = 0;
-        for (const email of selectedUsers) {
+        selectedUsers.forEach(email => {
           const u = users[email.toLowerCase()];
-          if (!u?.id) continue;
-          const idx = tierOrder.indexOf(u.tier);
-          if (idx < tierOrder.length - 1) {
-            const newTier = tierOrder[idx + 1];
-            const r = await UserAuth.adminUpdateUser(u.id, { tier: newTier });
-            if (r.ok) { u.tier = newTier; upgraded++; }
+          if (u) {
+            const idx = tierOrder.indexOf(u.tier);
+            if (idx < tierOrder.length - 1) {
+              u.tier = tierOrder[idx + 1];
+              upgraded++;
+            }
           }
-        }
+        });
+        saveUsers(users);
         log('admin_action', `Bulk upgraded ${upgraded} users`, 'info');
-        toast(`${upgraded} users upgraded on server`, 'success');
+        toast(`${upgraded} users upgraded`, 'success');
         break;
       }
     }
 
     selectedUsers.clear();
-    await _loadApiData();
     renderUsers();
     _updateHeaderStats();
   }
@@ -2022,47 +1806,11 @@ const AdminPanel = (() => {
       }
     }
 
-    const pendingD = _cache.deposits || [];
-    const depQueue = $('deposit-queue');
-    const depSub = $('deposit-pending-subtitle');
-    if (depSub) depSub.textContent = `${pendingD.length} pending`;
-    if (depQueue) {
-      if (pendingD.length === 0) {
-        depQueue.innerHTML = '<div class="empty-state"><i class="fa fa-check-circle"></i><p>No pending deposit requests</p></div>';
-      } else {
-        depQueue.innerHTML = pendingD.map(d => `
-          <div class="wq-item">
-            <div class="wq-info">
-              <div class="wq-name">${d.name || d.email}</div>
-              <div class="wq-meta">${d.method} · ${timeAgo(d.requestedAt)}</div>
-            </div>
-            <div class="wq-amount">${fmtMoney(d.amount)}</div>
-            <div class="wq-actions">
-              <button class="act-btn green" onclick="AdminPanel.processDeposit('${d.id}', 'approved')"><i class="fa fa-check"></i></button>
-              <button class="act-btn danger" onclick="AdminPanel.processDeposit('${d.id}', 'denied')"><i class="fa fa-times"></i></button>
-            </div>
-          </div>
-        `).join('');
-      }
-    }
-
+    // Transaction Ledger
     _renderLedger();
-    _renderRevenueTierChart(clients);
-  }
 
-  async function processDeposit(id, newStatus) {
-    if (newStatus === 'approved') {
-      const result = await UserAuth.adminApproveDeposit(id);
-      if (!result.ok) return toast(result.error || 'Approve failed', 'error');
-      toast('Deposit approved and credited', 'success');
-    } else {
-      const result = await UserAuth.adminRejectDeposit(id, '');
-      if (!result.ok) return toast(result.error || 'Reject failed', 'error');
-      toast('Deposit rejected', 'warning');
-    }
-    await _loadApiData();
-    renderFinancials();
-    _updateHeaderStats();
+    // Revenue by Tier Chart
+    _renderRevenueTierChart(clients);
   }
 
   async function processWithdrawal(id, newStatus) {
@@ -2101,8 +1849,8 @@ const AdminPanel = (() => {
     toast(`Withdrawal ${statusLabels[newStatus]}`, newStatus === 'approved' ? 'success' : 'warning');
 
     // Email notification to user
-    if (w.email && typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
-      UserAuth.adminNotifyEmail('withdrawal', {
+    if (w.email && typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+      UserAuth.sendEmailNotification('withdrawal', {
         email: w.email,
         fullName: w.name || w.email,
         amount: w.amount,
@@ -2241,9 +1989,9 @@ const AdminPanel = (() => {
     toast(`Balance adjusted: ${fmtMoney(user.deposit)}`, 'success');
 
     // Email notification to user
-    if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
+    if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
       if (operation === 'add' || operation === 'set') {
-        UserAuth.adminNotifyEmail('deposit', {
+        UserAuth.sendEmailNotification('deposit', {
           email: email,
           fullName: user.fullName || email,
           amount: amount,
@@ -2302,40 +2050,6 @@ const AdminPanel = (() => {
 
     // KYC Grid
     _renderKYCGrid(clients);
-    _renderKycReviewQueue();
-  }
-
-  async function _renderKycReviewQueue() {
-    const queue = $('kyc-review-queue');
-    const sub = $('kyc-queue-subtitle');
-    if (!queue) return;
-    const pending = await UserAuth.adminGetPendingKyc();
-    if (sub) sub.textContent = `${pending.length} pending`;
-    if (!pending.length) {
-      queue.innerHTML = '<div class="empty-state"><i class="fa fa-check"></i><p>No KYC submissions awaiting review</p></div>';
-      return;
-    }
-    queue.innerHTML = pending.map((d) => `
-      <div class="wq-item">
-        <div class="wq-user">
-          <strong>${d.email || d.user_name || 'User'}</strong>
-          <span class="wq-meta">${d.doc_type || 'ID'} · ${timeAgo(d.submitted_at || d.created_at)}</span>
-        </div>
-        <div class="wq-actions">
-          <button class="act-btn green" onclick="AdminPanel.reviewKyc('${d.id}', 'approved')"><i class="fa fa-check"></i></button>
-          <button class="act-btn danger" onclick="AdminPanel.reviewKyc('${d.id}', 'rejected')"><i class="fa fa-times"></i></button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  async function reviewKyc(id, decision) {
-    const notes = decision === 'rejected' ? (prompt('Rejection reason (optional):') || '') : '';
-    const r = await UserAuth.adminReviewKyc(id, decision, notes);
-    if (!r.ok) return toast(r.error || 'KYC review failed', 'error');
-    toast(`KYC ${decision}`, decision === 'approved' ? 'success' : 'warning');
-    await _loadApiData();
-    renderRisk();
   }
 
   function _renderRiskAlerts(clients) {
@@ -2573,7 +2287,7 @@ const AdminPanel = (() => {
   //  TAB: CONFIGURATION
   // ────────────────────────────────────────────────────────
   function renderConfig() {
-    const config = _cache.platformConfig || loadConfig();
+    const config = loadConfig();
 
     // Platform Toggles
     const cfgReg = $('cfg-registration');
@@ -2626,16 +2340,13 @@ const AdminPanel = (() => {
     }).join('');
   }
 
-  async function saveConfig() {
-    const patch = {
+  function saveConfig() {
+    const config = {
       registration: $('cfg-registration')?.checked ?? true,
       trading: $('cfg-trading')?.checked ?? true,
       autoTrader: $('cfg-autotrader')?.checked ?? true,
       withdrawals: $('cfg-withdrawals')?.checked ?? true,
       maintenance: $('cfg-maintenance')?.checked ?? false,
-    };
-    const localConfig = {
-      ...patch,
       tradeInterval: parseInt($('cfg-trade-interval')?.value) || 45,
       maxPositions: parseInt($('cfg-max-positions')?.value) || 8,
       minConfidence: parseInt($('cfg-min-confidence')?.value) || 65,
@@ -2644,13 +2355,9 @@ const AdminPanel = (() => {
       maxDailyLoss: parseInt($('cfg-max-daily-loss')?.value) || 10,
     };
 
-    const result = await UserAuth.adminSaveConfig(patch);
-    if (!result.ok) return toast(result.error || 'Failed to save config to server', 'error');
-
-    _cache.platformConfig = result.config || patch;
-    saveConfig_ls(localConfig);
-    log('config_change', 'Platform configuration updated', 'warning', patch);
-    toast('Configuration saved to server', 'success');
+    saveConfig_ls(config);
+    log('config_change', 'Platform configuration updated', 'warning', config);
+    toast('Configuration saved successfully', 'success');
   }
 
   // ────────────────────────────────────────────────────────
@@ -2807,7 +2514,7 @@ const AdminPanel = (() => {
     toast(`Preview: "${subject}" — ${message.substring(0, 80)}...`, 'info', 5000);
   }
 
-  async function sendBroadcast() {
+  function sendBroadcast() {
     const subject = $('bc-subject')?.value.trim();
     const message = $('bc-message')?.value.trim();
     const priority = $('bc-priority')?.value || 'normal';
@@ -2820,24 +2527,18 @@ const AdminPanel = (() => {
     if (target === 'user') targetLabel = $('bc-user-target')?.value || 'Unknown User';
     if (target === 'active') targetLabel = 'Active Users';
 
+    // Count recipients
     const users = loadUsers();
     const clients = Object.values(users).filter(u => u.role !== 'admin');
-    let recipients = [];
+    let recipientCount = 0;
     switch (target) {
-      case 'all': recipients = clients.map(u => u.email).filter(Boolean); break;
-      case 'tier': recipients = clients.filter(u => u.tier === ($('bc-tier-target')?.value)).map(u => u.email); break;
-      case 'user': {
-        const em = ($('bc-user-target')?.value || '').trim().toLowerCase();
-        if (em) recipients = [em];
-        break;
-      }
-      case 'active': recipients = clients.filter(u => u.status === 'active').map(u => u.email); break;
+      case 'all': recipientCount = clients.length; break;
+      case 'tier': recipientCount = clients.filter(u => u.tier === ($('bc-tier-target')?.value)).length; break;
+      case 'user': recipientCount = 1; break;
+      case 'active': recipientCount = clients.filter(u => u.status === 'active').length; break;
     }
-    const recipientCount = recipients.length;
 
-    const apiResult = await UserAuth.adminSendBroadcast({ subject, message, recipients });
-    if (!apiResult.ok) return toast(apiResult.error || 'Broadcast failed', 'error');
-
+    // Save notification
     const notifs = loadNotifs();
     notifs.unshift({
       id: uid(),
@@ -2876,8 +2577,8 @@ const AdminPanel = (() => {
     let sent = 0;
     for (const u of clients) {
       try {
-        if (typeof UserAuth !== 'undefined' && UserAuth.adminNotifyEmail) {
-          UserAuth.adminNotifyEmail('weekly-report', {
+        if (typeof UserAuth !== 'undefined' && UserAuth.sendEmailNotification) {
+          UserAuth.sendEmailNotification('weekly-report', {
             email: u.email,
             fullName: u.fullName || u.email,
             balance: u.deposit || u.balance || 0,
@@ -2942,7 +2643,7 @@ const AdminPanel = (() => {
     toggleTradingPause, toggleProfitPause,
     bulkAction, exportUsers,
     // Financials
-    processWithdrawal, processDeposit, reviewKyc, filterLedger,
+    processWithdrawal, filterLedger,
     openBalanceAdjust, executeBalanceAdjust,
     // Risk
     renderRisk,

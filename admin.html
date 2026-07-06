@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZEN ASSETS â€” Admin Command Center</title>
 
   <!-- Favicon -->
@@ -24,7 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- Admin Styles -->
-  <link rel="stylesheet" href="css/admin-panel.css?v=110" />
+  <link rel="stylesheet" href="css/admin-panel.css" />
 </head>
 <body>
 
@@ -331,7 +331,6 @@
                 <th>Tier</th>
                 <th>Deposit</th>
                 <th>Status</th>
-                <th>Copy Trade</th>
                 <th>Joined</th>
                 <th>Last Login</th>
                 <th>Risk</th>
@@ -383,17 +382,6 @@
         </div>
       </div>
 
-      <!-- Pending Deposits Queue -->
-      <div class="admin-card">
-        <div class="ac-header">
-          <span class="ac-title"><i class="fa fa-arrow-down"></i> Pending Deposit Requests</span>
-          <span class="ac-subtitle" id="deposit-pending-subtitle">0 pending</span>
-        </div>
-        <div class="ac-body">
-          <div class="withdrawal-queue" id="deposit-queue"></div>
-        </div>
-      </div>
-
       <!-- Pending Withdrawals Queue -->
       <div class="admin-card">
         <div class="ac-header">
@@ -438,10 +426,6 @@
           </table>
         </div>
       </div>
-
-      <!-- Revenue by Tier Chart -->
-      <div class="admin-card chart-card-full">
-        <div class="ac-header">
           <span class="ac-title"><i class="fa fa-chart-bar"></i> Revenue by Tier</span>
         </div>
         <div class="ac-body chart-body">
@@ -522,16 +506,6 @@
         </div>
         <div class="ac-body">
           <div class="kyc-grid" id="kyc-grid"></div>
-        </div>
-      </div>
-
-      <div class="admin-card">
-        <div class="ac-header">
-          <span class="ac-title"><i class="fa fa-inbox"></i> KYC Review Queue</span>
-          <span class="ac-subtitle" id="kyc-queue-subtitle">0 pending</span>
-        </div>
-        <div class="ac-body">
-          <div class="withdrawal-queue" id="kyc-review-queue"></div>
         </div>
       </div>
     </div>
@@ -906,20 +880,19 @@
       <button class="amb-close" onclick="AdminPanel.closeModal('modal-user-edit')">&times;</button>
     </div>
     <div class="amb-body">
-      <p class="user-form-hint" id="user-form-hint"></p>
       <div class="amb-row">
-        <div class="amb-field full">
-          <label>Email <span class="req">*</span></label>
-          <input type="email" id="edit-user-email" placeholder="user@example.com" autocomplete="off" />
+        <div class="amb-field">
+          <label>Email</label>
+          <input type="email" id="edit-user-email" placeholder="user@example.com" />
         </div>
       </div>
       <div class="amb-row">
         <div class="amb-field">
-          <label>Full Name <span class="req">*</span></label>
-          <input type="text" id="edit-user-name" autocomplete="name" />
+          <label>Full Name</label>
+          <input type="text" id="edit-user-name" />
         </div>
         <div class="amb-field">
-          <label>Tier <span class="req">*</span></label>
+          <label>Tier</label>
           <select id="edit-user-tier">
             <option value="bronze">Bronze</option>
             <option value="silver">Silver</option>
@@ -931,31 +904,18 @@
       </div>
       <div class="amb-row">
         <div class="amb-field">
-          <label id="edit-user-deposit-label">Initial Deposit ($)</label>
-          <input type="number" id="edit-user-deposit" min="0" step="100" placeholder="0" />
+          <label>Deposit ($)</label>
+          <input type="number" id="edit-user-deposit" min="0" step="100" />
         </div>
         <div class="amb-field">
-          <label>Account Status</label>
+          <label>Status</label>
           <select id="edit-user-status">
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
-            <option value="banned">Banned</option>
           </select>
         </div>
       </div>
       <div class="amb-row">
-        <div class="amb-field full">
-          <label>KYC Status</label>
-          <select id="edit-user-kyc">
-            <option value="none">None</option>
-            <option value="pending">Pending</option>
-            <option value="submitted">Submitted</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-      </div>
-      <div class="amb-row" id="row-user-earnings">
         <div class="amb-field full">
           <label>Earnings Override ($)</label>
           <input type="number" id="edit-user-earnings" placeholder="Leave empty for auto-calculation" step="100" />
@@ -963,76 +923,21 @@
       </div>
       <div class="amb-row">
         <div class="amb-field full">
-          <label id="edit-user-password-label">Password <span class="req" id="edit-user-password-req">*</span></label>
-          <input type="password" id="edit-user-password" placeholder="Min. 8 characters" autocomplete="new-password" />
+          <label>New Password (leave empty to keep current)</label>
+          <input type="password" id="edit-user-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
         </div>
       </div>
       <div class="amb-row">
         <div class="amb-field full">
-          <label id="edit-user-pin-label">PIN (4 digits) <span class="req" id="edit-user-pin-req">*</span></label>
-          <input type="tel" id="edit-user-pin" placeholder="0000" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
-        </div>
-      </div>
-
-      <div class="amb-section-title"><i class="fa fa-clone"></i> Institutional Copy Engine</div>
-      <div class="amb-row">
-        <div class="amb-field full">
-          <label class="amb-check">
-            <input type="checkbox" id="edit-user-copy-enabled" />
-            Assign strategy (locked until activated)
-          </label>
-        </div>
-      </div>
-      <div class="amb-row">
-        <div class="amb-field">
-          <label>Strategy type</label>
-          <select id="edit-user-copy-mode">
-            <option value="disabled">Disabled</option>
-            <option value="scalping">Scalping (SilverDelta)</option>
-            <option value="mean_reversion">Mean Reversion (QuantEdge)</option>
-            <option value="momentum">Momentum (CryptoWolf)</option>
-            <option value="breakout">Breakout (IronAlpha)</option>
-            <option value="multi">Multi-Strategy (tier mix)</option>
-            <option value="aggressive">Aggressive Elite</option>
-          </select>
-        </div>
-        <div class="amb-field">
-          <label>Wallet allocation per trade (%)</label>
-          <input type="number" id="edit-user-copy-percent" min="0" max="100" step="1" value="15" />
-        </div>
-      </div>
-      <div class="amb-row">
-        <div class="amb-field full">
-          <input type="range" id="edit-user-copy-percent-range" min="0" max="100" step="1" value="15" class="amb-range" />
-          <p class="copy-mode-hint" id="edit-user-copy-hint">Percent of wallet balance used for each copy trade entry.</p>
-        </div>
-      </div>
-      <div class="amb-row">
-        <div class="amb-field">
-          <label>Activation fee override ($)</label>
-          <input type="number" id="edit-user-copy-fee" min="0" step="500" placeholder="Tier default if empty" />
-        </div>
-        <div class="amb-field">
-          <label class="amb-check" style="margin-top:28px">
-            <input type="checkbox" id="edit-user-copy-fee-paid" />
-            Fee paid / authorized
-          </label>
-        </div>
-      </div>
-      <div class="amb-row">
-        <div class="amb-field full">
-          <label class="amb-check">
-            <input type="checkbox" id="edit-user-copy-activated" />
-            <strong>Activate live engine</strong> — enables automated execution (requires fee authorized)
-          </label>
-          <p class="copy-mode-hint" id="edit-user-copy-status-hint">Customer pays activation fee → you enable live engine.</p>
+          <label><i class="fa fa-grid-4"></i> Set/Reset PIN (4 digits, leave empty to keep current)</label>
+          <input type="tel" id="edit-user-pin" placeholder="0000" maxlength="4" pattern="\d{4}" inputmode="numeric" />
         </div>
       </div>
     </div>
     <div class="amb-footer">
-      <button type="button" class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-user-edit')">Cancel</button>
-      <button type="button" class="btn-admin-sm primary" id="btn-save-user" onclick="AdminPanel.saveUserEdit()">
-        <i class="fa fa-save"></i> <span id="btn-save-user-text">Save Changes</span>
+      <button class="btn-admin-sm" onclick="AdminPanel.closeModal('modal-user-edit')">Cancel</button>
+      <button class="btn-admin-sm primary" onclick="AdminPanel.saveUserEdit()">
+        <i class="fa fa-save"></i> Save Changes
       </button>
     </div>
   </div>
@@ -1135,8 +1040,7 @@
 <div id="admin-toast-container"></div>
 
 <!-- Scripts -->
-<script src="js/copy-trade-config.js?v=100"></script>
 <script src="js/user-auth.js"></script>
-<script src="js/admin-panel.js?v=110"></script>
+<script src="js/admin-panel.js?v=100"></script>
 </body>
 </html>

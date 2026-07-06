@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════
    zen-feel.css — ZEN Assurance (logged-in dashboard feel)
-   Structure unchanged; motion, color, and calm feedback only.
+   Enhanced Professional Dashboard Experience
 ════════════════════════════════════════════════════════════ */
 
 :root {
@@ -10,9 +10,16 @@
   --feel-settled: #94a3b8;
   --feel-calibrating: #c9a227;
   --t-assured: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ════ Premium Dashboard Tokens ════ */
+  --feel-shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --feel-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.16);
+  --feel-border-subtle: 1px solid rgba(74, 158, 255, 0.1);
+  --feel-border-active: 1px solid rgba(74, 158, 255, 0.3);
+  --feel-transition: 280ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Dashboard-scoped: calm motion, no alarm pulses ───────── */
+/* ── Dashboard-scoped: calm motion, professional feedback ───────── */
 #app .fm-pending-pulse {
   animation: feelAccruePulse 3s ease-in-out infinite;
 }
@@ -32,63 +39,99 @@
   animation: none !important;
   border-color: rgba(74, 158, 255, 0.25) !important;
   background: rgba(8, 14, 24, 0.92) !important;
+  box-shadow: var(--feel-shadow-subtle) !important;
+  transition: all var(--feel-transition) !important;
 }
 
 #app .crisis-banner.feel-stable,
 #app #crisis-mode-banner.feel-stable {
-  box-shadow: 0 0 0 1px rgba(74, 158, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(74, 158, 255, 0.12), var(--feel-shadow-subtle) !important;
+}
+
+#app .crisis-banner:hover,
+#app #crisis-mode-banner:hover {
+  border-color: rgba(74, 158, 255, 0.35) !important;
+  box-shadow: var(--feel-shadow-medium), inset 0 1px 0 rgba(255,255,255,.05) !important;
 }
 
 /* ── Semantic text helpers ────────────────────────────────── */
 #app .feel-up,
-#app .up.feel-metric { color: var(--feel-up) !important; }
+#app .up.feel-metric { color: var(--feel-up) !important; transition: color var(--feel-transition); }
 
 #app .feel-down,
-#app .down.feel-metric { color: var(--feel-down) !important; }
+#app .down.feel-metric { color: var(--feel-down) !important; transition: color var(--feel-transition); }
 
-#app .feel-settled { color: var(--feel-settled) !important; }
+#app .feel-settled { color: var(--feel-settled) !important; transition: color var(--feel-transition); }
 
-#app .feel-progress { color: var(--feel-progress) !important; }
+#app .feel-progress { color: var(--feel-progress) !important; transition: color var(--feel-transition); }
 
 #app .feel-confirm-flash {
   animation: feelConfirmFlash 0.4s ease forwards;
 }
 
 @keyframes feelConfirmFlash {
-  0% { opacity: 0.7; }
-  100% { opacity: 1; }
+  0% { opacity: 0.7; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-/* ── Boot progress bar (smooth width) ─────────────────────── */
+/* ── Boot progress bar (smooth width with glow) ─────────────────────── */
 #loading-screen .boot-progress-fill,
 #loading-screen .progress-bar-fill {
-  transition: width 0.4s ease;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px rgba(74, 158, 255, 0.3);
 }
 
-/* ── Toasts inside app context ────────────────────────────── */
+/* ── Toasts inside app context - Professional styling ────────────────── */
 #app ~ #toast-container .toast-progress,
 #toast-container .toast-progress {
   border-color: rgba(74, 158, 255, 0.35);
   background: rgba(8, 14, 24, 0.95);
   color: #b8d4f0;
+  box-shadow: var(--feel-shadow-medium);
+  transition: all var(--feel-transition);
+  border-radius: 8px;
+}
+
+#app ~ #toast-container .toast-progress:hover,
+#toast-container .toast-progress:hover {
+  background: rgba(8, 14, 24, 0.98);
+  border-color: rgba(74, 158, 255, 0.5);
+  box-shadow: var(--feel-shadow-medium), 0 0 20px rgba(74, 158, 255, 0.15);
 }
 
 #toast-container .toast-progress i {
   color: var(--feel-progress);
+  animation: spin-smooth 2s linear infinite;
 }
 
 #app ~ #toast-container .toast-warning,
 #toast-container .toast-warning {
   border-color: rgba(201, 162, 39, 0.35);
   color: #d4c4a0;
+  box-shadow: var(--feel-shadow-medium);
+  transition: all var(--feel-transition);
 }
 
-/* ── Copy trader: steady active badge ─────────────────────── */
+/* ── Copy trader: steady active badge with premium polish ─────────────── */
 #app .ct-live-badge {
   animation: none !important;
   color: var(--feel-up);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(46, 189, 133, 0.08);
+  border: 1px solid rgba(46, 189, 133, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--feel-transition);
+}
+
+#app .ct-live-badge:hover {
+  background: rgba(46, 189, 133, 0.15);
+  border-color: rgba(46, 189, 133, 0.35);
+  box-shadow: 0 0 16px rgba(46, 189, 133, 0.2);
 }
 
 #app .ct-live-badge::before {
@@ -98,42 +141,84 @@
   height: 6px;
   border-radius: 50%;
   background: var(--feel-up);
-  margin-right: 6px;
+  margin-right: 0;
   vertical-align: middle;
-  opacity: 0.9;
+  opacity: 1;
+  animation: pulse-smooth 2s ease-in-out infinite;
 }
 
-/* ── Admin / portfolio status strip ───────────────────────── */
+@keyframes pulse-smooth {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* ── Admin / portfolio status strip - Professional styling ───────────────── */
 #app .feel-status-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  margin: 0 0 8px;
+  padding: 10px 16px;
+  margin: 0 0 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: #94a3b8;
   background: rgba(8, 14, 24, 0.85);
-  border: 1px solid rgba(74, 158, 255, 0.15);
+  border: var(--feel-border-subtle);
   border-radius: 8px;
+  transition: all var(--feel-transition);
+  box-shadow: var(--feel-shadow-subtle), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+#app .feel-status-bar:hover {
+  border-color: rgba(74, 158, 255, 0.25);
+  background: rgba(8, 14, 24, 0.92);
+  box-shadow: var(--feel-shadow-medium), inset 0 1px 0 rgba(255,255,255,.05);
 }
 
 #app .feel-status-bar i {
   color: var(--feel-progress);
+  font-size: 13px;
 }
 
-/* ── Chart data badge states ──────────────────────────────── */
+/* ── Chart data badge states - Premium styling ──────────────────────────── */
+.chart-data-indicator {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all var(--feel-transition);
+}
+
 .chart-data-indicator.feel-calibrating {
   color: var(--feel-calibrating) !important;
   border-color: rgba(201, 162, 39, 0.35) !important;
+  background: rgba(201, 162, 39, 0.08) !important;
+}
+
+.chart-data-indicator.feel-calibrating:hover {
+  background: rgba(201, 162, 39, 0.15) !important;
+  border-color: rgba(201, 162, 39, 0.5) !important;
 }
 
 .chart-data-indicator.feel-live {
   color: var(--feel-up) !important;
   border-color: rgba(46, 189, 133, 0.3) !important;
+  background: rgba(46, 189, 133, 0.08) !important;
+}
+
+.chart-data-indicator.feel-live:hover {
+  background: rgba(46, 189, 133, 0.15) !important;
+  border-color: rgba(46, 189, 133, 0.5) !important;
 }
 
 .chart-data-indicator.feel-loading {
   color: var(--feel-settled) !important;
   border-color: rgba(122, 143, 168, 0.25) !important;
+  background: rgba(122, 143, 168, 0.08) !important;
+}
+
+.chart-data-indicator.feel-loading:hover {
+  background: rgba(122, 143, 168, 0.15) !important;
+  border-color: rgba(122, 143, 168, 0.4) !important;
 }

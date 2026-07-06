@@ -20,11 +20,8 @@ const UserAuth = (() => {
 
   const STORAGE_SESSION  = 'zen_session';
   const STORAGE_TOKEN    = 'zen_token';
-  const STORAGE_REFRESH  = 'zen_refresh_token';
   const STORAGE_WALLET   = 'zen_wallet';
-  const STORAGE_REMEMBER = 'zen_remember_me';
-
-  const IS_PRODUCTION_API = API_BASE.includes('onrender.com') || API_BASE.includes('zenassets.tech');
+  const STORAGE_REMEMBER = 'zen_remember_me'; // set only when user checks "Keep me signed in"
 
   let _pendingRememberMe = false; // preserved across the OTP step during login
 
@@ -68,7 +65,7 @@ const UserAuth = (() => {
   }
 
   // ── Local User Store ─────────────────────────────────────
-  const DATA_VERSION = 'v74_multidevice';
+  const DATA_VERSION = 'v73_clean';
   const _localStore = {
     USERS_KEY: 'zen_users_db',
 
@@ -103,6 +100,10 @@ const UserAuth = (() => {
           key.startsWith('zen_investment_') ||
           key.startsWith('autoTradeHistory_') ||
           key === 'autoTradeHistory' ||
+          key === 'zen_session' ||
+          key === 'zen_token' ||
+          key === 'zen_wallet' ||
+          key === 'zen_remember_me' ||
           key.startsWith('zen_admin_')
         )) {
           keysToRemove.push(key);
@@ -113,9 +114,8 @@ const UserAuth = (() => {
       localStorage.setItem('zen_data_version', DATA_VERSION);
     },
 
-    // Seed built-in admin on first run (dev/offline only — never in production API mode)
+    // Seed built-in admin on first run
     ensureAdmin() {
-      if (IS_PRODUCTION_API) return;
       const existing = this.findByEmail('admin@zenassets.com');
       if (existing) return;
       const users = this.getAll();
@@ -292,146 +292,78 @@ const UserAuth = (() => {
 
   function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION) || sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
   function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || sessionStorage.getItem(STORAGE_TOKEN) || null; }
-  function _loadRefresh()  { return localStorage.getItem(STORAGE_REFRESH) || sessionStorage.getItem(STORAGE_REFRESH) || null; }
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
 
+  // Write helpers — ALWAYS respect the active store so non-remember sessions stay in sessionStorage
   function _saveSession(s) { const store = _getStore(); s ? store.setItem(STORAGE_SESSION, JSON.stringify(s)) : store.removeItem(STORAGE_SESSION); }
-
-  function _sessionFromUser(user) {
-    return {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      tier: user.tier,
-      fullName: user.fullName,
-      loginAt: Date.now(),
-      tradingPaused: !!user.tradingPaused,
-      profitPaused: !!user.profitPaused,
-    };
-  }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
-  function _saveRefresh(r) {
-    if (r) {
-      localStorage.setItem(STORAGE_REFRESH, r);
-      sessionStorage.setItem(STORAGE_REFRESH, r);
-    } else {
-      localStorage.removeItem(STORAGE_REFRESH);
-      sessionStorage.removeItem(STORAGE_REFRESH);
-    }
-  }
   function _saveWallet(w)  { const store = _getStore(); w ? store.setItem(STORAGE_WALLET, JSON.stringify(w)) : store.removeItem(STORAGE_WALLET); }
 
-  // ── Persist auth — localStorage for multi-device; sessionStorage only if remember unchecked ──
-  function _applyCopySettingsFromUser(user) {
-    if (!user?.email || typeof CopyTradeConfig === 'undefined') return;
-    CopyTradeConfig.applyFromApiUser(user);
-    if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
-      try { Trading.syncAdminCopyTraders(); } catch (_) { /* trading may load later */ }
-    }
-  }
-
-  function _persistAuth(token, session, wallet, remember = true, refreshToken = null) {
+  // ── Persist auth — localStorage (remember-me) or sessionStorage (tab-only) ──
+  function _persistAuth(token, session, wallet, remember) {
+    // Wipe both storages first to avoid stale cross-storage data
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
     });
+    // On logout or invalidated auth, clear everything and forget remember-me
     if (!token) {
       localStorage.removeItem(STORAGE_REMEMBER);
-      _saveRefresh(null);
       _activeStore = null;
       return;
     }
+    // Admin sessions are always persisted to localStorage regardless of checkbox
     const isAdmin = session && session.role === 'admin';
-    const usePersistent = remember !== false || isAdmin;
-    const store = usePersistent ? localStorage : sessionStorage;
+    const store = (remember || isAdmin) ? localStorage : sessionStorage;
     _activeStore = store;
     store.setItem(STORAGE_TOKEN, token);
     if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
     if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
-    if (refreshToken) _saveRefresh(refreshToken);
-    if (usePersistent) {
+    // Set or clear the remember-me flag accordingly
+    if (remember || isAdmin) {
       localStorage.setItem(STORAGE_REMEMBER, '1');
-      if (refreshToken) localStorage.setItem(STORAGE_REFRESH, refreshToken);
     } else {
       localStorage.removeItem(STORAGE_REMEMBER);
-      if (refreshToken) sessionStorage.setItem(STORAGE_REFRESH, refreshToken);
     }
-  }
-
-  let _refreshInFlight = null;
-
-  async function _refreshAccessToken() {
-    const existing = _loadRefresh();
-    if (!existing) return false;
-    if (_refreshInFlight) return _refreshInFlight;
-    _refreshInFlight = (async () => {
-      try {
-        const resp = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: existing }),
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data.token) return false;
-        _saveToken(data.token);
-        if (data.refreshToken) _saveRefresh(data.refreshToken);
-        return true;
-      } catch (e) {
-        console.warn('[Auth] refresh failed:', e.message);
-        return false;
-      } finally {
-        _refreshInFlight = null;
-      }
-    })();
-    return _refreshInFlight;
   }
 
   // ── Auth endpoints that MUST reach the server (no local fallback) ──
   const AUTH_CRITICAL = ['/auth/login', '/auth/pin-login', '/auth/register',
-    '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp', '/auth/refresh'];
+    '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp'];
 
-  async function _fetchOnce(endpoint, { method, body, auth }, attemptMs) {
+  // ── API Helper — tries live API first, falls back to localStore ──
+  async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
     const headers = { 'Content-Type': 'application/json' };
     const token = _loadToken();
     if (auth && token) headers['Authorization'] = `Bearer ${token}`;
+
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), attemptMs);
-    const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
-    clearTimeout(timer);
-    const data = await resp.json().catch(() => ({}));
-    return { resp, data };
-  }
 
-  // ── API Helper — production uses server only; dev may fall back to localStore ──
-  async function _api(endpoint, { method = 'GET', body = null, auth = true, _retried = false } = {}) {
+    const isCriticalAuth = AUTH_CRITICAL.some(p => endpoint.startsWith(p));
+
     const isAdminEndpoint = endpoint.startsWith('/admin');
+
+    // Admin endpoints get longer timeout + retry (Render cold-start can take 20-30s)
+    // Auth-critical endpoints get a single generous attempt
+    // Other endpoints: 12s single attempt
     const attempts = isAdminEndpoint ? [30000, 15000] : [12000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
-        const { resp, data } = await _fetchOnce(endpoint, { method, body, auth }, attempts[i]);
-        if (resp.ok) return { ok: true, ...data };
-
-        if (resp.status === 401 && auth && !_retried && endpoint !== '/auth/refresh') {
-          const code = data.code || '';
-          if (code === 'TOKEN_EXPIRED' || code === 'SESSION_INVALID' || code === 'TOKEN_INVALID') {
-            const refreshed = await _refreshAccessToken();
-            if (refreshed) return _api(endpoint, { method, body, auth, _retried: true });
-          }
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), attempts[i]);
+        const resp = await fetch(`${API_BASE}${endpoint}`, { ...opts, signal: controller.signal });
+        clearTimeout(timer);
+        const data = await resp.json();
+        if (!resp.ok) {
+          return { ok: false, status: resp.status, error: data.error || 'Request failed' };
         }
-        return {
-          ok: false,
-          status: resp.status,
-          error: data.error || 'Request failed',
-          code: data.code,
-          userId: data.userId,
-          needsVerification: data.needsVerification,
-        };
+        return { ok: true, ...data };
       } catch (err) {
         console.warn(`⚡ API attempt ${i + 1}/${attempts.length} failed (${endpoint}):`, err.message);
+        // If not last attempt, wait briefly then retry
         if (i < attempts.length - 1) {
           await new Promise(r => setTimeout(r, 1000));
           continue;
@@ -439,11 +371,9 @@ const UserAuth = (() => {
       }
     }
 
-    if (IS_PRODUCTION_API) {
-      return { ok: false, error: 'Cannot reach server. Check your connection and try again.' };
-    }
-
-    console.warn(`⚡ All API attempts failed (${endpoint}) — trying local fallback (dev only)`);
+    // All API attempts failed — for auth endpoints, try local store as last resort
+    // (better than showing "server unreachable" which blocks the user entirely)
+    console.warn(`⚡ All API attempts failed (${endpoint}) — trying local fallback`);
 
     // ── Verify email OTP (local: auto-succeed, no real email in offline mode) ──
     if (endpoint === '/auth/verify-email' && method === 'POST') {
@@ -495,9 +425,90 @@ const UserAuth = (() => {
       return { ok: true };
     }
 
-    // Admin routes never use offline fallback (users must exist on server)
-    if (endpoint.startsWith('/admin/')) {
-      return { ok: false, error: 'Admin API unavailable. Connect to server and try again.' };
+    // ── Admin: list users ─────────────────────────────────
+    if (endpoint.startsWith('/admin/users') && method === 'GET') {
+      return { ok: true, users: _localStore.listUsers() };
+    }
+
+    // ── Admin: create user (offline) ──────────────────────
+    if (endpoint === '/admin/users' && method === 'POST') {
+      const regResult = _localStore.register({
+        fullName: body.fullName,
+        email: body.email,
+        password: body.password,
+        pin: body.pin,
+        tier: body.tier || 'gold',
+        depositAmount: parseFloat(body.depositAmount) || 0,
+      });
+      if (!regResult.ok) return regResult;
+      const allUsers = _localStore.getAll();
+      const idx = allUsers.findIndex(u => u.email.toLowerCase() === body.email.toLowerCase());
+      if (idx !== -1) {
+        allUsers[idx].balance = parseFloat(body.depositAmount) || 0;
+        allUsers[idx].depositAmount = parseFloat(body.depositAmount) || 0;
+        allUsers[idx].status = 'active';
+        _localStore.save(allUsers);
+      }
+      return { ok: true, success: true, user: regResult.user, wallet: regResult.wallet };
+    }
+
+    // ── Admin: update user ────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'PATCH') {
+      const uid = endpoint.split('/').pop();
+      return _localStore.updateUser(uid, body);
+    }
+
+    // ── Admin: stats ──────────────────────────────────────
+    if (endpoint === '/admin/stats') {
+      const users = _localStore.listUsers();
+      return {
+        ok: true,
+        totalUsers: users.length,
+        activeUsers: users.filter(u => u.status === 'active').length,
+        totalDeposited: users.reduce((s, u) => s + (u.depositAmount || 0), 0),
+      };
+    }
+
+    // ── Admin: credit user ────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/credit$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      const amt = parseFloat(body.amount) || 0;
+      allUsers[idx].balance = (allUsers[idx].balance || 0) + amt;
+      allUsers[idx].depositAmount = (allUsers[idx].depositAmount || 0) + amt;
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, balance: allUsers[idx].balance };
+    }
+
+    // ── Admin: debit user ─────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/debit$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      const amt = parseFloat(body.amount) || 0;
+      allUsers[idx].balance = Math.max(0, (allUsers[idx].balance || 0) - amt);
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, balance: allUsers[idx].balance };
+    }
+
+    // ── Admin: delete user ─────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+$/) && method === 'DELETE') {
+      const uid = endpoint.split('/').pop();
+      return _localStore.deleteUser(uid);
+    }
+
+    // ── Admin: set PIN ────────────────────────────────────
+    if (endpoint.match(/^\/admin\/users\/[^/]+\/set-pin$/) && method === 'POST') {
+      const uid = endpoint.split('/')[3];
+      const allUsers = JSON.parse(localStorage.getItem('zen_users_db') || '[]');
+      const idx = allUsers.findIndex(u => u.id === uid);
+      if (idx === -1) return { ok: false, error: 'User not found.' };
+      allUsers[idx].pinHash = _simpleHash(body.pin);
+      localStorage.setItem('zen_users_db', JSON.stringify(allUsers));
+      return { ok: true, success: true };
     }
 
     // ── Wallet endpoints should NOT return fake offline balances ──
@@ -535,17 +546,7 @@ const UserAuth = (() => {
       auth: false,
     });
 
-    if (result.ok && result.needsVerification) {
-      return {
-        ok: true,
-        needsVerification: true,
-        userId: result.userId,
-        email: result.email || cleanEmail,
-        message: result.message,
-        devCode: result.devCode,
-      };
-    }
-
+    // Backend now returns token directly (no OTP)
     if (result.ok && result.token) {
       const session = {
         userId: result.user.id,
@@ -555,8 +556,11 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
-      _applyCopySettingsFromUser(result.user);
+      _persistAuth(result.token, session, result.wallet, false);
+
+      // Also save to local store so login works if backend DB resets
+      try { _localStore.register({ fullName: cleanName, email: cleanEmail, password, tier, pin }); } catch {}
+
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     if (result.ok) {
@@ -577,7 +581,12 @@ const UserAuth = (() => {
 
     const result = await _api('/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { 
+        email, 
+        password,
+        deviceId: typeof DeviceManager !== 'undefined' ? DeviceManager.getDeviceId() : undefined,
+        deviceName: typeof DeviceManager !== 'undefined' ? DeviceManager.getDeviceName() : undefined,
+      },
       auth: false,
     });
 
@@ -588,9 +597,50 @@ const UserAuth = (() => {
       if (userStatus === 'suspended' || userStatus === 'frozen' || userStatus === 'blocked') {
         return { ok: false, error: 'Your account has been suspended. Please contact support.' };
       }
-      const session = _sessionFromUser(result.user);
-      _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
-      _applyCopySettingsFromUser(result.user);
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _persistAuth(result.token, session, result.wallet, rememberMe);
+
+      // Store tokens with refresh token if available (Objective 1)
+      if (typeof TokenManager !== 'undefined' && result.refreshToken) {
+        TokenManager.storeTokens(result.token, result.refreshToken, result.expiresIn);
+      } else if (typeof TokenManager !== 'undefined') {
+        TokenManager.storeTokens(result.token, null, result.expiresIn);
+      }
+
+      // Add device to known devices (Objective 2)
+      if (typeof DeviceManager !== 'undefined') {
+        DeviceManager.addKnownDevice({
+          deviceId: DeviceManager.getDeviceId(),
+          name: DeviceManager.getDeviceName(),
+          fingerprint: DeviceManager.getDeviceFingerprint(),
+        });
+        DeviceManager.setSessionLock(session.userId);
+        // Broadcast login to other tabs (Objective 3)
+        DeviceManager.broadcastAuthChange('login', {
+          deviceId: DeviceManager.getDeviceId(),
+          userId: session.userId,
+          email,
+        });
+      }
+
+      // Initialize session timeout (Objective 5)
+      if (typeof SessionTimeout !== 'undefined') {
+        SessionTimeout.init({
+          onWarning: () => console.warn('[Auth] Session timeout warning'),
+          onTimeout: async () => {
+            console.warn('[Auth] Session timed out');
+            await logout();
+          },
+        });
+      }
+
       console.log(`[AUTH] ✓ Login successful: ${email}`);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
@@ -606,15 +656,6 @@ const UserAuth = (() => {
 
     if (result.status === 401) {
       return { ok: false, error: 'Invalid email or password. Please check your credentials and try again.' };
-    }
-
-    if (result.status === 403 && result.code === 'EMAIL_NOT_VERIFIED') {
-      return {
-        ok: false,
-        needsVerification: true,
-        userId: result.userId,
-        error: result.error || 'Please verify your email before signing in.',
-      };
     }
 
     if (result.status >= 500) {
@@ -639,9 +680,15 @@ const UserAuth = (() => {
     });
 
     if (result.ok && result.token) {
-      const session = _sessionFromUser(result.user);
-      _persistAuth(result.token, session, result.wallet, rememberMe !== false, result.refreshToken);
-      _applyCopySettingsFromUser(result.user);
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
+      _persistAuth(result.token, session, result.wallet, rememberMe);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
@@ -654,7 +701,8 @@ const UserAuth = (() => {
     const result = await _api('/auth/verify-email', { method: 'POST', body: { userId, code }, auth: false });
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
-      _persistAuth(result.token, session, result.wallet, true, result.refreshToken);
+      // New registrations always use session-only storage — user must log in manually on next visit
+      _persistAuth(result.token, session, result.wallet, false);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -667,7 +715,7 @@ const UserAuth = (() => {
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
       // Use the remember-me preference captured at the login step
-      _persistAuth(result.token, session, result.wallet, _pendingRememberMe !== false, result.refreshToken);
+      _persistAuth(result.token, session, result.wallet, _pendingRememberMe);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -683,12 +731,15 @@ const UserAuth = (() => {
   function getSession()     { return _loadSession(); }
   function isLoggedIn() {
     const session = _loadSession();
-    if (!session) return false;
     const token = _loadToken();
-    if (token && _verifyLocalToken(token)) return true;
-    if (_loadRefresh()) return true;
-    if (token) _persistAuth(null);
-    return false;
+    if (!session || !token || !token.length) return false;
+    // Validate token expiry so stale remembered sessions do not stay active.
+    const uid = _verifyLocalToken(token);
+    if (!uid) {
+      _persistAuth(null);
+      return false;
+    }
+    return true;
   }
   function isAdmin()        { const s = _loadSession(); return s && s.role === 'admin'; }
   function getCurrentTier() { const s = _loadSession(); return s ? s.tier : 'bronze'; }
@@ -708,29 +759,28 @@ const UserAuth = (() => {
 
   // ── Refresh session from API (async) ─────────────────────
   async function refreshSession() {
-    if (!_loadToken() && !_loadRefresh()) return null;
-    let result = await _api('/auth/me');
-    if (!result.ok && result.status === 401) {
-      const refreshed = await _refreshAccessToken();
-      if (refreshed) result = await _api('/auth/me');
-    }
-    if (result.ok && result.user) {
-      const session = _sessionFromUser(result.user);
-      session.loginAt = Date.now();
+    if (!_loadToken()) return null;
+    const result = await _api('/auth/me');
+    if (result.ok) {
+      const session = {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tier: result.user.tier,
+        fullName: result.user.fullName,
+        loginAt: Date.now(),
+      };
       _saveSession(session);
       if (result.wallet) _saveWallet(result.wallet);
-      if (typeof CopyTradeConfig !== 'undefined' && result.user) {
-        CopyTradeConfig.applyFromApiUser(result.user);
-        if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
-          Trading.syncAdminCopyTraders();
-        }
-      }
       return { user: result.user, wallet: result.wallet };
+    } else {
+      if (result.status === 401) {
+        _saveToken(null);
+        _saveSession(null);
+        _saveWallet(null);
+      }
+      return null;
     }
-    if (result.status === 401) {
-      _persistAuth(null);
-    }
-    return null;
   }
 
   // ── Get Wallet (async) ──────────────────────────────────
@@ -755,18 +805,33 @@ const UserAuth = (() => {
     const sessionBefore = _loadSession();
     const userEmailBefore = sessionBefore?.email;
     
+    // Disable session timeout (Objective 5)
+    if (typeof SessionTimeout !== 'undefined') {
+      SessionTimeout.disable();
+    }
+
+    // Clear tokens (Objective 1)
+    if (typeof TokenManager !== 'undefined') {
+      TokenManager.clearTokens();
+    }
+
+    // Clear device session lock (Objective 2)
+    if (typeof DeviceManager !== 'undefined') {
+      DeviceManager.clearSessionLock();
+      // Broadcast logout to other tabs (Objective 3)
+      DeviceManager.broadcastAuthChange('logout', {
+        deviceId: DeviceManager.getDeviceId(),
+        userId: sessionBefore?.userId,
+      });
+    }
+
     // ═ STEP 1: Clear Auth FIRST (most important — do this before anything else) ═
     console.log('🔐 LOGOUT: Clearing authentication...');
-    const refreshTok = _loadRefresh();
-    try {
-      await _api('/auth/logout', { method: 'POST', body: { refreshToken: refreshTok }, auth: true });
-    } catch (_) { /* best-effort */ }
     localStorage.removeItem(STORAGE_REMEMBER);
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
-      s.removeItem(STORAGE_REFRESH);
     });
     _activeStore = null;
     console.log('✓ Auth cleared');
@@ -827,10 +892,10 @@ const UserAuth = (() => {
 
   // ── Admin: User Management (async) ──────────────────────
   async function adminGetAllUsers(params = {}) {
+    if (!isAdmin()) return [];
     const qs = new URLSearchParams(params).toString();
     const result = await _api(`/admin/users${qs ? '?' + qs : ''}`);
-    if (!result.ok) return [];
-    return result.users || [];
+    return result.ok ? result.users : [];
   }
 
   async function adminGetUser(userId) {
@@ -843,15 +908,12 @@ const UserAuth = (() => {
     return _api(`/admin/users/${userId}`, { method: 'PATCH', body: updates });
   }
 
-  async function adminCreateUser({ email, fullName, password, pin, tier, status, kycStatus, depositAmount, copyTrade }) {
-    const result = await _api('/admin/users', {
+  async function adminCreateUser({ email, fullName, password, pin, tier, depositAmount }) {
+    if (!isAdmin()) return { ok: false, error: 'Not authorised.' };
+    return _api('/admin/users', {
       method: 'POST',
-      body: { email, fullName, password, pin, tier, status, kycStatus, depositAmount, copyTrade },
+      body: { email, fullName, password, pin, tier, depositAmount },
     });
-    if (result.ok && (result.success || result.user)) {
-      return { ok: true, success: true, user: result.user, wallet: result.wallet };
-    }
-    return { ok: false, error: result.error || 'Could not create user on server.' };
   }
 
   async function adminDeleteUser(userId) {
@@ -912,94 +974,8 @@ const UserAuth = (() => {
     return result;
   }
 
-  async function getCopyEngineStatus() {
-    if (!isLoggedIn()) return null;
-    return _api('/wallet/copy-engine');
-  }
-
-  async function payCopyActivation() {
-    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
-    const result = await _api('/wallet/copy-activation', { method: 'POST' });
-    if (result.ok && result.copyTrade && typeof CopyTradeConfig !== 'undefined') {
-      const s = getSession();
-      if (s?.email) CopyTradeConfig.saveForEmail(s.email, result.copyTrade);
-      if (typeof AutoTrader !== 'undefined' && AutoTrader.refreshEngine) AutoTrader.refreshEngine();
-      if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) Trading.syncAdminCopyTraders();
-    }
-    return result;
-  }
-
   async function claimEarnings(amount, pool = 'all') {
-    const result = await _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
-    if (result.ok) {
-      return {
-        ok: true,
-        claimed: result.claimed,
-        balanceAfter: result.balanceAfter,
-        pendingEarnings: result.pendingEarnings,
-      };
-    }
-    return result;
-  }
-
-  async function adminGetDeposits() {
-    if (!isAdmin()) return [];
-    const result = await _api('/admin/deposits');
-    return result.ok ? (result.deposits || []) : [];
-  }
-
-  async function adminApproveDeposit(txId) {
-    return _api(`/admin/deposits/${txId}/approve`, { method: 'POST' });
-  }
-
-  async function adminRejectDeposit(txId, reason = '') {
-    return _api(`/admin/deposits/${txId}/reject`, { method: 'POST', body: { reason } });
-  }
-
-  async function adminGetConfig() {
-    const result = await _api('/admin/config');
-    return result.ok ? result.config : null;
-  }
-
-  async function adminSaveConfig(config) {
-    const result = await _api('/admin/config', { method: 'PATCH', body: config });
-    return result.ok ? { ok: true, config: result.config } : result;
-  }
-
-  async function adminGetPendingKyc() {
-    if (!isAdmin()) return [];
-    const result = await _api('/kyc/pending');
-    return result.ok ? (result.pending || []) : [];
-  }
-
-  async function adminReviewKyc(id, decision, notes = '') {
-    return _api(`/kyc/${id}/review`, { method: 'PATCH', body: { decision, notes } });
-  }
-
-  async function adminSendBroadcast({ subject, message, recipients }) {
-    return _api('/admin/broadcasts', { method: 'POST', body: { subject, message, recipients } });
-  }
-
-  async function getNotifications() {
-    const result = await _api('/notifications');
-    return result.ok ? (result.notifications || []) : [];
-  }
-
-  async function getPlatformConfig() {
-    try {
-      const resp = await fetch(`${API_BASE}/platform/config`);
-      const data = await resp.json();
-      return data.config || {};
-    } catch {
-      return { registration: true, trading: true, withdrawals: true, maintenance: false };
-    }
-  }
-
-  async function changePassword(currentPassword, newPassword) {
-    return _api('/auth/change-password', {
-      method: 'POST',
-      body: { currentPassword, newPassword },
-    });
+    return _api('/wallet/claim', { method: 'POST', body: { amount, pool } });
   }
 
   async function getTransactions(params = {}) {
@@ -1098,35 +1074,81 @@ const UserAuth = (() => {
     return _api('/kyc/status');
   }
 
-  // ── Email via backend admin API (authenticated) ──────────
-  async function adminNotifyEmail(type, data) {
-    if (!isAdmin()) return { ok: false };
-    return _api('/admin/notify-email', { method: 'POST', body: { type, ...data } });
+  // ── Stripe Deposits ──────────────────────────────────────
+  async function getStripePublishableKey() {
+    const result = await _api('/stripe/publishable-key');
+    return result.key || null;
   }
 
+  async function createStripeSession(amount) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    if (!amount || isNaN(amount) || Number(amount) < 10) {
+      return { ok: false, error: 'Minimum deposit is $10.' };
+    }
+    return _api('/stripe/create-session', { method: 'POST', body: { amount: Number(amount) } });
+  }
+
+  // ── Redirect to Stripe Checkout ──────────────────────────
+  async function redirectToStripe(amount) {
+    const result = await createStripeSession(amount);
+    if (!result.ok && !result.url) {
+      return { ok: false, error: result.error || 'Failed to create payment session.' };
+    }
+    if (result.url) {
+      window.location.href = result.url;
+      return { ok: true };
+    }
+    return result;
+  }
+
+  // ── Email Notification (fire-and-forget) ─────────────────
   function _sendEmail(type, data) {
-    if (isAdmin()) {
-      adminNotifyEmail(type, data).catch(() => {});
-      return;
-    }
-    // User-triggered emails are sent by the backend (register, withdraw, etc.)
+    try {
+      fetch('/api/email/' + type, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(function () { /* silent — email is non-blocking */ });
+    } catch (e) { /* silent */ }
   }
 
-  async function forgotPassword(emailRaw) {
-    const email = (emailRaw || '').trim().toLowerCase();
-    if (!email) return { ok: false, error: 'Email is required.' };
-    return _api('/auth/forgot-password', { method: 'POST', body: { email }, auth: false });
-  }
+  // ── Setup Cross-Tab Sync (Objective 3) ──────────────────
+  function _setupCrossTabSync() {
+    if (typeof DeviceManager === 'undefined') return;
 
-  async function resetPassword(emailRaw, code, newPassword) {
-    const email = (emailRaw || '').trim().toLowerCase();
-    if (!email || !code || !newPassword) {
-      return { ok: false, error: 'Email, reset code, and new password are required.' };
-    }
-    return _api('/auth/reset-password', {
-      method: 'POST',
-      body: { email, code, newPassword },
-      auth: false,
+    DeviceManager.onStorageChange((event) => {
+      console.log('[Auth] Cross-tab sync event:', event.action);
+
+      switch (event.action) {
+        case 'login':
+          // Another tab logged in — refresh this tab's session
+          if (event.data.deviceId !== DeviceManager.getDeviceId()) {
+            console.log('[Auth] Login detected on another device');
+            refreshSession().then(result => {
+              if (!result) {
+                location.reload();
+              }
+            }).catch(() => {});
+          }
+          break;
+        case 'logout':
+          // Another tab logged out — clear this tab's session
+          if (!isLoggedIn()) {
+            _persistAuth(null);
+            console.log('[Auth] Logout synced from another tab');
+            location.reload();
+          }
+          break;
+        case 'tokenRefresh':
+          // Another tab refreshed token — update this tab
+          if (event.data.token) {
+            _saveToken(event.data.token);
+            if (typeof TokenManager !== 'undefined') {
+              TokenManager.scheduleTokenRefresh(event.data.token);
+            }
+          }
+          break;
+      }
     });
   }
 
@@ -1134,27 +1156,59 @@ const UserAuth = (() => {
   function init() {
     const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
 
+    // Initialize device manager
+    if (typeof DeviceManager !== 'undefined') {
+      console.log('[Auth] Device ID:', DeviceManager.getDeviceId());
+      DeviceManager.addKnownDevice({});
+      _setupCrossTabSync();
+    }
+
     // ── Path A: "Remember me" — persistent login across browser restarts ──
-    if (remembered && localStorage.getItem(STORAGE_SESSION) && (localStorage.getItem(STORAGE_TOKEN) || localStorage.getItem(STORAGE_REFRESH))) {
+    if (remembered && localStorage.getItem(STORAGE_TOKEN) && localStorage.getItem(STORAGE_SESSION)) {
       _activeStore = localStorage;
       console.log('[Auth] Remembered session found — restoring...');
+      // Validate token expiry locally (7-day tokens)
       const token = localStorage.getItem(STORAGE_TOKEN);
-      const uid = token ? _verifyLocalToken(token) : null;
-      if (!uid && localStorage.getItem(STORAGE_REFRESH)) {
-        _refreshAccessToken().catch(() => {});
-      } else if (!uid && !localStorage.getItem(STORAGE_REFRESH)) {
-        console.warn('[Auth] Remembered session expired — clearing');
+      const uid = _verifyLocalToken(token);
+      if (!uid) {
+        console.warn('[Auth] Remembered token expired — clearing');
         _persistAuth(null);
-        return;
+        return; // isLoggedIn() will return false → login screen shows
       }
+
+      // Update device last used
+      if (typeof DeviceManager !== 'undefined') {
+        DeviceManager.updateDeviceLastUsed(DeviceManager.getDeviceId());
+      }
+
+      // Schedule token refresh if using TokenManager
+      if (typeof TokenManager !== 'undefined') {
+        TokenManager.scheduleTokenRefresh(token);
+      }
+
+      // Fire-and-forget async validation against API
       refreshSession().then(result => {
         if (!result) {
-          console.warn('[Auth] Session could not be validated — will retry on next action');
+          console.warn('[Auth] Remembered session invalid — clearing');
+          _persistAuth(null);
+          location.reload();
         } else {
           console.log('[Auth] Remembered session validated ✓');
+          // Initialize session timeout after successful validation
+          if (typeof SessionTimeout !== 'undefined') {
+            SessionTimeout.init({
+              onWarning: (data) => {
+                console.warn('[Auth] Session timeout warning');
+              },
+              onTimeout: async () => {
+                console.warn('[Auth] Session timed out');
+                await logout();
+              },
+            });
+          }
         }
       }).catch(() => {
-        console.log('[Auth] API unreachable — using cached session until reconnect');
+        console.log('[Auth] API unreachable — using cached session');
       });
       return;
     }
@@ -1181,6 +1235,30 @@ const UserAuth = (() => {
           if (elapsed < MAX_TAB_SESSION_MS) {
             _activeStore = sessionStorage;
             console.log('[Auth] Tab session valid — keeping (no remember-me)');
+
+            // Update device last used
+            if (typeof DeviceManager !== 'undefined') {
+              DeviceManager.updateDeviceLastUsed(DeviceManager.getDeviceId());
+            }
+
+            // Schedule token refresh if using TokenManager
+            if (typeof TokenManager !== 'undefined') {
+              TokenManager.scheduleTokenRefresh(tabToken);
+            }
+
+            // Initialize session timeout for tab session
+            if (typeof SessionTimeout !== 'undefined') {
+              SessionTimeout.init({
+                onWarning: (data) => {
+                  console.warn('[Auth] Tab session timeout warning');
+                },
+                onTimeout: async () => {
+                  console.warn('[Auth] Tab session timed out');
+                  await logout();
+                },
+              });
+            }
+
             return;
           }
         } catch {}
@@ -1193,33 +1271,14 @@ const UserAuth = (() => {
     }
   }
 
-  async function listSessions() {
-    return _api('/auth/sessions');
-  }
-
-  async function logoutAllOtherDevices() {
-    const result = await _api('/auth/logout-all', { method: 'POST' });
-    if (result.ok && result.token) {
-      const session = _loadSession();
-      _persistAuth(result.token, session, _loadWallet(), true, result.refreshToken);
-    }
-    return result;
-  }
-
   return {
-    init, register, login, pinLogin, logout, forgotPassword, resetPassword,
-    listSessions, logoutAllOtherDevices,
+    init, register, login, pinLogin, logout,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
     refreshSession,
     getWallet, getCachedWallet,
     requestDeposit, requestWithdrawal, claimEarnings, getTransactions,
-    getCopyEngineStatus, payCopyActivation,
-    changePassword, getPlatformConfig,
-    adminGetDeposits, adminApproveDeposit, adminRejectDeposit,
-    adminGetConfig, adminSaveConfig, adminGetPendingKyc, adminReviewKyc, adminSendBroadcast,
-    getNotifications,
     adminGetAllUsers, adminGetUser, adminUpdateUser, adminCreateUser, adminDeleteUser,
     adminCreditUser, adminDebitUser,
     adminGetWithdrawals, adminApproveWithdrawal, adminRejectWithdrawal,
@@ -1227,8 +1286,9 @@ const UserAuth = (() => {
     requestUpgrade,
     saveTrade, getTrades, getTradeStats,
     submitKYC, getKYCStatus,
+    getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
-    sendEmailNotification: _sendEmail, adminNotifyEmail,
+    sendEmailNotification: _sendEmail,
     hashPassword: _simpleHash,
     TIERS,
   };

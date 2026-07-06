@@ -1,9 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
-   ZEN ASSETS — Desktop layout (≥1025px)
-   More breathing room than mobile; avoids jam-packed UI on large screens.
+   ZEN ASSETS — Desktop Responsive Layout (769+px)
+   
+   Tier 3 of 3-tier breakpoint system:
+   - Desktop:  ≥769px   (desktops, large screens)
+   
+   Enhanced layouts, 2-3 column grids, horizontal navigation
 ═══════════════════════════════════════════════════════════ */
 
-@media (min-width: 1025px) {
+@media (min-width: 769px) {
 
   /* ── Login / landing ───────────────────────────────────── */
   .login-container {

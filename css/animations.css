@@ -177,6 +177,96 @@
   border-radius: 4px;
 }
 
+/* ── Premium Skeleton Loaders ────────────────────────── */
+.skeleton-pulse { animation: fade-pulse 2s ease-in-out infinite; }
+.skeleton-wave {
+  background: linear-gradient(
+    90deg,
+    #ffffff08 0%,
+    #ffffff15 25%,
+    #ffffff08 50%,
+    #ffffff15 75%,
+    #ffffff08 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+/* ── Premium Loading States ──────────────────────────── */
+@keyframes spin-smooth {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce-smooth {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes fade-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes slide-in-smooth {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-out-smooth {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(8px); }
+}
+
+/* ── Premium Transition Effects ──────────────────────– */
+@keyframes smooth-expand {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+
+@keyframes smooth-collapse {
+  from { opacity: 1; max-height: 500px; }
+  to { opacity: 0; max-height: 0; }
+}
+
+@keyframes slide-down-smooth {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up-smooth {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Premium Hover Effects ───────────────────────────– */
+@keyframes elevate {
+  from { transform: translateY(0) scale(1); box-shadow: 0 4px 12px rgba(0,0,0,0.16); }
+  to { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 32px rgba(0,0,0,0.32); }
+}
+
+@keyframes settle {
+  from { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 32px rgba(0,0,0,0.32); }
+  to { transform: translateY(0) scale(1); box-shadow: 0 4px 12px rgba(0,0,0,0.16); }
+}
+
+/* ── Ripple Effect ───────────────────────────────────── */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.6; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* ── Premium Color Transitions ───────────────────────– */
+@keyframes color-shift-gold {
+  0%, 100% { color: #d4a574; }
+  50% { color: #e6b887; }
+}
+
+@keyframes glow-expand {
+  0% { box-shadow: 0 0 0 0 rgba(212,165,116,.6); }
+  100% { box-shadow: 0 0 0 20px rgba(212,165,116,0); }
+}
+
 /* ── Stagger Children ───────────────────────────────────── */
 .stagger-children > * {
   opacity: 0;
@@ -200,6 +290,21 @@
 .anim-glow-cyan     { animation: glow-pulse-cyan   2s ease-in-out infinite; }
 .anim-glow-green    { animation: glow-pulse-green  2s ease-in-out infinite; }
 .anim-glow-purple   { animation: glow-pulse-purple 2s ease-in-out infinite; }
+
+/* ── Premium Animation Utilities ─────────────────────– */
+.animate-spin { animation: spin-smooth 1s linear infinite; }
+.animate-bounce { animation: bounce-smooth 1s ease-in-out infinite; }
+.animate-pulse { animation: fade-pulse 2s ease-in-out infinite; }
+.animate-slide-in { animation: slide-in-smooth 0.3s ease both; }
+.animate-slide-out { animation: slide-out-smooth 0.3s ease both; }
+.animate-slide-down { animation: slide-down-smooth 0.3s ease both; }
+.animate-slide-up { animation: slide-up-smooth 0.3s ease both; }
+.animate-expand { animation: smooth-expand 0.3s ease both; }
+.animate-collapse { animation: smooth-collapse 0.3s ease both; }
+.animate-elevate { animation: elevate 0.4s ease forwards; }
+.animate-settle { animation: settle 0.4s ease forwards; }
+.animate-color-shift { animation: color-shift-gold 2s ease-in-out infinite; }
+.animate-glow-expand { animation: glow-expand 0.6s ease forwards; }
 
 /* ── Cyber Grid Lines ───────────────────────────────────── */
 @keyframes cyber-line-scan {

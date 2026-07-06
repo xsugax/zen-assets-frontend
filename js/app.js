@@ -2648,6 +2648,7 @@ const App = (() => {
       errEl.textContent = result.error || 'Could not send reset code.';
       errEl.classList.add('visible');
     }
+  
   };
 
   window.submitPasswordReset = async function(e) {
@@ -2953,9 +2954,6 @@ const App = (() => {
         if (result.ok) {
           console.log(`[LOGIN] ✓ Success: ${email}`);
           _dismissLoginScreen();
-        } else if (result.needsVerification && result.userId) {
-          AuthManager.switchView('register');
-          _showRegisterOTPStep(email, result.userId);
         } else {
           console.warn(`[LOGIN] ✗ Failed: ${email} - ${result.error}`);
           _showLoginError(result.error || 'Login failed. Please try again.');
@@ -3396,9 +3394,8 @@ const App = (() => {
       if (btn) { btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> Creating account...'; btn.disabled = true; }
 
       const result = await UserAuth.register({ fullName, email, password, tier, pin });
-      if (result.ok && result.needsVerification) {
-        _showRegisterOTPStep(email, result.userId, result.devCode, result.message);
-      } else if (result.ok) {
+      if (result.ok) {
+        // Account created and logged in - skip OTP, go directly to dashboard
         _dismissRegisterScreen();
         _showRegistrationSuccess(fullName);
       } else {
