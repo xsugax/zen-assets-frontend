@@ -58,6 +58,7 @@ const RealDataAdapter = (() => {
   let restTimers = {};
   let cache = {};
   const subscribers = {};
+  function emit(event, data) { if (subscribers[event]) subscribers[event].forEach(fn => fn(data)); }
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 
   // ── Initialize ───────────────────────────────────────────
