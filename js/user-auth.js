@@ -345,10 +345,10 @@ const UserAuth = (() => {
 
     const isAdminEndpoint = endpoint.startsWith('/admin');
 
-    // Admin endpoints get longer timeout + retry (Render cold-start can take 20-30s)
-    // Auth-critical endpoints get a single generous attempt
-    // Other endpoints: 12s single attempt
-    const attempts = isAdminEndpoint ? [30000, 15000] : [12000];
+    // All endpoints get generous timeout for Render cold-start (15-30s)
+    // Auth-critical & admin get double retry
+    const isLoginOrRegister = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register') || endpoint.startsWith('/auth/pin-login');
+    const attempts = (isAdminEndpoint || isLoginOrRegister) ? [30000, 20000] : [25000];
 
     for (let i = 0; i < attempts.length; i++) {
       try {
@@ -531,8 +531,8 @@ const UserAuth = (() => {
     if (!/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(cleanEmail)) {
       return { ok: false, error: 'Please enter a valid email address (e.g. name@gmail.com).' };
     }
-    if (password.length < 6) {
-      return { ok: false, error: 'Password must be at least 6 characters.' };
+    if (password.length < 8) {
+      return { ok: false, error: 'Password must be at least 8 characters.' };
     }
     if (!pin || !/^\d{4}$/.test(pin)) {
       return { ok: false, error: 'Please set a 4-digit PIN for quick login.' };
