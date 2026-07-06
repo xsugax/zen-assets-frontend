@@ -109,7 +109,6 @@ const RealDataAdapter = (() => {
             wsConnections[pair] = fbWs;
           } catch {}
           if (typeof ResilienceEngine !== 'undefined') ResilienceEngine.recordFailure('websocket', err);
-        };
           startCryptoPollFallback(pair);
         };
         ws.onclose = () => {
