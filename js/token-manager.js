@@ -119,11 +119,9 @@ const TokenManager = (() => {
 
         const response = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokens.refreshToken}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            refreshToken: tokens.refreshToken,
             deviceId: typeof DeviceManager !== 'undefined' ? DeviceManager.getDeviceId() : 'unknown',
           }),
         });

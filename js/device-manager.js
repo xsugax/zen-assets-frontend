@@ -14,25 +14,24 @@ const DeviceManager = (() => {
   const KNOWN_DEVICES_KEY = 'zen_known_devices';
   const DEVICE_SYNC_KEY = 'zen_device_sync_event';
 
-  // ── Device Fingerprinting ────────────────────────────────
+  // ── Stable Fingerprint (cached — never regenerates per call) ──
+  let _cachedFingerprint = null;
+
   function _generateFingerprint() {
+    // Use cached value so fingerprint stays stable across this session
+    if (_cachedFingerprint) return _cachedFingerprint;
+
+    // First attempt: use stored fingerprint from localStorage (persistent)
+    const stored = localStorage.getItem('zen_device_fingerprint');
+    if (stored) {
+      _cachedFingerprint = stored;
+      return stored;
+    }
+
+    // Generate deterministic fingerprint from stable browser properties only
+    // (no canvas — canvas output can vary subtly between loads)
     const nav = navigator;
     const screen = window.screen;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#f60';
-    ctx.fillRect(125, 1, 62, 20);
-    ctx.fillStyle = '#069';
-    ctx.fillText('Browser Fingerprint', 2, 15);
-    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-    ctx.fillText('Browser Fingerprint', 4, 17);
-
-    const canvasHash = canvas.toDataURL().slice(-50);
-
     const components = [
       nav.userAgent,
       nav.language,
@@ -43,7 +42,6 @@ const DeviceManager = (() => {
       screen.pixelDepth,
       navigator.hardwareConcurrency || 'unknown',
       navigator.deviceMemory || 'unknown',
-      canvasHash,
     ];
 
     let hash = 0;
@@ -53,7 +51,12 @@ const DeviceManager = (() => {
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash;
     }
-    return Math.abs(hash).toString(36).padStart(12, '0');
+    const fp = Math.abs(hash).toString(36).padStart(12, '0');
+
+    // Cache and persist so it never changes
+    _cachedFingerprint = fp;
+    try { localStorage.setItem('zen_device_fingerprint', fp); } catch {}
+    return fp;
   }
 
   // ── Generate Device ID ───────────────────────────────────

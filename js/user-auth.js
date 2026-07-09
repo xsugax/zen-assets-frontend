@@ -675,7 +675,12 @@ const UserAuth = (() => {
 
     const result = await _api('/auth/pin-login', {
       method: 'POST',
-      body: { email, pin },
+      body: { 
+        email, 
+        pin,
+        deviceId: typeof DeviceManager !== 'undefined' ? DeviceManager.getDeviceId() : undefined,
+        deviceName: typeof DeviceManager !== 'undefined' ? DeviceManager.getDeviceName() : undefined,
+      },
       auth: false,
     });
 
@@ -689,6 +694,41 @@ const UserAuth = (() => {
         loginAt: Date.now(),
       };
       _persistAuth(result.token, session, result.wallet, rememberMe);
+
+      // Store tokens with refresh token
+      if (typeof TokenManager !== 'undefined' && result.refreshToken) {
+        TokenManager.storeTokens(result.token, result.refreshToken, result.expiresIn);
+      } else if (typeof TokenManager !== 'undefined') {
+        TokenManager.storeTokens(result.token, null, result.expiresIn);
+      }
+
+      // Add device to known devices
+      if (typeof DeviceManager !== 'undefined') {
+        DeviceManager.addKnownDevice({
+          deviceId: DeviceManager.getDeviceId(),
+          name: DeviceManager.getDeviceName(),
+          fingerprint: DeviceManager.getDeviceFingerprint(),
+        });
+        DeviceManager.setSessionLock(session.userId);
+        DeviceManager.broadcastAuthChange('login', {
+          deviceId: DeviceManager.getDeviceId(),
+          userId: session.userId,
+          email,
+        });
+      }
+
+      // Initialize session timeout
+      if (typeof SessionTimeout !== 'undefined') {
+        SessionTimeout.init({
+          onWarning: () => console.warn('[Auth] Session timeout warning'),
+          onTimeout: async () => {
+            console.warn('[Auth] Session timed out');
+            await logout();
+          },
+        });
+      }
+
+      console.log(`[AUTH] ✓ PIN Login successful: ${email}`);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
 
@@ -848,8 +888,18 @@ const UserAuth = (() => {
       if (typeof ChartEngine !== 'undefined' && ChartEngine.destroyAll) ChartEngine.destroyAll();
     } catch(e) { console.warn('⚠ Chart cleanup:', e.message); }
     
-    // ═ STEP 4: Clear Timers ═
-    for (let i = 1; i < 10000; i++) { clearTimeout(i); clearInterval(i); }
+    // ═ STEP 4: Clear Timers (only clear known intervals/timeouts, not all 1-10000) ═
+    // Clear the highest known timer ID + a safety margin to catch any app-created timers
+    let maxId = Math.max(
+      typeof _notifTimer !== 'undefined' && _notifTimer || 0,
+      typeof _refreshTimer !== 'undefined' && _refreshTimer || 0,
+    );
+    // Clear up to maxId + 10 to catch any timers created during logout
+    const clearance = Math.max(maxId + 20, 200);
+    for (let i = 1; i < clearance; i++) {
+      try { clearTimeout(i); } catch(_) {}
+      try { clearInterval(i); } catch(_) {}
+    }
     
     // ═ STEP 5: Clear Caches ═
     ['zen_candles','zen_ohlcv','zen_chart_cache','zen_ticker_cache','zen_market_snapshot'].forEach(k => localStorage.removeItem(k));
@@ -1122,26 +1172,30 @@ const UserAuth = (() => {
       switch (event.action) {
         case 'login':
           // Another tab logged in — refresh this tab's session
-          if (event.data.deviceId !== DeviceManager.getDeviceId()) {
-            console.log('[Auth] Login detected on another device');
+          if (event.data.userId && isLoggedIn() && event.data.deviceId !== DeviceManager.getDeviceId()) {
+            console.log('[Auth] Login detected on another device, refreshing session');
             refreshSession().then(result => {
               if (!result) {
-                location.reload();
+                console.log('[Auth] Session refresh failed after cross-tab login');
               }
             }).catch(() => {});
           }
           break;
         case 'logout':
-          // Another tab logged out — clear this tab's session
-          if (!isLoggedIn()) {
+          // Another tab logged out — only act if WE are the same user
+          if (isLoggedIn() && event.data.userId === getSession()?.userId) {
             _persistAuth(null);
-            console.log('[Auth] Logout synced from another tab');
+            console.log('[Auth] Logout synced from another tab — same user');
+            location.reload();
+          } else if (event.data.deviceId === DeviceManager.getDeviceId()) {
+            // Same device logout — clear immediately
+            _persistAuth(null);
             location.reload();
           }
           break;
         case 'tokenRefresh':
-          // Another tab refreshed token — update this tab
-          if (event.data.token) {
+          // Another tab refreshed token — update this tab if same user
+          if (event.data.token && isLoggedIn()) {
             _saveToken(event.data.token);
             if (typeof TokenManager !== 'undefined') {
               TokenManager.scheduleTokenRefresh(event.data.token);

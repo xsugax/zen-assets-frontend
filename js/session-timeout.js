@@ -351,10 +351,17 @@ const SessionTimeout = (() => {
 
   // ── Initialize ───────────────────────────────────────────
   function init(options = {}) {
-    if (_isEnabled) return;
+    // If already enabled, call disable first to purge listeners,
+    // then re-init with fresh ones. This prevents duplicate listeners
+    // from accumulating when login() is called multiple times.
+    if (_isEnabled) {
+      console.log('[SessionTimeout] Re-initializing — cleaning up first');
+      disable();
+    }
 
     _sessionTimeoutCallback = options.onTimeout;
     _warningCallback = options.onWarning;
+    _lastActivityTime = Date.now();
 
     ACTIVITY_EVENTS.forEach(event => {
       document.addEventListener(event, _recordActivity, { passive: true });
@@ -379,9 +386,24 @@ const SessionTimeout = (() => {
       document.removeEventListener(event, _recordActivity);
     });
 
+    window.removeEventListener('focus', _recordActivity);
+
     _dismissWarningUI();
+    // Fully remove DOM elements so they can be re-created fresh on re-init
+    _cleanupUIElements();
     _isEnabled = false;
+    _isWarningShown = false;
+    _sessionTimeoutCallback = null;
+    _warningCallback = null;
     console.log('[SessionTimeout] ✓ Disabled');
+  }
+
+  // ── Remove all timeout-related DOM elements from the page ──
+  function _cleanupUIElements() {
+    ['session-timeout-warning', 'session-timeout-expired'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
   }
 
   // ── Get Status ───────────────────────────────────────────
