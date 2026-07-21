@@ -54,10 +54,27 @@ const TokenManager = (() => {
     return timeUntilExpiry < TOKEN_REFRESH_BUFFER;
   }
 
+  // ── Determine which storage has the active tokens ─────────
+  function _getTokenStore() {
+    // First check remember-me flag which indicates localStorage
+    if (localStorage.getItem('zen_remember_me') === '1' && localStorage.getItem(STORAGE_TOKEN)) {
+      return localStorage;
+    }
+    // Fall back to sessionStorage
+    if (sessionStorage.getItem(STORAGE_TOKEN)) {
+      return sessionStorage;
+    }
+    // Check all localStorage (for admin users who skip remember-me)
+    if (localStorage.getItem(STORAGE_TOKEN)) {
+      return localStorage;
+    }
+    return sessionStorage;
+  }
+
   // ── Store Tokens ─────────────────────────────────────────
   function storeTokens(accessToken, refreshToken, expiresIn) {
     try {
-      const store = localStorage.getItem('zen_remember_me') ? localStorage : sessionStorage;
+      const store = _getTokenStore();
       store.setItem(STORAGE_TOKEN, accessToken);
       if (refreshToken) {
         store.setItem(STORAGE_REFRESH_TOKEN, refreshToken);
@@ -74,7 +91,7 @@ const TokenManager = (() => {
 
   // ── Load Tokens ──────────────────────────────────────────
   function loadTokens() {
-    const store = localStorage.getItem('zen_remember_me') ? localStorage : sessionStorage;
+    const store = _getTokenStore();
     const accessToken = store.getItem(STORAGE_TOKEN);
     const refreshToken = store.getItem(STORAGE_REFRESH_TOKEN);
     const expiry = store.getItem(STORAGE_TOKEN_EXPIRY);
@@ -135,10 +152,11 @@ const TokenManager = (() => {
         }
 
         const data = await response.json();
-        if (data.accessToken) {
-          storeTokens(data.accessToken, data.refreshToken || tokens.refreshToken, data.expiresIn);
+        const newToken = data.accessToken || data.token;
+        if (newToken) {
+          storeTokens(newToken, data.refreshToken || tokens.refreshToken, data.expiresIn);
           console.log('[TokenManager] ✓ Token refreshed successfully');
-          return data.accessToken;
+          return newToken;
         }
       } catch (e) {
         console.error('[TokenManager] Token refresh error:', e);

@@ -132,27 +132,9 @@ const InvestmentReturns = (() => {
       saveState();
     }
 
-    // ── Cross-device bootstrap: sync wallet from API login data ──
-    // When a user logs in from a new device/country, their investment
-    // localStorage state won't exist yet. Pull the funded balance from
-    // the cached wallet (stored at login by UserAuth._persistAuth).
-    if (!state._adminActivated && state.walletBalance <= 0) {
-      try {
-        const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
-        const amount = w ? (w.balance || w.totalDeposited || 0) : 0;
-        if (amount > 0) {
-          state.walletBalance    = amount;
-          state.initialDeposit   = amount;
-          state.pendingEarnings  = w.pendingEarnings || 0;
-          state._adminActivated  = true;
-          state._seeded          = true;
-          saveState();
-          console.log(`💰 Cross-device wallet bootstrap: $${amount.toFixed(2)}`);
-        }
-      } catch (e) { /* ignore */ }
-    }
-
-    // Async wallet refresh on login (no synthetic earnings)
+    // ── ALWAYS sync wallet from API on init ──
+    // This ensures balance is correct regardless of device.
+    // The API is the single source of truth for wallet balances.
     if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
       UserAuth.refreshSession().then(() => syncBalanceFromAPI()).catch(() => {});
     }
@@ -178,27 +160,26 @@ const InvestmentReturns = (() => {
     STORAGE_KEY = _getUserStorageKey();
     loadState();
 
-    // Bootstrap principal from API only — no synthetic earnings
-    try {
-      const w = (typeof UserAuth !== 'undefined') ? UserAuth.getCachedWallet() : null;
-      if (w) {
-        state.walletBalance = w.balance || 0;
-        state.initialDeposit = w.totalDeposited || w.initialDeposit || 0;
-        state.pendingEarnings = w.pendingEarnings || 0;
-        state.totalClaimed = w.totalClaimed || 0;
-        state._adminActivated = state.walletBalance > 0;
-      }
-    } catch (e) { /* ignore */ }
-
+    // Bootstrap principal from API only — no synthetic earnings.
+    // On a new device there is no cached wallet, so we MUST force an
+    // immediate API sync to get the real balance.
     state.unclaimedDaily = 0;
     state.unclaimedWeekly = 0;
     state.unclaimedTrading = 0;
     state.unclaimedInterest = 0;
     saveState();
 
-    startBalanceSync();
+    // Force immediate balance sync — this is critical for cross-device login:
+    // the 30s periodic timer is too slow; the user sees $0 for too long.
+    syncBalanceFromAPI().then(() => {
+      // Save the API state so that if the 30s timer fires, it sees the correct balance
+      saveState();
+      console.log(`💰 Loaded user investment state: $${state.walletBalance.toFixed(2)}`);
+    }).catch(() => {
+      console.warn('💰 Initial balance sync failed, will retry on timer');
+    });
 
-    console.log(`💰 Loaded user investment state: $${state.walletBalance.toFixed(2)}`);
+    startBalanceSync();
   }
 
   // ── Balance Synchronization ──────────────────────────────

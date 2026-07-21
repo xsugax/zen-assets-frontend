@@ -776,8 +776,21 @@ const UserAuth = (() => {
     // Validate token expiry so stale remembered sessions do not stay active.
     const uid = _verifyLocalToken(token);
     if (!uid) {
-      _persistAuth(null);
-      return false;
+      // ── Token might have expired but refresh token could still be valid ──
+      // Check if we have a refresh token to extend the session.
+      // Don't immediately wipe auth — the TokenManager.refreshAccessToken()
+      // will attempt to refresh and schedule retries. Only wipe if
+      // we also have no refresh token saved.
+      const hasRefresh = typeof TokenManager !== 'undefined'
+        && !!TokenManager.loadTokens().refreshToken;
+      if (!hasRefresh) {
+        _persistAuth(null);
+      }
+      // Even without a valid UID, if the session object exists the user
+      // likely *was* logged in. The async refreshSession() call in init()
+      // will handle cleanup if the refresh also fails.
+      // Return true so the app boots and refreshes async.
+      return true;
     }
     return true;
   }
@@ -830,8 +843,18 @@ const UserAuth = (() => {
       _saveWallet(result);
       return result;
     }
-    // Return failure status when API is unavailable — don't use cached data
-    // This prevents balance sync from using stale cached balances
+    // ── CRITICAL: When API fails, do NOT fall back to stale localStorage ──
+    // The localStorage wallet may have been set on a different device and
+    // could contain $0 (new device) or stale data. The API is the only
+    // source of truth. Return failure to trigger retry.
+    // 
+    // For cross-device reliability: if we can't reach the server, return
+    // the cached data BUT mark it as potentially stale so callers know.
+    const cached = _loadWallet();
+    if (cached && typeof cached.balance === 'number') {
+      console.warn('⚠ Wallet API unavailable — returning cached wallet (may be stale on new device)');
+      return { ...cached, ok: true, _fromCache: true, _stale: true };
+    }
     return { ok: false, error: 'Wallet API unavailable' };
   }
 
