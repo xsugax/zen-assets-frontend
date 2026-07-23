@@ -57,7 +57,7 @@
 
   /* Login form — full width, auto height, no scroll constraints */
   .login-form-section {
-    display: none !important;
+    display: none;
     width: 100% !important;
     max-width: 560px !important;
     height: auto !important;
@@ -452,7 +452,7 @@
   html { font-size: 12.5px !important; }
 
   .login-form-section {
-    display: none !important;
+    display: none;
     padding: 0 12px !important;
   }
 

@@ -377,7 +377,7 @@ const AdminPanel = (() => {
         UserAuth.adminGetAllUsers({ limit: 500 }),
         UserAuth.adminGetWithdrawals(),
         UserAuth.adminGetStats(),
-        UserAuth.adminGetAuditLog({ limit: 200 }),
+        UserAuth.adminGetAuditLog({ limit: 500 }),
       ]);
 
       // Ensure required users exist in local store before merging
