@@ -83,6 +83,25 @@ const RealDataAdapter = (() => {
   //  CRYPTO — Binance WebSocket
   // ═══════════════════════════════════════════════════════════
 
+  // ── Injection throttle — prevents double-processing on mobile ──
+  let _lastInjectTime = 0;
+  const _INJECT_THROTTLE_MS = 200; // max 5 injects/sec on desktop, fewer on mobile
+
+  function injectIntoMarketData(n) {
+    if (typeof MarketData === 'undefined') return;
+    
+    // Throttle: skip inject if too soon since last one (mobile-friendly)
+    const now = Date.now();
+    if (now - _lastInjectTime < _INJECT_THROTTLE_MS) return;
+    _lastInjectTime = now;
+    
+    MarketData._injectRealPrice?.(n.symbol, {
+      price: n.price, high24h: n.high24h, low24h: n.low24h,
+      vol24h: n.volume24h, chg24h: n.priceChange, pct24h: n.priceChangePct,
+      bid: n.bid, ask: n.ask,
+    });
+  }
+
   function initBinanceWebSocket() {
     // On mobile, only connect top 3 pairs to save battery/CPU
     const pairs = isMobile
@@ -437,21 +456,6 @@ const RealDataAdapter = (() => {
     }
     return out;
   }
-
-  // ═══════════════════════════════════════════════════════════
-  //  INJECT INTO MARKETDATA
-  // ═══════════════════════════════════════════════════════════
-
-  function injectIntoMarketData(n) {
-    if (typeof MarketData === 'undefined') return;
-    MarketData._injectRealPrice?.(n.symbol, {
-      price: n.price, high24h: n.high24h, low24h: n.low24h,
-      vol24h: n.volume24h, chg24h: n.priceChange, pct24h: n.priceChangePct,
-      bid: n.bid, ask: n.ask,
-    });
-  }
-
-  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   // ═══════════════════════════════════════════════════════════
   //  MULTI-SOURCE CONSENSUS ENGINE

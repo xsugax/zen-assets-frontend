@@ -152,10 +152,22 @@ const MarketData = (() => {
   }
 
   // ── Tick Engine ──────────────────────────────────────────
+  let _tickCounter = 0;
+  const _TICK_INTERVAL = { mobile: 3000, desktop: 1400 };  // much slower: 3s mobile, 1.4s desktop
+
   function startTicker() {
-    const TICK_RATE = isMobile ? 2500 : 600;
+    const TICK_RATE = isMobile ? _TICK_INTERVAL.mobile : _TICK_INTERVAL.desktop;
     tickTimer = setInterval(() => {
+      // Skip processing if page/tab is hidden (saves CPU)
+      if (document.hidden) return;
+
       ASSETS.forEach(a => tick(a.id));
+      
+      // Throttle 'tick' emissions: only emit every 2nd tick on mobile (every 6s)
+      // and every tick on desktop (1.4s is already slow enough)
+      _tickCounter++;
+      if (isMobile && _tickCounter % 2 !== 0) return;
+      
       emit('tick', getTickerSnapshot());
     }, TICK_RATE);
   }

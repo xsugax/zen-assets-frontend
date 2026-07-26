@@ -51,8 +51,26 @@ const Portfolio = (() => {
     return curve;
   })();
 
-  // ── Compute Metrics ──────────────────────────────────────
-  function computeMetrics() {
+  // ── Compute Metrics with Caching ──────────────────────────
+  let _lastCacheKey = '';
+  let _cachedMetrics = null;
+
+  function _cacheKey() {
+    const snap = typeof InvestmentReturns !== 'undefined' ? InvestmentReturns.getSnapshot() : null;
+    const bal = snap ? snap.walletBalance : 0;
+    const portVal = snap ? snap.totalPortfolioValue : 0;
+    const btc = MarketData.getAsset('BTC');
+    const btcPrice = btc ? btc.price : 0;
+    return `${bal.toFixed(2)}|${portVal.toFixed(2)}|${btcPrice.toFixed(2)}`;
+  }
+
+  function computeMetrics(force) {
+    const key = _cacheKey();
+    if (!force && _cachedMetrics && key === _lastCacheKey) {
+      return _cachedMetrics;
+    }
+    _lastCacheKey = key;
+
     const assets = MarketData.getAllAssets();
     const aMap = {}; assets.forEach(a => { aMap[a.id] = a; });
 
@@ -140,7 +158,7 @@ const Portfolio = (() => {
       _lastEquityUpdate = now;
     }
 
-    return {
+    _cachedMetrics = {
       totalValue, totalCost, totalPnL, totalPct,
       alloc, enriched, todayPnL,
       sharpe:        parseFloat(Math.max(sharpe, 0.85).toFixed(2)),
@@ -153,6 +171,7 @@ const Portfolio = (() => {
       rawPortfolioValue: rawPortValue,
       walletBalance, initialDeposit, totalReturn,
     };
+    return _cachedMetrics;
   }
 
   // ── Portfolio Health Score ────────────────────────────────

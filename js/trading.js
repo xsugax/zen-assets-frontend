@@ -20,11 +20,41 @@ const Trading = (() => {
   // Tier order for comparison
   const TIER_ORDER = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 };
 
+  // Copy trader purchase prices by tier — one-time unlock, feels like buying pro software
+  const COPY_TRADER_PRICES = {
+    bronze:   2000,    // $2K — entry-level pro trader
+    silver:   7500,    // $7.5K — intermediate quant
+    gold:     25000,   // $25K — advanced expert
+    platinum: 100000,  // $100K — elite institutional
+    diamond:  250000,  // $250K — sovereign-grade
+  };
+
+  // Track which copy traders the user has unlocked
+  function _isCopyTraderUnlocked(traderId) {
+    try {
+      const key = 'zen_copier_unlocks';
+      const raw = localStorage.getItem(key);
+      if (!raw) return false;
+      const unlocks = JSON.parse(raw);
+      return unlocks.includes(traderId);
+    } catch { return false; }
+  }
+
+  function _markCopyTraderUnlocked(traderId) {
+    try {
+      const key = 'zen_copier_unlocks';
+      const raw = localStorage.getItem(key);
+      const unlocks = raw ? JSON.parse(raw) : [];
+      if (!unlocks.includes(traderId)) unlocks.push(traderId);
+      localStorage.setItem(key, JSON.stringify(unlocks));
+    } catch {}
+  }
+
   const copyTraders = [
-    { id: 'ct4', name: 'SilverDelta', avatar: '🔮', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: false, subscribers: 980,  copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Scalping',       minTier: 'bronze' },
-    { id: 'ct2', name: 'QuantEdge',   avatar: '⚡', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: false, subscribers: 2150, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Mean Reversion', minTier: 'silver' },
-    { id: 'ct1', name: 'CryptoWolf',  avatar: '🐺', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: false, subscribers: 3841, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Momentum',       minTier: 'gold' },
-    { id: 'ct3', name: 'IronAlpha',   avatar: '🦾', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Breakout',       minTier: 'platinum' },
+    { id: 'ct4', name: 'SilverDelta', avatar: '🔮', pnl30d: '+12.3%', winRate: '61%', drawdown: '4.1%', active: false, subscribers: 980,  copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Scalping',       minTier: 'bronze',   price: COPY_TRADER_PRICES.bronze,   description: 'High-frequency scalper — fast entries, tight stops, 12-30s average hold. Best for volatile markets.' },
+    { id: 'ct2', name: 'QuantEdge',   avatar: '⚡', pnl30d: '+19.7%', winRate: '68%', drawdown: '5.6%', active: false, subscribers: 2150, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Mean Reversion', minTier: 'silver',   price: COPY_TRADER_PRICES.silver,   description: 'Statistical arbitrage engine — identifies overbought/oversold conditions with 94% precision filter.' },
+    { id: 'ct1', name: 'CryptoWolf',  avatar: '🐺', pnl30d: '+28.4%', winRate: '73%', drawdown: '8.2%', active: false, subscribers: 3841, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Momentum',       minTier: 'gold',     price: COPY_TRADER_PRICES.gold,     description: 'AI trend-following — catches 70%+ of directional moves with 3-layer momentum confirmation.' },
+    { id: 'ct3', name: 'IronAlpha',   avatar: '🦾', pnl30d: '+41.2%', winRate: '81%', drawdown: '11.4%',active: false, subscribers: 6720, copiedBal: 0, totalCopied: 0, tradesExecuted: 0, lastTradeTime: 0, strategy: 'Breakout',       minTier: 'platinum', price: COPY_TRADER_PRICES.platinum, description: 'Institutional breakout system — detects accumulation + volatility expansion with 89% win rate on confirmed breakouts.' },
   ];
 
   // Copy trader execution engine — runs periodically
@@ -488,5 +518,8 @@ const Trading = (() => {
     toggleCopyTrader, canAccessCopyTrader,
     syncAdminCopyTraders, isCopyTradingAdminLocked, getAdminCopySummary,
     getActiveCopyPositions() { return _activeCopyPositions; },
+    isCopyTraderUnlocked: _isCopyTraderUnlocked,
+    markCopyTraderUnlocked: _markCopyTraderUnlocked,
+    COPY_TRADER_PRICES,
   };
 })();

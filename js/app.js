@@ -198,7 +198,7 @@ const App = (() => {
           'Ready',
         ];
 
-    const counterDur = fastBoot ? 1100 : 1800;
+    const counterDur = fastBoot ? 2800 : 1800;
     animBootCounter('bm-nodes',  0, 2048,   counterDur);
     animBootCounter('bm-lat',    0, 12,     counterDur - 200, 'ms');
     animBootCounter('bm-ai',     0, 4,      counterDur - 400);
@@ -233,14 +233,21 @@ const App = (() => {
 
   let _bootFinished = false;
   function showApp() {
-    if (_bootFinished) return;
-    _bootFinished = true;
+    // Always hide the loading screen — even if called multiple times
     const loading = $('loading-screen');
-    if (loading) {
+    if (loading && loading.style.display !== 'none') {
       loading.style.opacity = '0';
       loading.style.pointerEvents = 'none';
+      loading.style.animationPlayState = 'paused';
       setTimeout(() => { loading.style.display = 'none'; }, 600);
     }
+    if (_bootFinished) {
+      // Already booted — just make sure login screen is hidden
+      const login = $('login-screen');
+      if (login) { login.style.display = 'none'; login.style.pointerEvents = 'none'; }
+      return;
+    }
+    _bootFinished = true;
     const app = $('app');
     if (app) app.classList.add('app-visible');
     startClock();
@@ -254,7 +261,9 @@ const App = (() => {
   // ── Boot Canvas Particles ─────────────────────────────────
   function initBootCanvas() {
     const c = $('boot-canvas'); if (!c) return;
-    const ctx = c.getContext('2d');
+    let ctx;
+    try { ctx = c.getContext('2d'); } catch(e) { console.warn('⚠️ Boot canvas context unavailable:', e.message); return; }
+    if (!ctx) { console.warn('⚠️ Boot canvas 2D context returned null — skipping particles'); return; }
     const mobile = isMobileView();
     const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
     resize();
@@ -1226,21 +1235,25 @@ const App = (() => {
     list.innerHTML = _copyTraderBannerHtml() + posHtml + traders.map(t => {
       const tierLabels = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond' };
       const unlocked = Trading.canAccessCopyTrader(t.id);
-      const liveTag = t.active ? '<span class="ct-live-badge" title="' + (typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance') + '">Active</span>' : '';
-      const lockTag = !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
+      const purchased = Trading.isCopyTraderUnlocked ? Trading.isCopyTraderUnlocked(t.id) : false;
+      const liveTag = t.active ? '<span class="ct-live-badge">Active</span>' : '';
+      const lockTag = !purchased && !unlocked ? `<span class="ct-lock-badge">🔒 ${tierLabels[t.minTier]}+</span>` : '';
+      const ownedTag = purchased && !t.active ? '<span class="ct-owned-badge">✓ OWNED</span>' : '';
       const tradesInfo = t.active && t.tradesExecuted > 0 ? `<span class="ct-trades">${t.tradesExecuted} trades · ${t.copiedBal >= 0 ? '+' : ''}$${Math.abs(t.copiedBal).toFixed(2)}</span>` : '';
-      return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!unlocked ? 'ct-locked' : ''}">
+      const priceFmt = t.price ? '$' + t.price.toLocaleString() : '';
+      return `<div class="ct-card ${t.active ? 'ct-active' : ''} ${!purchased && !unlocked ? 'ct-locked' : ''}">
         <div class="ct-avatar">${t.avatar}</div>
         <div class="ct-info">
-          <b>${t.name}</b> ${liveTag}${lockTag}
+          <b>${t.name}</b> ${liveTag}${lockTag}${ownedTag}
+          <span class="ct-desc">${t.description || ''}</span>
           <span>${t.subscribers.toLocaleString()} followers · WR ${t.winRate} · ${t.strategy}</span>
           ${tradesInfo}
         </div>
         <div class="ct-stats">
-          <span class="${clsPnl(parseFloat(t.pnl30d))} feel-metric" title="${typeof ZenCopy !== 'undefined' ? ZenCopy.system.perfIndicative : 'Indicative performance'}">${t.pnl30d}</span>
+          <span class="${clsPnl(parseFloat(t.pnl30d))} feel-metric">${t.pnl30d}</span>
           <small>30d indicative</small>
         </div>
-        ${_copyTraderButton(t, unlocked)}
+        ${_copyTraderButton(t, purchased || unlocked)}
       </div>`;
     }).join('');
   }
@@ -2321,64 +2334,77 @@ const App = (() => {
 
   // ── Live Feed ─────────────────────────────────────────────
   let _lastAllocData = null;
+  let _tickCount = 0;
+  const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+  // ── Debounced expensive ops (mobile only) ────────────────
+  // On mobile, every Nth tick does the heavy work; light ticks only update prices.
+  const _HEAVY_TICK_INTERVAL = _isMobile ? 3 : 1;  // every 3rd tick on mobile
+  let _lastMetricsCache = null;
+  let _lastMetricsKey = '';
+
+  function _lightTick() {
+    updateMarketPulseBar();
+    updateFearGreed();
+    const execEl = $('exec-speed');
+    if (execEl) execEl.textContent = (0.2 + Math.random() * 1.3).toFixed(1) + 'ms';
+    updateAIOrb();
+  }
+
+  function _heavyTick() {
+    if (_section === 'dashboard') {
+      updateChartStats(_sym);
+      const m = Portfolio.computeMetrics();
+      updateDashKPIs(m);
+      updateAllocTotal(m.totalValue);
+      renderDashCopyTraders();
+      const allocKey = JSON.stringify(m.alloc);
+      if (allocKey !== _lastAllocData) {
+        _lastAllocData = allocKey;
+        ChartEngine.createAllocationChart('alloc-donut', m.alloc);
+      }
+      // Sentiment panel
+      const fg2 = MarketData.getFearGreed();
+      const sentLabelEl = $('sent-label');
+      const sentValueEl = $('sent-value');
+      const sentBrkEl   = $('sentiment-breakdown');
+      if (sentLabelEl) {
+        sentLabelEl.textContent = fg2.label;
+        sentLabelEl.className   = `sent-label ${fg2.value > 60 ? 'up' : fg2.value < 40 ? 'down' : ''}`;
+      }
+      if (sentValueEl) sentValueEl.textContent = fg2.value;
+      if (sentBrkEl) {
+        const mkBar = (lbl, pct, color) =>
+          `<div class="sb-row"><span style="min-width:52px">${lbl}</span>` +
+          `<div class="sb-bar"><div style="width:${Math.min(100,pct)}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div></div>` +
+          `<span style="min-width:28px;text-align:right">${Math.min(100,pct)}%</span></div>`;
+        const bullPct = fg2.value;
+        const bearPct = 100 - fg2.value;
+        const neutPct = Math.round(50 - Math.abs(fg2.value - 50) * 0.5);
+        sentBrkEl.innerHTML =
+          mkBar('Bullish', bullPct, '#2ebd85') +
+          mkBar('Bearish', bearPct, '#f6465d') +
+          mkBar('Neutral', neutPct, '#f0a500');
+      }
+    }
+    if (_section === 'trading') { updateTerminalPrice(); renderPositions(); renderCopyTraders(); }
+    if (_section === 'markets') { renderMarketsTable(); }
+    if (_section === 'ai-engine') {
+      updateCrisisBanner();
+      renderAILayers($('ai-asset-filter')?.value || 'BTC');
+    }
+  }
+
   function startLiveFeed() {
     MarketData.on('tick', () => {
-      // Skip if page/tab is hidden (saves CPU when user switches apps)
       if (document.hidden) return;
-
-      updateMarketPulseBar();
-      updateFearGreed();
-      if (_section === 'dashboard') {
-        updateChartStats(_sym);
-        const m = Portfolio.computeMetrics();
-        updateDashKPIs(m);
-        updateAllocTotal(m.totalValue);
-        renderDashCopyTraders();
-        // Only recreate allocation chart if data actually changed
-        const allocKey = JSON.stringify(m.alloc);
-        if (allocKey !== _lastAllocData) {
-          _lastAllocData = allocKey;
-          ChartEngine.createAllocationChart('alloc-donut', m.alloc);
-        }
+      _tickCount++;
+      // Every tick does light work (price updates, pulse bar)
+      _lightTick();
+      // Only every Nth tick does heavy work (KPIs, charts, tables, renders)
+      if (_tickCount % _HEAVY_TICK_INTERVAL === 0) {
+        _heavyTick();
       }
-      if (_section === 'trading') { updateTerminalPrice(); renderPositions(); renderCopyTraders(); }
-      if (_section === 'markets') { renderMarketsTable(); }
-      if (_section === 'ai-engine') {
-        updateCrisisBanner();
-        renderAILayers($('ai-asset-filter')?.value || 'BTC');
-      }
-
-      // ── Sentiment panel (dashboard) ───────────────────────
-      if (_section === 'dashboard') {
-        const fg2 = MarketData.getFearGreed();
-        const sentLabelEl = $('sent-label');
-        const sentValueEl = $('sent-value');
-        const sentBrkEl   = $('sentiment-breakdown');
-        if (sentLabelEl) {
-          sentLabelEl.textContent = fg2.label;
-          sentLabelEl.className   = `sent-label ${fg2.value > 60 ? 'up' : fg2.value < 40 ? 'down' : ''}`;
-        }
-        if (sentValueEl) sentValueEl.textContent = fg2.value;
-        if (sentBrkEl) {
-          const mkBar = (lbl, pct, color) =>
-            `<div class="sb-row"><span style="min-width:52px">${lbl}</span>` +
-            `<div class="sb-bar"><div style="width:${Math.min(100,pct)}%;height:100%;background:${color};border-radius:2px;transition:width .6s ease"></div></div>` +
-            `<span style="min-width:28px;text-align:right">${Math.min(100,pct)}%</span></div>`;
-          const bullPct = fg2.value;
-          const bearPct = 100 - fg2.value;
-          const neutPct = Math.round(50 - Math.abs(fg2.value - 50) * 0.5);
-          sentBrkEl.innerHTML =
-            mkBar('Bullish', bullPct, '#2ebd85') +
-            mkBar('Bearish', bearPct, '#f6465d') +
-            mkBar('Neutral', neutPct, '#f0a500');
-        }
-      }
-
-      // ── Execution speed (topbar) ─────────────────────────
-      const execEl = $('exec-speed');
-      if (execEl) execEl.textContent = (0.2 + Math.random() * 1.3).toFixed(1) + 'ms';
-
-      updateAIOrb();
     });
 
     AIEngine.on('signals', sigs => {
@@ -2840,8 +2866,7 @@ const App = (() => {
     }
   }
   function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); renderDashCopyTraders(); }
-  function navigatePublic(s)  { navigate(s); }
-
+  function navigatePublic(s)
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
@@ -3668,19 +3693,15 @@ const App = (() => {
       loadingScreen.style.pointerEvents = 'auto';
       loadingScreen.classList.add('boot-mobile-live');
     }
-    initBootCanvas();
+    // Non-blocking canvas init — errors must not prevent boot from starting
+    try { initBootCanvas(); } catch(e) { console.warn('⚠️ Boot canvas init failed (non-blocking):', e); }
     runBoot();
     window._App = { showToast, navigate };
 
-    // SAFETY: finish boot if animation stalls (common on slow mobile)
+    // SAFETY: always hide loading screen after timeout, even if _bootFinished is already true
     const safetyMs = isMobileView() ? 8000 : 12000;
     setTimeout(() => {
-      const ls = $('loading-screen');
-      if (ls && ls.style.display !== 'none' && !_bootFinished) {
-        console.warn('⚠️ Loading screen safety timeout — entering app');
-        showApp();
-      }
-      // Also ensure login screen is truly gone
+      showApp(); // showApp now re-entrant — hides loading & login if still visible
       const login = $('login-screen');
       if (login && login.style.display !== 'none') {
         login.style.display = 'none';
@@ -3940,4 +3961,3 @@ window.addEventListener('error', (ev) => {
 
 // ── Kick-off ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => App.init());
-
