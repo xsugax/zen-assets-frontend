@@ -322,7 +322,7 @@ small { font-size: .8em; opacity: .7; display: block; }
   border-top-color: var(--gold);
   border-right-color: rgba(212,165,116,.3);
   border-radius: 50%;
-  animation: splashSpin 1.2s linear infinite;
+  animation: splashSpin 2.4s linear infinite;
 }
 .splash-ring-inner {
   position: absolute; inset: 12px;
@@ -330,7 +330,7 @@ small { font-size: .8em; opacity: .7; display: block; }
   border-bottom-color: var(--gold-bright);
   border-left-color: rgba(230,184,135,.3);
   border-radius: 50%;
-  animation: splashSpin 1.8s linear infinite reverse;
+  animation: splashSpin 3s linear infinite reverse;
 }
 .splash-z {
   font-family: var(--font-brand, 'Space Grotesk', sans-serif);

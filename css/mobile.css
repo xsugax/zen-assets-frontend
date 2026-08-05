@@ -842,27 +842,27 @@
   }
   #loading-screen .boot-scanlines {
     opacity: 1;
-    animation: scanlines-move 2.5s linear infinite;
+    animation: scanlines-move 4s linear infinite;
   }
   #loading-screen .boot-grid-overlay {
     opacity: 0.1;
-    animation: grid-pulse 2s ease-in-out infinite;
+    animation: grid-pulse 3s ease-in-out infinite;
   }
   #loading-screen .hex-outline-anim {
-    animation: hex-rotate 5s linear infinite, hex-outline-pulse 1.2s ease-in-out infinite;
+    animation: hex-rotate 12s linear infinite, hex-outline-pulse 2.4s ease-in-out infinite;
   }
   #loading-screen .hex-inner-anim {
-    animation: hex-rotate-reverse 7s linear infinite, hex-inner-pulse 1.2s ease-in-out infinite;
+    animation: hex-rotate-reverse 16s linear infinite, hex-inner-pulse 2.4s ease-in-out infinite;
   }
   #loading-screen .boot-logo-z {
-    animation: boot-z-glow 1.2s ease-in-out infinite;
+    animation: boot-z-glow 2.4s ease-in-out infinite;
   }
   #loading-screen .boot-progress-bar {
-    animation: boot-progress-shimmer 1s ease-in-out infinite;
+    animation: boot-progress-shimmer 1.6s ease-in-out infinite;
     transition: width 0.12s linear;
   }
   #loading-screen .boot-status {
-    animation: boot-status-pulse 1.4s ease-in-out infinite;
+    animation: boot-status-pulse 2s ease-in-out infinite;
     text-align: center;
     padding: 0 12px;
     line-height: 1.4;

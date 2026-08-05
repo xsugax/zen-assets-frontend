@@ -268,7 +268,7 @@ const App = (() => {
     const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
     resize();
     const count = mobile ? 14 : 30;
-    const speed = mobile ? 0.85 : 0.4;
+    const speed = 0.4;
     const ptcls = Array.from({ length: count }, () => ({
       x: Math.random() * c.width,
       y: Math.random() * c.height,
@@ -2866,7 +2866,7 @@ const App = (() => {
     }
   }
   function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); renderDashCopyTraders(); }
-  function navigatePublic(s)
+  function navigatePublic(section) { navigate(section); }
   // ── Entry Point ───────────────────────────────────────────
   function init() {
     console.log('🔄 App init starting...');
