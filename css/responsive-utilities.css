@@ -360,11 +360,12 @@ html.bp-desktop { font-size: 16px; }
   }
 }
 
-/* Reduce animations on mobile */
+/* Mobile tap feedback only — never blanket-shorten animation-duration.
+   The old `* { animation-duration: 0.15s }` rule made every spinner/loop
+   on phones finish in 0.15s (overspinning). Calm motion lives in mobile.css. */
 @media (max-width: 480px) {
-  * {
-    animation-duration: 0.15s !important;
-    transition-duration: 0.15s !important;
+  a, button, input, select, textarea, .btn, .icon-btn, .mbn-item {
+    transition-duration: 0.2s !important;
   }
 }
 

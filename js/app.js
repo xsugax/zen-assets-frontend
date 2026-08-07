@@ -198,23 +198,23 @@ const App = (() => {
           'Ready',
         ];
 
-    const counterDur = fastBoot ? 2800 : 1800;
+    const counterDur = fastBoot ? 3600 : 1800;
     animBootCounter('bm-nodes',  0, 2048,   counterDur);
     animBootCounter('bm-lat',    0, 12,     counterDur - 200, 'ms');
     animBootCounter('bm-ai',     0, 4,      counterDur - 400);
     animBootCounter('bm-mkt',    0, 27,     counterDur - 300);
 
-    const tickMs = fastBoot ? 55 : 80;
-    const step = fastBoot ? 0.055 : 0.035;
+    const tickMs = fastBoot ? 90 : 80;
+    const step = fastBoot ? 0.038 : 0.035;
     const iv = setInterval(() => {
-      pct += (100 - pct) * step + (fastBoot ? 1.4 : 0.8);
+      pct += (100 - pct) * step + (fastBoot ? 0.85 : 0.8);
       if (pct >= 100) pct = 100;
       if (progress) progress.style.width = pct + '%';
       const idx = Math.min(MSGS.length - 1, Math.floor((pct / 100) * MSGS.length));
       if (status) status.textContent = MSGS[idx];
       if (pct >= 100) {
         clearInterval(iv);
-        setTimeout(showApp, fastBoot ? 350 : 600);
+        setTimeout(showApp, fastBoot ? 550 : 600);
       }
     }, tickMs);
   }
@@ -267,8 +267,8 @@ const App = (() => {
     const mobile = isMobileView();
     const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
     resize();
-    const count = mobile ? 14 : 30;
-    const speed = 0.4;
+    const count = mobile ? 10 : 30;
+    const speed = mobile ? 0.22 : 0.4;
     const ptcls = Array.from({ length: count }, () => ({
       x: Math.random() * c.width,
       y: Math.random() * c.height,
@@ -298,7 +298,7 @@ const App = (() => {
       window.removeEventListener('resize', resize);
       ctx.clearRect(0, 0, c.width, c.height);
     };
-    setTimeout(stopBoot, mobile ? 4500 : 3000);
+    setTimeout(stopBoot, mobile ? 5200 : 3000);
   }
 
   // ── Cursor Trail — DISABLED (clean professional UI) ───

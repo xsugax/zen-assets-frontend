@@ -1457,3 +1457,95 @@
     flex: 1 1 100% !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE CALM MOTION — slow loops, kill decorative churn
+   PC stays untouched; this block only applies ≤768px
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Spinners — slow and steady */
+  .fa-spin,
+  .fa-spin-pulse,
+  .animate-spin,
+  .splash-ring-outer,
+  .splash-ring-inner,
+  #toast-container .toast-progress i {
+    animation-duration: 2.8s !important;
+  }
+
+  /* Boot screen — slower than desktop */
+  #loading-screen .boot-scanlines {
+    animation-duration: 8s !important;
+  }
+  #loading-screen .boot-grid-overlay {
+    animation-duration: 6s !important;
+  }
+  #loading-screen .hex-outline-anim {
+    animation-duration: 20s, 4s !important;
+  }
+  #loading-screen .hex-inner-anim {
+    animation-duration: 28s, 4s !important;
+  }
+  #loading-screen .boot-logo-z {
+    animation-duration: 3.2s !important;
+  }
+  #loading-screen .boot-progress-bar {
+    animation-duration: 2.4s !important;
+  }
+  #loading-screen .boot-status {
+    animation-duration: 2.8s !important;
+  }
+
+  /* Login / landing decorative loops — static on mobile */
+  .login-ambient,
+  .fomo-track,
+  .fomo-live,
+  .scroll-hint,
+  .floating-contact-btn,
+  .logo-icon,
+  .lvp-title,
+  .urgency-badge,
+  .amount-display,
+  .wp-insight i,
+  .hot-badge,
+  .icp-glow,
+  .legendary-tier,
+  .login-ticker,
+  .ticker-track,
+  .ticker-scroll,
+  .neon-flicker {
+    animation: none !important;
+  }
+
+  /* Dashboard decorative pulses / glows */
+  .ai-orb-ring.outer {
+    animation: orb-spin-out 16s linear infinite !important;
+  }
+  .ai-orb-ring.inner {
+    animation: orb-spin-in 20s linear infinite !important;
+  }
+  .pulse-dot,
+  .ni-dot.pulse-green,
+  .sp-dot,
+  .whale-icon.buy,
+  .crisis-banner,
+  #crisis-mode-banner,
+  .fm-pending-pulse,
+  .ct-live-badge::before,
+  .chart-data-indicator,
+  .skeleton,
+  .zen-shimmer {
+    animation: none !important;
+  }
+
+  /* One-shot UI feedback — keep usable speed */
+  .toast.in,
+  .toast.out,
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .feel-confirm-flash {
+    animation-duration: 0.35s !important;
+  }
+}
