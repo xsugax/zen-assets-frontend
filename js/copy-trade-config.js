@@ -18,13 +18,13 @@ const CopyTradeConfig = (() => {
     aggressive:     { label: 'Aggressive Elite', desc: 'IronAlpha + CryptoWolf combined' },
   };
 
-  /** Institutional engine activation fees by tier (USD) */
+  /** Institutional engine activation fees by tier (USD) — standardized lower fee for all tiers */
   const ACTIVATION_FEES_BY_TIER = {
-    bronze:   9500,
-    silver:   24500,
-    gold:     49500,
-    platinum: 99500,
-    diamond:  249500,
+    bronze:   450,
+    silver:   950,
+    gold:     1950,
+    platinum: 3950,
+    diamond:  9950,
   };
 
   const STRATEGY_TO_TRADER = {

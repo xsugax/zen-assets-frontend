@@ -6,6 +6,7 @@
   'use strict';
 
   const STORAGE_KEY = 'zen_smartsupp_pos_v1';
+  const HANDLE_CLASS = 'zen-smartsupp-drag-handle';
   const SELECTORS = [
     '#chat-application',
     '#smartsupp-widget',
@@ -77,7 +78,7 @@
     el.style.setProperty('bottom', 'auto', 'important');
     el.style.setProperty('margin', '0', 'important');
     el.style.setProperty('touch-action', 'none', 'important');
-    el.style.setProperty('cursor', 'grab', 'important');
+    el.style.setProperty('overflow', 'visible', 'important');
     el.classList.add('zen-smartsupp-draggable');
 
     const w = el.offsetWidth || 56;
@@ -111,6 +112,8 @@
 
   function onPointerDown(e) {
     if (!boundEl || e.button > 0) return;
+    const handle = e.target?.closest ? e.target.closest('.' + HANDLE_CLASS) : null;
+    if (!handle) return;
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
 
@@ -119,9 +122,10 @@
       ox: e.clientX - rect.left,
       oy: e.clientY - rect.top,
       pointerId: e.pointerId,
+      handle,
     };
-    boundEl.setPointerCapture?.(e.pointerId);
-    boundEl.style.setProperty('cursor', 'grabbing', 'important');
+    handle.setPointerCapture?.(e.pointerId);
+    handle.style.setProperty('cursor', 'grabbing', 'important');
     boundEl.style.setProperty('transition', 'none', 'important');
     e.preventDefault();
   }
@@ -136,18 +140,32 @@
     if (!dragState || !boundEl || e.pointerId !== dragState.pointerId) return;
     const rect = boundEl.getBoundingClientRect();
     savePos(rect.left, rect.top);
-    boundEl.releasePointerCapture?.(e.pointerId);
+    dragState.handle?.releasePointerCapture?.(e.pointerId);
     boundEl.style.removeProperty('transition');
-    boundEl.style.setProperty('cursor', 'grab', 'important');
+    dragState.handle?.style.setProperty('cursor', 'grab', 'important');
     dragState = null;
+  }
+
+  function ensureDragHandle(el) {
+    let handle = el.querySelector('.' + HANDLE_CLASS);
+    if (handle) return handle;
+    handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = HANDLE_CLASS;
+    handle.setAttribute('aria-label', 'Drag chat widget');
+    handle.title = 'Drag chat widget';
+    handle.textContent = '⋮⋮';
+    el.appendChild(handle);
+    return handle;
   }
 
   function bindDrag(el) {
     if (!el || el === boundEl) return;
     boundEl = el;
     applyPosition(el, loadPos());
+    const handle = ensureDragHandle(el);
 
-    el.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerUp);
