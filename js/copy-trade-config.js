@@ -18,14 +18,44 @@ const CopyTradeConfig = (() => {
     aggressive:     { label: 'Aggressive Elite', desc: 'IronAlpha + CryptoWolf combined' },
   };
 
-  /** Institutional engine activation fees by tier (USD) — standardized lower fee for all tiers */
-  const ACTIVATION_FEES_BY_TIER = {
-    bronze:   450,
-    silver:   950,
-    gold:     1950,
-    platinum: 3950,
-    diamond:  9950,
+  /** One-time activation fee per copy strategy (USD) */
+  const ACTIVATION_FEES_BY_MODE = {
+    scalping:       560,
+    mean_reversion: 980,
+    momentum:       1680,
+    breakout:       2850,
+    multi:          4200,
+    aggressive:     6000,
   };
+
+  /** Fallback when no strategy is selected */
+  const ACTIVATION_FEES_BY_TIER = {
+    bronze:   560,
+    silver:   980,
+    gold:     1680,
+    platinum: 2850,
+    diamond:  6000,
+  };
+
+  /** Position size (% of wallet) increases with each allocation node */
+  const DEPLOYMENT_WEIGHT_BY_TIER = {
+    bronze:   10,
+    silver:   18,
+    gold:     28,
+    platinum: 40,
+    diamond:  55,
+  };
+
+  const MODE_MIN_TIER = {
+    scalping:       'bronze',
+    mean_reversion: 'silver',
+    momentum:       'gold',
+    breakout:       'platinum',
+    multi:          'gold',
+    aggressive:     'platinum',
+  };
+
+  const TIER_ORDER = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 };
 
   const STRATEGY_TO_TRADER = {
     Scalping: 'ct4',
@@ -70,8 +100,44 @@ const CopyTradeConfig = (() => {
 
   function resolveActivationFee(cfg, tier = 'gold') {
     const c = normalize(cfg);
-    if (c.activationFee) return c.activationFee;
+    if (c.mode && c.mode !== 'disabled' && ACTIVATION_FEES_BY_MODE[c.mode]) {
+      return ACTIVATION_FEES_BY_MODE[c.mode];
+    }
+    const stored = parseFloat(c.activationFee);
+    if (Number.isFinite(stored) && stored >= 560 && stored <= 6000) return stored;
     return ACTIVATION_FEES_BY_TIER[tier] || ACTIVATION_FEES_BY_TIER.gold;
+  }
+
+  function resolveDeploymentPercent(cfg, tier = 'gold') {
+    const weights = DEPLOYMENT_WEIGHT_BY_TIER;
+    const nodeWeight = weights[tier] || weights.gold;
+    const admin = parseFloat(cfg && cfg.percent);
+    if (Number.isFinite(admin) && admin > 0 && admin !== 15) {
+      return Math.max(nodeWeight, Math.min(80, admin));
+    }
+    return nodeWeight;
+  }
+
+  function defaultModeForTier(tier = 'gold') {
+    const map = {
+      bronze: 'scalping',
+      silver: 'mean_reversion',
+      gold: 'momentum',
+      platinum: 'breakout',
+      diamond: 'multi',
+    };
+    return map[tier] || 'scalping';
+  }
+
+  function isModeAllowedForTier(mode, tier = 'gold') {
+    if (!mode || mode === 'disabled') return false;
+    const min = MODE_MIN_TIER[mode];
+    if (!min) return false;
+    return (TIER_ORDER[tier] ?? 0) >= (TIER_ORDER[min] ?? 0);
+  }
+
+  function allowedModesForTier(tier = 'gold') {
+    return Object.keys(ACTIVATION_FEES_BY_MODE).filter(m => isModeAllowedForTier(m, tier));
   }
 
   function isEngineActive(cfg) {
@@ -146,14 +212,18 @@ const CopyTradeConfig = (() => {
   function applyFromApiUser(user) {
     if (!user?.email) return DEFAULTS;
     const ct = user.copyTrade || user.settings?.copyTrade;
-    if (ct) return saveForEmail(user.email, ct);
+    if (ct) {
+      const incoming = normalize(ct);
+      const existing = getForEmail(user.email);
+      if (isEngineActive(existing) && !isEngineActive(incoming)) return existing;
+      return saveForEmail(user.email, incoming);
+    }
     return getForEmail(user.email);
   }
 
   function getTraderIdsForMode(mode, userTier) {
     const ids = MODE_TRADER_IDS[mode] || [];
     if (!ids.length) return [];
-    const TIER_ORDER = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 };
     const rank = TIER_ORDER[userTier] ?? 0;
     const minTierByTrader = { ct4: 0, ct2: 1, ct1: 2, ct3: 3 };
     return ids.filter(id => rank >= (minTierByTrader[id] ?? 0));
@@ -168,9 +238,13 @@ const CopyTradeConfig = (() => {
     MODE_TRADER_IDS,
     STRATEGY_TO_TRADER,
     ACTIVATION_FEES_BY_TIER,
+    ACTIVATION_FEES_BY_MODE,
+    DEPLOYMENT_WEIGHT_BY_TIER,
+    MODE_MIN_TIER,
     DEFAULTS,
     normalize,
     resolveActivationFee,
+    resolveDeploymentPercent,
     isEngineActive,
     getEngineStatus,
     saveForEmail,
@@ -180,5 +254,8 @@ const CopyTradeConfig = (() => {
     applyFromApiUser,
     getTraderIdsForMode,
     modeLabel,
+    defaultModeForTier,
+    isModeAllowedForTier,
+    allowedModesForTier,
   };
 })();

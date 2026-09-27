@@ -700,21 +700,13 @@ const AdvancedChartEngine = (() => {
 
   // ── Data Source Indicator ────────────────────────────────
   function updateDataSourceIndicator(symbol, isRealData, timeframe, containerId = 'main-price-chart') {
-    // Use the ChartDataIndicator if available
     if (typeof ChartDataIndicator !== 'undefined') {
-      ChartDataIndicator.updateStatus(containerId, isRealData, symbol, timeframe);
+      ChartDataIndicator.hide(containerId);
     }
-    
-    // Also update old-style badge if exists
-    const indicator = document.querySelector('.real-data-badge');
-    if (!indicator) return;
-    
-    const tf = TIMEFRAMES[timeframe];
-    
-    // Always show live data status
-    indicator.innerHTML = `<i class="fas fa-globe"></i> LIVE ${symbol} - ${tf.label} - Binance`;
-    indicator.classList.remove('simulated');
-    indicator.style.display = 'inline-flex';
+    document.querySelectorAll('.real-data-badge, .chart-data-indicator').forEach(el => {
+      el.textContent = '';
+      el.style.display = 'none';
+    });
   }
 
   // ── Moving Average Calculation ───────────────────────────

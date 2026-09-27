@@ -17,10 +17,19 @@
   }
 
   .login-brand-section {
-    max-width: 1000px;
-    gap: 48px;
+    max-width: 1100px;
+    gap: 56px;
     padding-bottom: 56px;
   }
+
+  .lp-hero {
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .lp-hero .lvp-title { font-size: 36px; line-height: 1.2; }
+  .lp-how-grid { grid-template-columns: repeat(3, 1fr); }
 
   .login-form-card {
     max-width: 480px;

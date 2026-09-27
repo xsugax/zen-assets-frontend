@@ -630,6 +630,49 @@
 .ceg-badge.pending { background: rgba(255,183,77,0.12); color: #ffb74d; }
 .ceg-badge.locked { background: rgba(255,255,255,0.06); color: #667788; }
 
+.ceg-strategies {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.ceg-strategy {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(8, 12, 20, 0.72);
+  border: 1px solid rgba(212, 165, 116, 0.16);
+}
+.ceg-strategy.locked { opacity: 0.72; }
+.ceg-s-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: #e8eef5;
+  margin-bottom: 4px;
+}
+.ceg-s-desc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.4;
+  min-height: 32px;
+}
+.ceg-s-fee {
+  margin: 10px 0 8px;
+  color: #d4a574;
+  font-weight: 700;
+  font-size: 15px;
+}
+.ceg-s-fee span {
+  font-weight: 500;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-left: 4px;
+}
+.ceg-strategy .ceg-btn {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
 @media (max-width: 768px) {
   .copy-engine-gate {
     flex-direction: column;
@@ -640,4 +683,5 @@
   .ceg-icon { margin: 0 auto; }
   .ceg-btn { width: 100%; }
   .ceg-badge { align-self: center; }
+  .ceg-strategies { grid-template-columns: 1fr 1fr; }
 }

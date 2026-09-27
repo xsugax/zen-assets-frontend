@@ -190,6 +190,13 @@
   transition: all var(--feel-transition);
 }
 
+/* ── Chart overlays stay silent ───────────────────────────── */
+#app .chart-data-indicator,
+#app .real-data-badge {
+  display: none !important;
+}
+
+/* ── Chart data badge states ──────────────────────────────── */
 .chart-data-indicator.feel-calibrating {
   color: var(--feel-calibrating) !important;
   border-color: rgba(201, 162, 39, 0.35) !important;
@@ -221,4 +228,73 @@
 .chart-data-indicator.feel-loading:hover {
   background: rgba(122, 143, 168, 0.15) !important;
   border-color: rgba(122, 143, 168, 0.4) !important;
+}
+
+/* ── After-login institutional chrome (structure unchanged) ─ */
+#app {
+  letter-spacing: 0.01em;
+}
+
+#app #topbar,
+#app .topbar {
+  background: linear-gradient(180deg, rgba(12, 16, 24, 0.96), rgba(10, 14, 22, 0.92)) !important;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.12) !important;
+  box-shadow: none !important;
+}
+
+#app .sidebar,
+#app #sidebar {
+  background: rgba(8, 12, 18, 0.96) !important;
+  border-right: 1px solid rgba(212, 165, 116, 0.08) !important;
+}
+
+#app .glass-card {
+  background: linear-gradient(180deg, rgba(14, 18, 28, 0.94), rgba(10, 14, 22, 0.9)) !important;
+  border-color: rgba(212, 165, 116, 0.12) !important;
+  box-shadow: none !important;
+}
+
+#app .sh-title,
+#app .ch-title {
+  letter-spacing: 0.04em;
+  font-weight: 650;
+}
+
+#app .sh-breadcrumb {
+  color: #7d8ea3 !important;
+}
+
+#app .cyber-grid,
+#app .particle-canvas,
+#app #particle-canvas {
+  opacity: 0.28 !important;
+}
+
+#app .neon-glow,
+#app .glow-box,
+#app .pulse-ring {
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+#app .btn-primary,
+#app .ceg-btn:not(.disabled) {
+  box-shadow: none;
+}
+
+#app .plugin-card {
+  border: 1px solid rgba(212, 165, 116, 0.12);
+  background: rgba(10, 14, 22, 0.88);
+}
+
+#app .plugin-card.active {
+  border-color: rgba(212, 165, 116, 0.28);
+}
+
+#app .ct-card {
+  border-color: rgba(212, 165, 116, 0.12);
+}
+
+#app .copy-engine-gate {
+  background: linear-gradient(135deg, rgba(12, 16, 24, 0.98), rgba(16, 22, 32, 0.94));
 }

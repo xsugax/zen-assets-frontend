@@ -302,6 +302,24 @@ const InvestmentReturns = (() => {
     return;
   }
 
+  function debitFee(amount, note = 'Fee') {
+    const fee = parseFloat(amount);
+    if (!Number.isFinite(fee) || fee <= 0) return false;
+    if (state.walletBalance < fee) return false;
+    state.walletBalance = parseFloat((state.walletBalance - fee).toFixed(2));
+    state.returnHistory.unshift({
+      ts: Date.now(),
+      amount: -fee,
+      type: 'fee',
+      note,
+      balance: state.walletBalance,
+    });
+    if (state.returnHistory.length > 200) state.returnHistory.pop();
+    saveState();
+    emit('fee', { amount: fee, note, balance: state.walletBalance });
+    return true;
+  }
+
   function checkDailyWeeklyReset() { /* disabled — no client-side bonus pools */ }
 
   // ── Snapshot for UI ──────────────────────────────────────
@@ -586,6 +604,7 @@ const InvestmentReturns = (() => {
     getProjectedGrowth,
     creditTradingProfit,
     debitTradingLoss,
+    debitFee,
     setTier,
     getTier,
     getAllTiers,

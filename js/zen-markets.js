@@ -343,7 +343,11 @@ const TradeEngine = (() => {
 
     // Also place in legacy Trading module for compatibility
     if (typeof Trading !== 'undefined') {
-      Trading.placeOrder({ sym: asset.sym, side, type: type || 'market', qty, price, sl: position.sl, tp: position.tp });
+      Trading.placeOrder({
+        id: position.id,
+        sym: asset.sym, side, type: type || 'market', qty, price,
+        sl: position.sl, tp: position.tp,
+      });
     }
 
     return { success: true, position };
@@ -369,6 +373,28 @@ const TradeEngine = (() => {
       // Removed: InvestmentReturns credit/debit calls to prevent double-counting
 
       _log('CLOSE', pos);
+      if (typeof Trading !== 'undefined' && Trading.closePosition) {
+        Trading.closePosition(pos.id, { skipPersist: true });
+      }
+      if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn && UserAuth.isLoggedIn()) {
+        UserAuth.saveTrade({
+          symbol: pos.sym,
+          side: pos.side === 'long' ? 'buy' : 'sell',
+          order_type: 'market',
+          quantity: pos.qty,
+          entry_price: pos.entry,
+          exit_price: exitPrice,
+          pnl: pos.pnl,
+          status: 'closed',
+          strategy: 'Manual',
+          opened_at: new Date(pos.openedAt || Date.now()).toISOString(),
+          closed_at: new Date().toISOString(),
+        }).then(() => {
+          if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+            InvestmentReturns.forceBalanceSync();
+          }
+        }).catch(() => {});
+      }
       return pos;
     }
     return null;

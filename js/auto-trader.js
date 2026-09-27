@@ -38,7 +38,15 @@ const AutoTrader = (() => {
     try {
       if (typeof CopyTradeConfig !== 'undefined') {
         const cfg = CopyTradeConfig.getForCurrentUser();
-        if (cfg.enabled && cfg.percent > 0) return cfg.percent;
+        if (cfg.enabled && cfg.percent > 0) {
+          const tier = (typeof InvestmentReturns !== 'undefined')
+            ? (InvestmentReturns.getSnapshot().tier || 'gold')
+            : 'gold';
+          if (CopyTradeConfig.resolveDeploymentPercent) {
+            return CopyTradeConfig.resolveDeploymentPercent(cfg, tier);
+          }
+          return cfg.percent;
+        }
       }
     } catch {}
     return 0;
@@ -628,7 +636,7 @@ const AutoTrader = (() => {
 
     positions.forEach(pos => {
       // Find corresponding history entry
-      const trade = tradeHistory.find(t => t.id === pos.id && t.status === 'open');
+      const trade = tradeHistory.find(t => t.status === 'open' && (t.id === pos.id || t.id === pos.orderId || t.orderId === pos.id));
       if (!trade) return;
 
       // How long has this trade been open? (ms)
@@ -669,7 +677,7 @@ const AutoTrader = (() => {
       const exitPrice = trade.entryPrice * (1 + (trade.side === 'long' ? pnlPct : -pnlPct) / 100);
 
       // Close via Trading engine
-      Trading.closePosition(pos.id);
+      Trading.closePosition(pos.id, { skipPersist: true });
 
       // Update history entry
       trade.status = 'closed';
@@ -867,7 +875,7 @@ const AutoTrader = (() => {
     }
     
     container.innerHTML = activePositions.map(pos => {
-      const trade = tradeHistory.find(t => t.id === pos.id && t.status === 'open');
+      const trade = tradeHistory.find(t => t.status === 'open' && (t.id === pos.id || t.id === pos.orderId || t.orderId === pos.id));
       const sideClass = pos.side === 'long' ? 'long' : 'short';
       const sideIcon = pos.side === 'long' ? '📈' : '📉';
       const elapsed = trade ? Date.now() - trade.timestamp : 0;

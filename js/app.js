@@ -17,15 +17,20 @@ const AuthManager = (() => {
    * @param {string} viewName - 'login' or 'register'
    */
   function switchView(viewName) {
-    const loginScreen    = document.getElementById('login-screen');
+    const loginScreen     = document.getElementById('login-screen');
+    const loginOverlay    = document.getElementById('login-overlay');
     const registerOverlay = document.getElementById('register-overlay');
-    const topNav         = document.querySelector('.login-top-nav');
+    const topNav          = document.querySelector('.login-top-nav');
 
-    // ── Reset both modals ──
-    if (loginScreen)     loginScreen.classList.remove('show-login-modal');
+    if (loginScreen) {
+      loginScreen.classList.remove('auth-mode', 'show-login-modal');
+    }
+    if (loginOverlay) {
+      loginOverlay.classList.remove('visible');
+      loginOverlay.removeAttribute('style');
+    }
     if (registerOverlay) {
       registerOverlay.classList.remove('visible');
-      // Clear any legacy inline styles from old code
       registerOverlay.removeAttribute('style');
     }
     if (topNav) topNav.classList.remove('view-login', 'view-register');
@@ -33,28 +38,21 @@ const AuthManager = (() => {
     currentView = viewName;
 
     if (viewName === 'register') {
-      // ── Open Register Modal ──
       if (registerOverlay) registerOverlay.classList.add('visible');
       if (topNav) topNav.classList.add('view-register');
-      // Focus first field
       setTimeout(() => {
         const f = document.getElementById('reg-name');
         if (f) f.focus();
       }, 120);
-      console.log('📝 AUTH: Register modal opened');
     } else {
-      // ── Open Auth Portal (full-page, separate from landing) ──
-      if (loginScreen) loginScreen.classList.add('auth-mode');
+      if (loginOverlay) loginOverlay.classList.add('visible');
       if (topNav) topNav.classList.add('view-login');
-      // Focus email
       setTimeout(() => {
         const f = document.getElementById('login-email');
         if (f) f.focus();
       }, 120);
-      console.log('🔐 AUTH: Auth portal opened');
     }
 
-    // Keep inline tabs in sync
     document.querySelectorAll('.auth-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.authView === viewName);
     });
@@ -62,10 +60,15 @@ const AuthManager = (() => {
 
   function closeAllModals() {
     const loginScreen = document.getElementById('login-screen');
+    const loginOverlay = document.getElementById('login-overlay');
     const registerOverlay = document.getElementById('register-overlay');
     if (loginScreen) {
       loginScreen.classList.remove('auth-mode');
-      loginScreen.classList.remove('show-login-modal'); // legacy safety
+      loginScreen.classList.remove('show-login-modal');
+    }
+    if (loginOverlay) {
+      loginOverlay.classList.remove('visible');
+      loginOverlay.removeAttribute('style');
     }
     if (registerOverlay) {
       registerOverlay.classList.remove('visible');
@@ -340,12 +343,17 @@ const App = (() => {
     
     // Initialize investment returns engine FIRST (wallet + tier compounding)
     // Must be before AutoTrader so balance checks work on first evaluation
+      if (typeof Plugins !== 'undefined' && Plugins.init) {
+      Plugins.init();
+    }
+
     if (typeof InvestmentReturns !== 'undefined') {
       InvestmentReturns.init();
       console.log('💰 Investment returns engine ACTIVE');
 
       if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn && UserAuth.isLoggedIn()) {
         UserAuth.refreshSession().then(() => {
+          if (typeof Plugins !== 'undefined' && Plugins.init) Plugins.init();
           if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
             Trading.syncAdminCopyTraders();
           }
@@ -1129,6 +1137,10 @@ const App = (() => {
   // ── Whale Alerts ──────────────────────────────────────────
   function renderWhaleAlerts() {
     const feed = $('whale-feed'); if (!feed) return;
+    if (typeof Plugins !== 'undefined' && Plugins.isEnabled && !Plugins.isEnabled('p2')) {
+      feed.innerHTML = '<div class="whale-item"><div class="whale-info"><span class="whale-detail">Enable Whale Tracker Ultra in Plugin Hub to stream live wallet flow.</span></div></div>';
+      return;
+    }
     const WHALE_DATA = [
       { symbol: 'BTC/USD', side: 'buy',  sizeUSD: 48000000, exchange: 'Binance',  ts: Date.now() - 12000 },
       { symbol: 'ETH/USD', side: 'sell', sizeUSD: 22000000, exchange: 'Coinbase', ts: Date.now() - 80000 },
@@ -1637,6 +1649,26 @@ const App = (() => {
     }).join('');
   }
 
+  function _copyStrategyCardsHtml(tier, bal) {
+    const modes = ['scalping', 'mean_reversion', 'momentum', 'breakout', 'multi', 'aggressive'];
+    return `<div class="ceg-strategies">${modes.map(mode => {
+      const fee = CopyTradeConfig.resolveActivationFee({ mode }, tier);
+      const feeFmt = '$' + fee.toLocaleString('en-US');
+      const allowed = CopyTradeConfig.isModeAllowedForTier(mode, tier);
+      const canPay = allowed && bal >= fee;
+      const minTier = (CopyTradeConfig.MODE_MIN_TIER && CopyTradeConfig.MODE_MIN_TIER[mode]) || 'gold';
+      let cta = 'Activate';
+      if (!allowed) cta = (minTier.charAt(0).toUpperCase() + minTier.slice(1)) + '+';
+      else if (!canPay) cta = 'Need ' + feeFmt;
+      return `<div class="ceg-strategy ${canPay ? '' : 'locked'}">
+        <div class="ceg-s-name">${CopyTradeConfig.modeLabel(mode)}</div>
+        <div class="ceg-s-desc">${(CopyTradeConfig.MODES[mode] && CopyTradeConfig.MODES[mode].desc) || ''}</div>
+        <div class="ceg-s-fee">${feeFmt} <span>one-time</span></div>
+        <button class="ceg-btn ${canPay ? '' : 'disabled'}" ${canPay ? `onclick="App.authorizeCopyEngine('${mode}')"` : 'disabled'}>${cta}</button>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
   function _copyEngineGateHtml() {
     if (typeof CopyTradeConfig === 'undefined' || typeof Trading.getAdminCopySummary !== 'function') return '';
     const cfg = CopyTradeConfig.getForCurrentUser();
@@ -1651,8 +1683,8 @@ const App = (() => {
       return `<div class="copy-engine-gate copy-engine-live">
         <div class="ceg-icon"><i class="fa fa-bolt"></i></div>
         <div class="ceg-body">
-          <div class="ceg-title">Institutional Engine — LIVE</div>
-          <div class="ceg-desc"><strong>${s.label}</strong> · ${s.percent}% deployment per execution</div>
+          <div class="ceg-title">Copy Engine Live</div>
+          <div class="ceg-desc"><strong>${s.label}</strong> · ${s.percent}% node weight per execution · daily session active</div>
         </div>
         <span class="ceg-badge live">ACTIVE</span>
       </div>`;
@@ -1660,38 +1692,27 @@ const App = (() => {
 
     if (s.status === 'pending_clearance') {
       return `<div class="copy-engine-gate copy-engine-pending">
-        <div class="ceg-icon"><i class="fa fa-hourglass-half"></i></div>
+        <div class="ceg-icon"><i class="fa fa-unlock-alt"></i></div>
         <div class="ceg-body">
-          <div class="ceg-title">Clearance in Progress</div>
-          <div class="ceg-desc">Activation fee authorized. Your account manager is enabling live execution.</div>
+          <div class="ceg-title">Fee Already Authorized</div>
+          <div class="ceg-desc">Complete activation to start daily copy execution. No additional charge.</div>
         </div>
-        <span class="ceg-badge pending">PENDING</span>
+        <button class="ceg-btn" onclick="App.authorizeCopyEngine()">Go Live</button>
       </div>`;
     }
 
-    if (s.status === 'awaiting_payment') {
-      const canPay = bal >= fee;
-      return `<div class="copy-engine-gate copy-engine-locked">
-        <div class="ceg-icon"><i class="fa fa-lock"></i></div>
-        <div class="ceg-body">
-          <div class="ceg-title">Institutional Copy Engine</div>
-          <div class="ceg-desc">Strategy assigned: <strong>${CopyTradeConfig.modeLabel(cfg.mode)}</strong> · ${cfg.percent}% per trade. One-time activation required.</div>
-          <div class="ceg-fee">Activation: <strong>${feeFmt}</strong> <span class="ceg-bal">Wallet: ${balFmt}</span></div>
-        </div>
-        <button class="ceg-btn ${canPay ? '' : 'disabled'}" ${canPay ? 'onclick="App.authorizeCopyEngine()"' : 'disabled'}>
-          ${canPay ? 'Authorize Access' : 'Insufficient Balance'}
-        </button>
-      </div>`;
-    }
+    const intro = s.status === 'awaiting_payment'
+      ? `Assigned strategy: <strong>${CopyTradeConfig.modeLabel(cfg.mode)}</strong> · ${s.percent}% node weight. Wallet: ${balFmt}`
+      : `Select a strategy to activate. Fees are one-time ($560–$6,000). Higher nodes trade larger size. Wallet: ${balFmt}`;
 
     return `<div class="copy-engine-gate copy-engine-locked">
-      <div class="ceg-icon"><i class="fa fa-lock"></i></div>
+      <div class="ceg-icon"><i class="fa fa-sitemap"></i></div>
       <div class="ceg-body">
-        <div class="ceg-title">Engine Locked</div>
-        <div class="ceg-desc">Automated execution requires institutional clearance. Contact your account manager to assign a strategy.</div>
-        <div class="ceg-fee">Activation from <strong>${feeFmt}</strong> when assigned</div>
+        <div class="ceg-title">Copy Trading Activation</div>
+        <div class="ceg-desc">${intro}</div>
+        ${s.status === 'awaiting_payment' ? `<div class="ceg-fee">Assigned fee: <strong>${feeFmt}</strong></div>` : ''}
+        ${_copyStrategyCardsHtml(tier, bal)}
       </div>
-      <span class="ceg-badge locked">LOCKED</span>
     </div>`;
   }
 
@@ -1699,16 +1720,27 @@ const App = (() => {
     return _copyEngineGateHtml();
   }
 
-  async function authorizeCopyEngine() {
+  async function authorizeCopyEngine(mode) {
     if (typeof UserAuth === 'undefined' || !UserAuth.payCopyActivation) return;
     const cfg = CopyTradeConfig.getForCurrentUser();
-    const fee = CopyTradeConfig.resolveActivationFee(cfg, CopyTradeConfig.getUserTier());
-    const ok = confirm(`Authorize institutional copy engine access?\n\nOne-time fee: $${fee.toLocaleString()}\nDebited from your wallet balance.`);
+    const chosen = mode || (cfg.mode !== 'disabled' ? cfg.mode : CopyTradeConfig.defaultModeForTier(CopyTradeConfig.getUserTier()));
+    const fee = CopyTradeConfig.resolveActivationFee({ ...cfg, mode: chosen }, CopyTradeConfig.getUserTier());
+    const alreadyPaid = cfg.feePaid && !cfg.activated;
+    const ok = confirm(alreadyPaid
+      ? 'Complete copy-engine activation? No additional charge. Daily execution starts immediately.'
+      : `Activate ${CopyTradeConfig.modeLabel(chosen)} copy trading?\n\nOne-time fee: $${fee.toLocaleString()}\nDebited from your wallet. Daily execution starts immediately.`);
     if (!ok) return;
 
-    const result = await UserAuth.payCopyActivation();
+    const result = await UserAuth.payCopyActivation(chosen);
     if (result.ok) {
-      showToast('Activation authorized — awaiting account manager clearance', 'success');
+      if (result.copyTrade && typeof CopyTradeConfig !== 'undefined') {
+        const session = UserAuth.getSession();
+        if (session?.email) CopyTradeConfig.saveForEmail(session.email, result.copyTrade);
+      }
+      if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+        Trading.syncAdminCopyTraders();
+      }
+      showToast(result.message || 'Copy engine is live. Daily execution is running.', 'success');
       if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
         InvestmentReturns.forceBalanceSync();
       }
@@ -1716,7 +1748,7 @@ const App = (() => {
       renderCopyTraders();
       updateFundManagerUI();
     } else {
-      showToast(result.error || 'Authorization failed', 'error');
+      showToast(result.error || 'Activation failed', 'error');
     }
   }
 
@@ -1998,6 +2030,12 @@ const App = (() => {
     const entryEl = $('order-entry');
     if (entryEl) entryEl.value = price.toFixed(2);
 
+    const pos = order.position;
+    const arpText = $('arp-text');
+    if (arpText && pos) {
+      arpText.textContent = `${side === 'long' ? 'LONG' : 'SHORT'} ${sym} — ${qty} @ $${fmtPx(order.price)} — live P&L in Open Positions.`;
+    }
+
     dismissProgressToast();
     showToast(typeof ZenCopy !== 'undefined' ? ZenCopy.trade.confirmed : 'Order confirmed', 'success');
     addNotification('fa-check-circle', 'ai', 'Order confirmed:', ` ${side.toUpperCase()} ${qty} ${sym} @ $${fmtPx(order.price)}`);
@@ -2185,7 +2223,7 @@ const App = (() => {
         </div>
         <div class="plg-desc">${p.desc}</div>
         <div class="plg-stats"><span>★ <b>${p.rating}</b></span><span><b>${p.users}</b> users</span><span>Plan: <b>${p.plan}</b></span></div>
-        <div class="plg-footer"><button class="btn btn-danger btn-xs" onclick="App.uninstallPlugin('${p.id}')">Remove</button></div>
+        <div class="plg-footer">${p.id === 'p4' && p.enabled ? '<button class="btn btn-primary btn-xs" onclick="App.exportTaxReport()">Download Report</button>' : ''}<button class="btn btn-danger btn-xs" onclick="App.uninstallPlugin('${p.id}')">Remove</button></div>
       </div>`).join('');
     }
     if (storeGrid) {
@@ -2783,6 +2821,7 @@ const App = (() => {
         const coins = ['BTC', 'ETH', 'BTC', 'SOL', 'BTC', 'ETH'];
         const i = Math.floor(Math.random() * amounts.length);
         const dest = ['Coinbase', 'Binance', 'unknown wallet', 'Kraken', 'cold storage'][Math.floor(Math.random() * 5)];
+        if (typeof Plugins !== 'undefined' && Plugins.isEnabled && !Plugins.isEnabled('p2')) return;
         addNotification('fa-water', 'whale', 'Whale Alert:', ` ${amounts[i]} ${coins[i]} moved to ${dest}`);
       },
       () => {
@@ -2803,6 +2842,11 @@ const App = (() => {
         if (snap.walletBalance > 0) {
           addNotification('fa-coins', 'ai', 'Compound Interest:', ` +$${snap.todayPnL.toFixed(2)} earned today at ${snap.tierAPY} APY`);
         }
+      },
+      () => {
+        if (typeof Plugins === 'undefined' || !Plugins.nextInsight) return;
+        const insight = Plugins.nextInsight();
+        if (insight) addNotification(insight.icon, insight.kind, insight.title, insight.text);
       },
     ];
 
@@ -2841,9 +2885,21 @@ const App = (() => {
     }
     updateChartStats(assetId);
   }
-  function togglePlugin(id)   { Plugins.toggleActive(id); renderPlugins(); }
-  function installPlugin(id)  { Plugins.installPlugin(id); renderPlugins(); showToast('Plugin installed!', 'success'); }
-  function uninstallPlugin(id){ Plugins.uninstallPlugin(id); renderPlugins(); showToast('Plugin removed', 'info'); }
+  function togglePlugin(id)   {
+    Plugins.toggleActive(id);
+    renderPlugins();
+    if (id === 'p2') renderWhaleAlerts();
+    const on = Plugins.isEnabled && Plugins.isEnabled(id);
+    showToast(on ? 'Plugin enabled' : 'Plugin paused', on ? 'success' : 'info');
+  }
+  function installPlugin(id)  { Plugins.installPlugin(id); renderPlugins(); if (id === 'p2') renderWhaleAlerts(); showToast('Plugin installed and running', 'success'); }
+  function uninstallPlugin(id){ Plugins.uninstallPlugin(id); renderPlugins(); if (id === 'p2') renderWhaleAlerts(); showToast('Plugin removed', 'info'); }
+  function exportTaxReport() {
+    if (typeof Plugins === 'undefined' || !Plugins.generateTaxReport) return;
+    if (Plugins.isEnabled && !Plugins.isEnabled('p4')) return showToast('Enable Tax Optimizer AI first', 'info');
+    Plugins.generateTaxReport();
+    showToast('Tax report downloaded', 'success');
+  }
   function closePosition(posId){
     // Try TradeEngine first (multi-market), then fallback to legacy
     let pos = null;
@@ -2863,6 +2919,9 @@ const App = (() => {
       showToast(`${pos.sym}${mktTag} ${closeMsg}`, pos.pnl >= 0 ? 'success' : 'info');
       addNotification('fa-chart-line', 'ai', 'Position closed:', ` ${pos.sym}${mktTag} ${pnlStr}`);
       if (typeof Gamification !== 'undefined' && pos.pnl > 0) Gamification.trackProfit(pos.pnl);
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+        InvestmentReturns.forceBalanceSync();
+      }
     }
   }
   function toggleCopyTrader(id){ Trading.toggleCopyTrader(id); renderCopyTraders(); renderDashCopyTraders(); }
@@ -2911,6 +2970,7 @@ const App = (() => {
     _safeInit(_initTimeHorizonButtons);
     _safeInit(_initAITradeFeed);
     _safeInit(_initScrollCounters);
+    _safeInit(_initLandingNav);
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -3162,6 +3222,23 @@ const App = (() => {
 
   // FOMO banner — now shows market prices (no dynamic generation needed)
   function _initFOMOBanner() { }
+
+  function _initLandingNav() {
+    const btn = document.getElementById('ltn-menu-btn');
+    const links = document.getElementById('ltn-links');
+    const nav = document.querySelector('.login-top-nav');
+    if (!btn || !links) return;
+    btn.addEventListener('click', () => {
+      const open = nav.classList.toggle('nav-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    links.querySelectorAll('a').forEach((a) => {
+      a.addEventListener('click', () => {
+        nav.classList.remove('nav-open');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
 
   function _clearLoginErrors() {
     // Clear the dedicated error box
@@ -3544,25 +3621,17 @@ const App = (() => {
   }
 
   function _dismissRegisterScreen() {
-    AuthManager.switchView('login');
+    AuthManager.closeAllModals();
+    _dismissLoginScreen();
   }
 
   function _showRegistrationSuccess(name) {
     const firstName = (name || 'Investor').split(' ')[0];
-    // Create success overlay on login screen
     const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:200000;padding:18px 24px;background:linear-gradient(135deg,#00ff88,#00cc6a);color:#0a0e16;font-size:15px;font-weight:700;text-align:center;animation:slideDown .4s ease;box-shadow:0 4px 20px rgba(0,255,136,0.4);';
-    toast.innerHTML = `<i class="fa fa-circle-check" style="margin-right:8px"></i>Welcome ${firstName}! Your account is ready. Sign in below to access your wealth dashboard.`;
+    toast.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:200000;padding:18px 24px;background:linear-gradient(135deg,var(--gold,#d4a574),#c89858);color:#0a0e16;font-size:15px;font-weight:700;text-align:center;animation:slideDown .4s ease;box-shadow:0 4px 20px rgba(212,165,116,0.4);';
+    toast.innerHTML = `<i class="fa fa-circle-check" style="margin-right:8px"></i>Welcome ${firstName}. Your allocation is ready.`;
     document.body.appendChild(toast);
-    // Auto-remove after 8s
-    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 8000);
-    // Pre-fill email in login form
-    const emailField = $('login-email');
-    if (emailField) {
-      const regEmail = $('reg-email');
-      if (regEmail) emailField.value = regEmail.value;
-      emailField.focus();
-    }
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 5000);
   }
 
   function initModalHandlers() {
@@ -3798,6 +3867,17 @@ const App = (() => {
       }
     }
 
+    if (typeof Plugins !== 'undefined' && Plugins.init) {
+      Plugins.init();
+    }
+
+    if (typeof Trading !== 'undefined' && Trading.syncAdminCopyTraders) {
+      Trading.syncAdminCopyTraders();
+      try { renderDashCopyTraders(); renderCopyTraders(); } catch (e) {}
+    }
+
+    refreshKycStatus();
+
     // Load per-user gamification state
     if (typeof Gamification !== 'undefined') {
       Gamification.loadForUser();
@@ -3883,11 +3963,31 @@ const App = (() => {
     const data = await UserAuth.getKYCStatus();
     const label = $('kyc-status-label');
     const badge = $('kyc-status-badge');
-    const status = (data?.kyc_status || data?.kycStatus || 'none').toLowerCase();
-    if (label) label.textContent = status.replace('_', ' ');
+    const form = $('kyc-submit-form');
+    const raw = (data?.kyc_status || data?.kycStatus || data?.submission?.status || 'none').toLowerCase();
+    const map = {
+      none: ['Not submitted', 'NOT STARTED', ''],
+      not_submitted: ['Not submitted', 'NOT STARTED', ''],
+      submitted: ['Under review', 'IN REVIEW', ''],
+      pending: ['Under review', 'IN REVIEW', ''],
+      verified: ['Verified', 'VERIFIED', 'green'],
+      approved: ['Verified', 'VERIFIED', 'green'],
+      rejected: ['Action needed', 'REJECTED', 'red'],
+    };
+    const [text, badgeText, cls] = map[raw] || ['Not submitted', 'NOT STARTED', ''];
+    if (label) label.textContent = text;
     if (badge) {
-      badge.textContent = status.toUpperCase();
-      badge.className = 'sec-status ' + (status === 'verified' ? 'green' : status === 'rejected' ? 'red' : '');
+      badge.textContent = badgeText;
+      badge.className = 'sec-status ' + cls;
+    }
+    if (form) {
+      form.querySelectorAll('input, select, button').forEach(el => {
+        if (el.type === 'submit') el.disabled = raw === 'verified' || raw === 'approved';
+        else if (raw === 'verified' || raw === 'approved') el.disabled = true;
+      });
+      if (raw === 'verified' || raw === 'approved') {
+        form.classList.add('kyc-verified');
+      }
     }
   }
 
@@ -3895,12 +3995,25 @@ const App = (() => {
     e.preventDefault();
     const docType = $('kyc-doc-type')?.value;
     const frontFile = $('kyc-doc-front')?.files?.[0];
+    const backFile = $('kyc-doc-back')?.files?.[0];
     const selfieFile = $('kyc-selfie')?.files?.[0];
-    if (!frontFile || !selfieFile) return showToast('Please upload ID and selfie', 'error');
+    const fullName = $('kyc-full-name')?.value?.trim();
+    const country = $('kyc-country')?.value?.trim();
+    const dob = $('kyc-dob')?.value;
+    if (!frontFile || !selfieFile) return showToast('Please upload ID front and a selfie', 'error');
     try {
       const doc_front = await _fileToBase64(frontFile);
       const selfie = await _fileToBase64(selfieFile);
-      const result = await UserAuth.submitKYC({ doc_type: docType, doc_front, selfie });
+      const doc_back = backFile ? await _fileToBase64(backFile) : '';
+      const result = await UserAuth.submitKYC({
+        doc_type: docType,
+        doc_front,
+        doc_back,
+        selfie,
+        full_name: fullName,
+        country,
+        date_of_birth: dob,
+      });
       if (!result.ok) return showToast(result.error || 'KYC submit failed', 'error');
       showToast('Documents submitted for review', 'success');
       refreshKycStatus();
@@ -3925,9 +4038,9 @@ const App = (() => {
     }
     const amount = parseFloat(prompt('Amount sent (USD equivalent):', '1000'));
     if (!amount || amount <= 0) return;
-    const method = prompt('Asset sent (btc, eth, usdt, usdc, sol):', 'usdt') || 'usdt';
+    const method = prompt('Asset sent (btc, eth, usdt, bnb, trx, doge):', 'usdt') || 'usdt';
     const ref = prompt('Transaction hash or reference (optional):', '') || '';
-    const map = { btc: 'crypto_btc', eth: 'crypto_eth', usdt: 'crypto_usdt', usdc: 'crypto_usdc', sol: 'crypto_sol' };
+    const map = { btc: 'crypto_btc', eth: 'crypto_eth', usdt: 'crypto_usdt', bnb: 'crypto_bnb', trx: 'crypto_trx', tron: 'crypto_trx', doge: 'crypto_doge', dogecoin: 'crypto_doge' };
     const m = map[method.toLowerCase().replace(/[^a-z]/g, '')] || 'crypto_usdt';
     const result = await UserAuth.requestDeposit(amount, m, ref);
     if (!result.ok) return showToast(result.error || 'Could not submit deposit request', 'error');
@@ -3941,7 +4054,7 @@ const App = (() => {
     // Public
     quickTrade, togglePlugin, installPlugin, uninstallPlugin,
     closePosition, toggleCopyTrader, navigatePublic, showToast, addNotification,
-    claimFundPool, claimAllFunds, claimDailyBonus, authorizeCopyEngine,
+    claimFundPool, claimAllFunds, claimDailyBonus, authorizeCopyEngine, exportTaxReport,
     loadActiveSessions, revokeAllOtherSessions,
     openWithdrawModal, closeWithdrawModal, submitWithdraw,
     submitKyc, refreshKycStatus, changePassword, reportCryptoDeposit,

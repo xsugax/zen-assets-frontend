@@ -55,19 +55,51 @@
     padding: 0 0 40px !important;
   }
 
-  /* Login form — full width, auto height, no scroll constraints */
-  .login-form-section {
-    display: none;
+  .login-form-section:not(.visible) {
+    display: none !important;
+  }
+  .register-overlay.visible.login-form-section {
+    display: flex !important;
     width: 100% !important;
-    max-width: 560px !important;
+    max-width: none !important;
     height: auto !important;
-    overflow-y: visible !important;
-    padding: 28px 0 32px !important;
-    justify-content: flex-start !important;
+    padding: 0 !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
   }
 
   .login-form-card {
     max-width: 100% !important;
+  }
+
+  .ltn-links {
+    display: none;
+  }
+  .login-top-nav.nav-open .ltn-links {
+    display: flex;
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(8, 10, 16, 0.98);
+    border-bottom: 1px solid rgba(212,165,116,0.18);
+    padding: 8px 16px 12px;
+    z-index: 100002;
+  }
+  .login-top-nav.nav-open .ltn-links a {
+    padding: 12px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .ltn-menu-btn { display: flex !important; }
+
+  .lp-how-grid { grid-template-columns: 1fr !important; }
+  .lp-hero-ctas { width: 100%; }
+  .lp-hero-ctas .ltn-btn { flex: 1; justify-content: center; }
+  .zrt-wrap, .tier-cards-mini {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
   }
 
   /* Goals strip */
@@ -105,8 +137,16 @@
   html { font-size: 13px !important; }
 
   /* ── Login Layout ───────────────────────────────────── */
-  .login-form-section {
-    padding: 20px 0 !important;
+  .login-form-section:not(.visible) {
+    display: none !important;
+  }
+
+  .lvp-title {
+    font-size: 22px !important;
+    line-height: 1.3 !important;
+  }
+  .site-footer .sf-columns {
+    grid-template-columns: 1fr !important;
   }
 
   /* Logo */
@@ -126,8 +166,8 @@
 
   /* Value Proposition */
   .lvp-title {
-    font-size: 18px !important;
-    line-height: 1.35 !important;
+    font-size: 22px !important;
+    line-height: 1.3 !important;
   }
 
   /* Comparison Blocks */
@@ -451,8 +491,8 @@
 
   html { font-size: 12.5px !important; }
 
-  .login-form-section {
-    display: none;
+  .login-form-section:not(.visible) {
+    display: none !important;
     padding: 0 12px !important;
   }
 
@@ -764,8 +804,8 @@
 }
 
 
-/* ═══ MODAL OVERRIDE — re-show form section when auth portal is active ══ */
-.login-screen.auth-mode .login-form-section,
+/* ═══ Overlay login matches register sheet ══ */
+.register-overlay.visible.login-form-section,
 .login-screen.show-login-modal .login-form-section {
   display: flex !important;
 }

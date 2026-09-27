@@ -68,27 +68,12 @@ const ChartDataIndicator = (() => {
   }
 
   // ── Update Badge Status ──────────────────────────────────
-  function updateStatus(chartContainerId, isRealData, symbol = '', timeframe = '1h') {
-    const badge = createBadge(chartContainerId);
-    if (!badge) return;
-
-    if (isRealData) {
-      const text = typeof ZenCopy !== 'undefined'
-        ? ZenCopy.chart.live(symbol, timeframe)
-        : `Live · ${symbol} · ${timeframe.toUpperCase()}`;
-      badge.innerHTML = text;
-      _styleBadge(badge, 'live');
-    } else {
-      badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.calibrating : 'Calibrating feed…';
-      _styleBadge(badge, 'calibrating');
-    }
+  function updateStatus(chartContainerId) {
+    hide(chartContainerId);
   }
 
-  function setCalibrating(chartContainerId, symbol = '', timeframe = '1h') {
-    const badge = createBadge(chartContainerId);
-    if (!badge) return;
-    badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.calibrating : 'Calibrating feed…';
-    _styleBadge(badge, 'calibrating');
+  function setCalibrating(chartContainerId) {
+    hide(chartContainerId);
   }
 
   // ── Hide Badge ───────────────────────────────────────────
@@ -104,10 +89,7 @@ const ChartDataIndicator = (() => {
 
   // ── Show Loading State ───────────────────────────────────
   function showLoading(chartContainerId) {
-    const badge = createBadge(chartContainerId);
-    if (!badge) return;
-    badge.innerHTML = typeof ZenCopy !== 'undefined' ? ZenCopy.chart.loading : 'Updating live data…';
-    _styleBadge(badge, 'loading');
+    hide(chartContainerId);
   }
 
   // ── Public API ───────────────────────────────────────────

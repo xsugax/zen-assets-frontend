@@ -21,6 +21,7 @@ const UserAuth = (() => {
   const STORAGE_SESSION  = 'zen_session';
   const STORAGE_TOKEN    = 'zen_token';
   const STORAGE_WALLET   = 'zen_wallet';
+  const STORAGE_REFRESH  = 'zen_refresh';
   const STORAGE_REMEMBER = 'zen_remember_me'; // set only when user checks "Keep me signed in"
 
   let _pendingRememberMe = false; // preserved across the OTP step during login
@@ -293,19 +294,22 @@ const UserAuth = (() => {
   function _loadSession()  { try { return JSON.parse(localStorage.getItem(STORAGE_SESSION) || sessionStorage.getItem(STORAGE_SESSION)) || null; } catch { return null; } }
   function _loadToken()    { return localStorage.getItem(STORAGE_TOKEN) || sessionStorage.getItem(STORAGE_TOKEN) || null; }
   function _loadWallet()   { try { return JSON.parse(localStorage.getItem(STORAGE_WALLET) || sessionStorage.getItem(STORAGE_WALLET)) || null; } catch { return null; } }
+  function _loadRefresh()  { return localStorage.getItem(STORAGE_REFRESH) || sessionStorage.getItem(STORAGE_REFRESH) || null; }
 
   // Write helpers — ALWAYS respect the active store so non-remember sessions stay in sessionStorage
   function _saveSession(s) { const store = _getStore(); s ? store.setItem(STORAGE_SESSION, JSON.stringify(s)) : store.removeItem(STORAGE_SESSION); }
   function _saveToken(t)   { const store = _getStore(); t ? store.setItem(STORAGE_TOKEN, t) : store.removeItem(STORAGE_TOKEN); }
   function _saveWallet(w)  { const store = _getStore(); w ? store.setItem(STORAGE_WALLET, JSON.stringify(w)) : store.removeItem(STORAGE_WALLET); }
+  function _saveRefresh(t) { const store = _getStore(); t ? store.setItem(STORAGE_REFRESH, t) : store.removeItem(STORAGE_REFRESH); }
 
   // ── Persist auth — localStorage (remember-me) or sessionStorage (tab-only) ──
-  function _persistAuth(token, session, wallet, remember) {
+  function _persistAuth(token, session, wallet, remember, refreshToken) {
     // Wipe both storages first to avoid stale cross-storage data
     [localStorage, sessionStorage].forEach(s => {
       s.removeItem(STORAGE_TOKEN);
       s.removeItem(STORAGE_SESSION);
       s.removeItem(STORAGE_WALLET);
+      s.removeItem(STORAGE_REFRESH);
     });
     // On logout or invalidated auth, clear everything and forget remember-me
     if (!token) {
@@ -320,6 +324,7 @@ const UserAuth = (() => {
     store.setItem(STORAGE_TOKEN, token);
     if (session) store.setItem(STORAGE_SESSION, JSON.stringify(session));
     if (wallet) store.setItem(STORAGE_WALLET, JSON.stringify(wallet));
+    if (refreshToken) store.setItem(STORAGE_REFRESH, refreshToken);
     // Set or clear the remember-me flag accordingly
     if (remember || isAdmin) {
       localStorage.setItem(STORAGE_REMEMBER, '1');
@@ -333,7 +338,26 @@ const UserAuth = (() => {
     '/auth/verify-email', '/auth/verify-login-otp', '/auth/resend-otp'];
 
   // ── API Helper — tries live API first, falls back to localStore ──
-  async function _api(endpoint, { method = 'GET', body = null, auth = true } = {}) {
+  async function refreshAccessToken() {
+    const refreshToken = _loadRefresh();
+    if (!refreshToken) return false;
+    try {
+      const resp = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.token) return false;
+      _saveToken(data.token);
+      if (data.refreshToken) _saveRefresh(data.refreshToken);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function _api(endpoint, { method = 'GET', body = null, auth = true, _retried = false } = {}) {
     const headers = { 'Content-Type': 'application/json' };
     const token = _loadToken();
     if (auth && token) headers['Authorization'] = `Bearer ${token}`;
@@ -345,8 +369,6 @@ const UserAuth = (() => {
 
     const isAdminEndpoint = endpoint.startsWith('/admin');
 
-    // All endpoints get generous timeout for Render cold-start (15-30s)
-    // Auth-critical & admin get double retry
     const isLoginOrRegister = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register') || endpoint.startsWith('/auth/pin-login');
     const attempts = (isAdminEndpoint || isLoginOrRegister) ? [30000, 20000] : [25000];
 
@@ -358,7 +380,13 @@ const UserAuth = (() => {
         clearTimeout(timer);
         const data = await resp.json();
         if (!resp.ok) {
-          return { ok: false, status: resp.status, error: data.error || 'Request failed' };
+          if (auth && !_retried && resp.status === 401 && data.code === 'TOKEN_EXPIRED') {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+              return _api(endpoint, { method, body, auth, _retried: true });
+            }
+          }
+          return { ok: false, status: resp.status, error: data.error || 'Request failed', code: data.code };
         }
         return { ok: true, ...data };
       } catch (err) {
@@ -396,6 +424,13 @@ const UserAuth = (() => {
     // ── Resend OTP (local: no-op) ──
     if (endpoint === '/auth/resend-otp' && method === 'POST') {
       return { ok: true, message: 'Code sent (offline mode).' };
+    }
+
+    if (endpoint === '/auth/forgot-password' && method === 'POST') {
+      return { ok: true, message: 'If that email is registered, a reset code has been sent. Check your inbox.' };
+    }
+    if (endpoint === '/auth/reset-password' && method === 'POST') {
+      return { ok: true, message: 'Password updated. You can sign in with your new password.' };
     }
 
     // ── Register ──────────────────────────────────────────
@@ -511,9 +546,22 @@ const UserAuth = (() => {
       return { ok: true, success: true };
     }
 
+    if (endpoint === '/kyc/submit' && method === 'POST') {
+      return _saveLocalKyc('submitted', body);
+    }
+    if (endpoint === '/kyc/status' && method === 'GET') {
+      return _loadLocalKyc();
+    }
+    if (endpoint === '/auth/change-password' && method === 'POST') {
+      return _changePasswordLocal(body);
+    }
+    if (endpoint === '/wallet/copy-activation' && method === 'POST') {
+      return { ok: false, error: 'Wallet API unavailable. Please try again.', code: 'API_UNAVAILABLE' };
+    }
+
     // ── Wallet endpoints should NOT return fake offline balances ──
     if (endpoint === '/wallet' || endpoint.startsWith('/wallet/')) {
-      return { ok: false, error: 'Wallet API unavailable. Please try again.' };
+      return { ok: false, error: 'Wallet API unavailable. Please try again.', code: 'API_UNAVAILABLE' };
     }
 
     // ── Wallet / trades / KYC — return graceful empty for non-wallet support
@@ -556,7 +604,7 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, false);
+      _persistAuth(result.token, session, result.wallet, false, result.refreshToken);
 
       // Also save to local store so login works if backend DB resets
       try { _localStore.register({ fullName: cleanName, email: cleanEmail, password, tier, pin }); } catch {}
@@ -605,16 +653,14 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, rememberMe);
+      _persistAuth(result.token, session, result.wallet, rememberMe, result.refreshToken);
 
-      // Store tokens with refresh token if available (Objective 1)
       if (typeof TokenManager !== 'undefined' && result.refreshToken) {
         TokenManager.storeTokens(result.token, result.refreshToken, result.expiresIn);
       } else if (typeof TokenManager !== 'undefined') {
         TokenManager.storeTokens(result.token, null, result.expiresIn);
       }
 
-      // Add device to known devices (Objective 2)
       if (typeof DeviceManager !== 'undefined') {
         DeviceManager.addKnownDevice({
           deviceId: DeviceManager.getDeviceId(),
@@ -622,7 +668,6 @@ const UserAuth = (() => {
           fingerprint: DeviceManager.getDeviceFingerprint(),
         });
         DeviceManager.setSessionLock(session.userId);
-        // Broadcast login to other tabs (Objective 3)
         DeviceManager.broadcastAuthChange('login', {
           deviceId: DeviceManager.getDeviceId(),
           userId: session.userId,
@@ -630,7 +675,6 @@ const UserAuth = (() => {
         });
       }
 
-      // Initialize session timeout (Objective 5)
       if (typeof SessionTimeout !== 'undefined') {
         SessionTimeout.init({
           onWarning: () => console.warn('[Auth] Session timeout warning'),
@@ -693,16 +737,14 @@ const UserAuth = (() => {
         fullName: result.user.fullName,
         loginAt: Date.now(),
       };
-      _persistAuth(result.token, session, result.wallet, rememberMe);
+      _persistAuth(result.token, session, result.wallet, rememberMe, result.refreshToken);
 
-      // Store tokens with refresh token
       if (typeof TokenManager !== 'undefined' && result.refreshToken) {
         TokenManager.storeTokens(result.token, result.refreshToken, result.expiresIn);
       } else if (typeof TokenManager !== 'undefined') {
         TokenManager.storeTokens(result.token, null, result.expiresIn);
       }
 
-      // Add device to known devices
       if (typeof DeviceManager !== 'undefined') {
         DeviceManager.addKnownDevice({
           deviceId: DeviceManager.getDeviceId(),
@@ -717,7 +759,6 @@ const UserAuth = (() => {
         });
       }
 
-      // Initialize session timeout
       if (typeof SessionTimeout !== 'undefined') {
         SessionTimeout.init({
           onWarning: () => console.warn('[Auth] Session timeout warning'),
@@ -742,7 +783,7 @@ const UserAuth = (() => {
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
       // New registrations always use session-only storage — user must log in manually on next visit
-      _persistAuth(result.token, session, result.wallet, false);
+      _persistAuth(result.token, session, result.wallet, false, result.refreshToken);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -755,7 +796,7 @@ const UserAuth = (() => {
     if (result.ok && result.token) {
       const session = { userId: result.user.id, email: result.user.email, role: result.user.role, tier: result.user.tier, fullName: result.user.fullName, loginAt: Date.now() };
       // Use the remember-me preference captured at the login step
-      _persistAuth(result.token, session, result.wallet, _pendingRememberMe);
+      _persistAuth(result.token, session, result.wallet, _pendingRememberMe, result.refreshToken);
       return { ok: true, user: result.user, session, wallet: result.wallet };
     }
     return result;
@@ -767,6 +808,28 @@ const UserAuth = (() => {
     return _api('/auth/resend-otp', { method: 'POST', body: { userId, type }, auth: false });
   }
 
+  async function forgotPassword(email) {
+    const clean = (email || '').trim().toLowerCase();
+    if (!clean) return { ok: false, error: 'Enter a valid email address.' };
+    return _api('/auth/forgot-password', { method: 'POST', body: { email: clean }, auth: false });
+  }
+
+  async function resetPassword(email, code, newPassword) {
+    const clean = (email || '').trim().toLowerCase();
+    if (!clean || !code || !newPassword) return { ok: false, error: 'Fill in all fields.' };
+    return _api('/auth/reset-password', {
+      method: 'POST',
+      body: { email: clean, code, newPassword },
+      auth: false,
+    });
+  }
+
+  async function getPlatformConfig() {
+    const result = await _api('/platform/config', { auth: false });
+    if (result && result.ok !== false) return result;
+    return { registration: true, maintenance: false };
+  }
+
   // ── Session (synchronous — reads cache) ──────────────────
   function getSession()     { return _loadSession(); }
   function isLoggedIn() {
@@ -776,20 +839,12 @@ const UserAuth = (() => {
     // Validate token expiry so stale remembered sessions do not stay active.
     const uid = _verifyLocalToken(token);
     if (!uid) {
-      // ── Token might have expired but refresh token could still be valid ──
-      // Check if we have a refresh token to extend the session.
-      // Don't immediately wipe auth — the TokenManager.refreshAccessToken()
-      // will attempt to refresh and schedule retries. Only wipe if
-      // we also have no refresh token saved.
-      const hasRefresh = typeof TokenManager !== 'undefined'
-        && !!TokenManager.loadTokens().refreshToken;
+      const hasRefresh = (typeof TokenManager !== 'undefined' && !!TokenManager.loadTokens().refreshToken)
+        || !!_loadRefresh();
       if (!hasRefresh) {
         _persistAuth(null);
+        return false;
       }
-      // Even without a valid UID, if the session object exists the user
-      // likely *was* logged in. The async refreshSession() call in init()
-      // will handle cleanup if the refresh also fails.
-      // Return true so the app boots and refreshes async.
       return true;
     }
     return true;
@@ -825,6 +880,9 @@ const UserAuth = (() => {
       };
       _saveSession(session);
       if (result.wallet) _saveWallet(result.wallet);
+      if (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.applyFromApiUser) {
+        CopyTradeConfig.applyFromApiUser(result.user);
+      }
       return { user: result.user, wallet: result.wallet };
     } else {
       if (result.status === 401) {
@@ -1133,18 +1191,251 @@ const UserAuth = (() => {
     return result.ok !== false ? result : null;
   }
 
+  function _kycStoreKey() {
+    const s = getSession();
+    return 'zen_kyc_' + (s?.email || 'anon').toLowerCase();
+  }
+
+  function _saveLocalKyc(status, payload = {}) {
+    const rec = {
+      ok: true,
+      kyc_status: status,
+      submission: {
+        doc_type: payload.doc_type || payload.docType || 'passport',
+        status: status === 'verified' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending',
+        submitted_at: new Date().toISOString(),
+      },
+    };
+    try { localStorage.setItem(_kycStoreKey(), JSON.stringify(rec)); } catch {}
+    return rec;
+  }
+
+  function _loadLocalKyc() {
+    try {
+      const raw = localStorage.getItem(_kycStoreKey());
+      if (raw) return { ok: true, ...JSON.parse(raw) };
+    } catch {}
+    return { ok: true, kyc_status: 'none', submission: null };
+  }
+
+  function _changePasswordLocal(body) {
+    const session = getSession();
+    if (!session?.email) return { ok: false, error: 'Not logged in.' };
+    const current = body?.currentPassword || '';
+    const next = body?.newPassword || '';
+    if (!current || !next) return { ok: false, error: 'Current and new password are required.' };
+    if (next.length < 8) return { ok: false, error: 'New password must be at least 8 characters.' };
+    const user = _localStore.findByEmail(session.email);
+    if (!user) return { ok: false, error: 'Account not found on this device.' };
+    if (user.passwordHash && user.passwordHash !== _simpleHash(current)) {
+      return { ok: false, error: 'Current password is incorrect.' };
+    }
+    const users = _localStore.getAll();
+    const idx = users.findIndex(u => u.email.toLowerCase() === session.email.toLowerCase());
+    if (idx >= 0) {
+      users[idx].passwordHash = _simpleHash(next);
+      _localStore.save(users);
+    }
+    return { ok: true, message: 'Password updated.' };
+  }
+
   // ── KYC ─────────────────────────────────────────────────
-  async function submitKYC(docType, docFront, docBack = null, selfie = null, meta = {}) {
+  async function submitKYC(docTypeOrPayload, docFront, docBack = null, selfie = null, meta = {}) {
     if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
-    return _api('/kyc/submit', {
-      method: 'POST',
-      body: { doc_type: docType, doc_front: docFront, doc_back: docBack, selfie, ...meta },
-    });
+    let payload;
+    if (docTypeOrPayload && typeof docTypeOrPayload === 'object') {
+      payload = {
+        doc_type: docTypeOrPayload.doc_type || docTypeOrPayload.docType,
+        doc_front: docTypeOrPayload.doc_front || docTypeOrPayload.docFront,
+        doc_back: docTypeOrPayload.doc_back || docTypeOrPayload.docBack || '',
+        selfie: docTypeOrPayload.selfie,
+        full_name: docTypeOrPayload.full_name || docTypeOrPayload.fullName,
+        date_of_birth: docTypeOrPayload.date_of_birth || docTypeOrPayload.dateOfBirth,
+        country: docTypeOrPayload.country,
+      };
+    } else {
+      payload = {
+        doc_type: docTypeOrPayload,
+        doc_front: docFront,
+        doc_back: docBack || '',
+        selfie,
+        ...(meta || {}),
+      };
+    }
+    if (!payload.doc_type || !payload.doc_front) {
+      return { ok: false, error: 'Document type and ID front are required.' };
+    }
+    const result = await _api('/kyc/submit', { method: 'POST', body: payload });
+    if (result.ok) {
+      _saveLocalKyc(result.kyc_status || 'submitted', payload);
+    }
+    return result;
   }
 
   async function getKYCStatus() {
-    if (!isLoggedIn()) return null;
-    return _api('/kyc/status');
+    if (!isLoggedIn()) return { ok: true, kyc_status: 'none', submission: null };
+    const result = await _api('/kyc/status');
+    if (result && result.ok !== false) return result;
+    return _loadLocalKyc();
+  }
+
+  // ── Stripe Deposits ──────────────────────────────────────
+  async function getStripePublishableKey() {
+    const result = await _api('/stripe/publishable-key');
+    return result.key || null;
+  }
+
+  async function createStripeSession(amount) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    if (!amount || isNaN(amount) || Number(amount) < 10) {
+      return { ok: false, error: 'Minimum deposit is $10.' };
+    }
+    return _api('/stripe/create-session', { method: 'POST', body: { amount: Number(amount) } });
+  }
+
+  async function redirectToStripe(amount) {
+    const result = await createStripeSession(amount);
+    if (!result.ok && !result.url) {
+      return { ok: false, error: result.error || 'Failed to create payment session.' };
+    }
+    if (result.url) {
+      window.location.href = result.url;
+      return { ok: true };
+    }
+    return result;
+  }
+
+  function _sendEmail(type, data) {
+    try {
+      fetch('/api/email/' + type, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(function () { /* silent — email is non-blocking */ });
+    } catch (e) { /* silent */ }
+  }
+
+  function _setupCrossTabSync() {
+    if (typeof DeviceManager === 'undefined') return;
+
+    DeviceManager.onStorageChange((event) => {
+      console.log('[Auth] Cross-tab sync event:', event.action);
+
+      switch (event.action) {
+        case 'login':
+          if (event.data.userId && isLoggedIn() && event.data.deviceId !== DeviceManager.getDeviceId()) {
+            refreshSession().then(result => {
+              if (!result) {
+                console.log('[Auth] Session refresh failed after cross-tab login');
+              }
+            }).catch(() => {});
+          }
+          break;
+        case 'logout':
+          if (isLoggedIn() && event.data.userId === getSession()?.userId) {
+            _persistAuth(null);
+            location.reload();
+          } else if (event.data.deviceId === DeviceManager.getDeviceId()) {
+            _persistAuth(null);
+            location.reload();
+          }
+          break;
+        case 'tokenRefresh':
+          if (event.data.token && isLoggedIn()) {
+            _saveToken(event.data.token);
+            if (typeof TokenManager !== 'undefined') {
+              TokenManager.scheduleTokenRefresh(event.data.token);
+            }
+          }
+          break;
+      }
+    });
+  }
+
+  async function changePassword(currentPassword, newPassword) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    return _api('/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+    });
+  }
+
+  async function payCopyActivation(mode) {
+    if (!isLoggedIn()) return { ok: false, error: 'Not logged in.' };
+    const body = {};
+    if (mode) body.mode = mode;
+    const result = await _api('/wallet/copy-activation', { method: 'POST', body });
+    if (result.ok && result.copyTrade) {
+      const session = getSession();
+      if (session?.email && typeof CopyTradeConfig !== 'undefined') {
+        CopyTradeConfig.saveForEmail(session.email, result.copyTrade);
+      }
+      if (result.balance != null) {
+        const w = getCachedWallet() || {};
+        _saveWallet({ ...w, balance: result.balance });
+      }
+      return result;
+    }
+    if (result.status && result.code !== 'API_UNAVAILABLE') return result;
+    return _payCopyActivationLocal(mode);
+  }
+
+  function _payCopyActivationLocal(mode) {
+    if (typeof CopyTradeConfig === 'undefined') {
+      return { ok: false, error: 'Copy engine is unavailable.' };
+    }
+    const session = getSession();
+    const tier = (session && session.tier) || CopyTradeConfig.getUserTier();
+    let cfg = CopyTradeConfig.getForCurrentUser();
+    if (mode) {
+      if (!CopyTradeConfig.MODES[mode] || mode === 'disabled') {
+        return { ok: false, error: 'Invalid copy strategy.' };
+      }
+      if (!CopyTradeConfig.isModeAllowedForTier(mode, tier)) {
+        return { ok: false, error: 'This strategy requires a higher membership tier.' };
+      }
+      cfg = { ...cfg, mode, enabled: true };
+    }
+    if (cfg.mode === 'disabled' || !cfg.enabled) {
+      cfg = { ...cfg, mode: CopyTradeConfig.defaultModeForTier(tier), enabled: true };
+    }
+    const fee = CopyTradeConfig.resolveActivationFee(cfg, tier);
+    const snap = (typeof InvestmentReturns !== 'undefined') ? InvestmentReturns.getSnapshot() : { walletBalance: 0 };
+    let charged = 0;
+    if (!(cfg.feePaid && !cfg.activated)) {
+      if (snap.walletBalance < fee) {
+        return { ok: false, error: `Insufficient balance. Activation requires $${fee.toLocaleString()}.` };
+      }
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.debitFee) {
+        if (!InvestmentReturns.debitFee(fee, `Copy activation — ${cfg.mode}`)) {
+          return { ok: false, error: `Insufficient balance. Activation requires $${fee.toLocaleString()}.` };
+        }
+      }
+      charged = fee;
+      const w = getCachedWallet() || {};
+      _saveWallet({ ...w, balance: Math.max(0, (w.balance || snap.walletBalance) - fee) });
+    }
+    const now = new Date().toISOString();
+    const next = CopyTradeConfig.saveForEmail(session?.email, {
+      ...cfg,
+      enabled: true,
+      activated: true,
+      feePaid: true,
+      feePaidAt: cfg.feePaidAt || now,
+      activationRequestedAt: cfg.activationRequestedAt || now,
+      activationFee: fee,
+      percent: (typeof CopyTradeConfig.resolveDeploymentPercent === 'function')
+        ? CopyTradeConfig.resolveDeploymentPercent(cfg, tier)
+        : (cfg.percent || 15),
+    });
+    return {
+      ok: true,
+      fee: charged,
+      activationFee: fee,
+      copyTrade: next,
+      status: 'active',
+      message: 'Copy engine is live. Daily execution is now running.',
+    };
   }
 
   // ── Stripe Deposits ──────────────────────────────────────
@@ -1185,50 +1476,6 @@ const UserAuth = (() => {
     } catch (e) { /* silent */ }
   }
 
-  // ── Setup Cross-Tab Sync (Objective 3) ──────────────────
-  function _setupCrossTabSync() {
-    if (typeof DeviceManager === 'undefined') return;
-
-    DeviceManager.onStorageChange((event) => {
-      console.log('[Auth] Cross-tab sync event:', event.action);
-
-      switch (event.action) {
-        case 'login':
-          // Another tab logged in — refresh this tab's session
-          if (event.data.userId && isLoggedIn() && event.data.deviceId !== DeviceManager.getDeviceId()) {
-            console.log('[Auth] Login detected on another device, refreshing session');
-            refreshSession().then(result => {
-              if (!result) {
-                console.log('[Auth] Session refresh failed after cross-tab login');
-              }
-            }).catch(() => {});
-          }
-          break;
-        case 'logout':
-          // Another tab logged out — only act if WE are the same user
-          if (isLoggedIn() && event.data.userId === getSession()?.userId) {
-            _persistAuth(null);
-            console.log('[Auth] Logout synced from another tab — same user');
-            location.reload();
-          } else if (event.data.deviceId === DeviceManager.getDeviceId()) {
-            // Same device logout — clear immediately
-            _persistAuth(null);
-            location.reload();
-          }
-          break;
-        case 'tokenRefresh':
-          // Another tab refreshed token — update this tab if same user
-          if (event.data.token && isLoggedIn()) {
-            _saveToken(event.data.token);
-            if (typeof TokenManager !== 'undefined') {
-              TokenManager.scheduleTokenRefresh(event.data.token);
-            }
-          }
-          break;
-      }
-    });
-  }
-
   // ── Init ─────────────────────────────────────────────────
   function init() {
     const remembered = localStorage.getItem(STORAGE_REMEMBER) === '1';
@@ -1252,13 +1499,9 @@ const UserAuth = (() => {
         _persistAuth(null);
         return; // isLoggedIn() will return false → login screen shows
       }
-
-      // Update device last used
       if (typeof DeviceManager !== 'undefined') {
         DeviceManager.updateDeviceLastUsed(DeviceManager.getDeviceId());
       }
-
-      // Schedule token refresh if using TokenManager
       if (typeof TokenManager !== 'undefined') {
         TokenManager.scheduleTokenRefresh(token);
       }
@@ -1351,6 +1594,7 @@ const UserAuth = (() => {
   return {
     init, register, login, pinLogin, logout,
     verifyEmailOTP, verifyLoginOTP, resendOTP,
+    forgotPassword, resetPassword, getPlatformConfig, refreshAccessToken,
     getSession, isLoggedIn, isAdmin,
     getCurrentTier, getCurrentUser,
     refreshSession,
@@ -1362,7 +1606,7 @@ const UserAuth = (() => {
     adminGetStats, adminGetAuditLog,
     requestUpgrade,
     saveTrade, getTrades, getTradeStats,
-    submitKYC, getKYCStatus,
+    submitKYC, getKYCStatus, changePassword, payCopyActivation,
     getStripePublishableKey, createStripeSession, redirectToStripe,
     exportAccount, importAccount,
     sendEmailNotification: _sendEmail,

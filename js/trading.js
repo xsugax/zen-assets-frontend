@@ -61,6 +61,75 @@ const Trading = (() => {
   let _copyTradeTimer = null;
   const _activeCopyPositions = [];  // live tracked positions from copy traders
   let _copyPnlTimer = null;
+  let _copyKickoffDone = false;
+  const COPY_TICK_MS = 15000;
+  const COPY_MIN_GAP_MS = 75000;
+  const COPY_DAILY_CAP = 12;
+
+  function _copyRuntimeKey() {
+    try {
+      const s = (typeof UserAuth !== 'undefined' && UserAuth.getSession) ? UserAuth.getSession() : null;
+      return 'zen_copy_runtime_' + ((s && s.email) || 'anon').toLowerCase();
+    } catch {
+      return 'zen_copy_runtime_anon';
+    }
+  }
+
+  function _todayUtc() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function _loadCopyRuntime() {
+    try {
+      const raw = localStorage.getItem(_copyRuntimeKey());
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      copyTraders.forEach(t => {
+        const saved = data.traders && data.traders[t.id];
+        if (!saved) return;
+        t.tradesExecuted = saved.tradesExecuted || 0;
+        t.copiedBal = saved.copiedBal || 0;
+        t.totalCopied = saved.totalCopied || 0;
+        t.lastTradeTime = saved.lastTradeTime || 0;
+        t.dailyCount = saved.dailyCount || 0;
+        t.dailyDate = saved.dailyDate || '';
+      });
+    } catch { /* ignore */ }
+  }
+
+  function _saveCopyRuntime() {
+    try {
+      const traders = {};
+      copyTraders.forEach(t => {
+        traders[t.id] = {
+          tradesExecuted: t.tradesExecuted || 0,
+          copiedBal: t.copiedBal || 0,
+          totalCopied: t.totalCopied || 0,
+          lastTradeTime: t.lastTradeTime || 0,
+          dailyCount: t.dailyCount || 0,
+          dailyDate: t.dailyDate || '',
+        };
+      });
+      localStorage.setItem(_copyRuntimeKey(), JSON.stringify({ traders, savedAt: Date.now() }));
+    } catch { /* ignore */ }
+  }
+
+  function _ensureDailyReset(trader) {
+    const today = _todayUtc();
+    if (trader.dailyDate !== today) {
+      trader.dailyCount = 0;
+      trader.dailyDate = today;
+    }
+  }
+
+  function _copyWalletReady() {
+    if (typeof InvestmentReturns === 'undefined') return false;
+    try {
+      return InvestmentReturns.getSnapshot().walletBalance > 0;
+    } catch {
+      return false;
+    }
+  }
 
   function _getAdminCopyConfig() {
     if (typeof CopyTradeConfig === 'undefined') {
@@ -105,8 +174,13 @@ const Trading = (() => {
       }
     });
 
-    if (allowed.length > 0) startCopyTradeEngine();
-    else stopCopyTradeEngine();
+    if (allowed.length > 0) {
+      _loadCopyRuntime();
+      startCopyTradeEngine();
+    } else {
+      stopCopyTradeEngine();
+    }
+    _saveCopyRuntime();
   }
 
   function isCopyTradingAdminLocked() {
@@ -122,13 +196,16 @@ const Trading = (() => {
     const fee = typeof CopyTradeConfig !== 'undefined'
       ? CopyTradeConfig.resolveActivationFee(cfg, tier)
       : 0;
+    const percent = typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.resolveDeploymentPercent
+      ? CopyTradeConfig.resolveDeploymentPercent(cfg, tier)
+      : (cfg.percent || 15);
 
     if (status === 'active') {
       return {
         active: true,
         status,
         label: CopyTradeConfig.modeLabel(cfg.mode),
-        percent: cfg.percent,
+        percent,
         mode: cfg.mode,
         activationFee: fee,
       };
@@ -140,33 +217,47 @@ const Trading = (() => {
       label: status === 'pending_clearance' ? 'Pending clearance'
         : status === 'awaiting_payment' ? 'Awaiting authorization'
         : 'Engine locked',
-      percent: cfg.percent || 0,
+      percent,
       mode: cfg.mode || 'disabled',
       activationFee: fee,
     };
   }
 
+  function _runCopyTick(forceFirst = false) {
+    const cfg = _getAdminCopyConfig();
+    if (typeof CopyTradeConfig !== 'undefined' && !CopyTradeConfig.isEngineActive(cfg)) return;
+    if (!_copyWalletReady()) return;
+
+    const active = copyTraders.filter(t => t.active && _isTraderAllowedByAdmin(t.id));
+    if (active.length === 0) return;
+
+    active.forEach(trader => {
+      _ensureDailyReset(trader);
+      const tier = _getUserTier();
+      const dailyCap = { bronze: 8, silver: 10, gold: 12, platinum: 14, diamond: 16 }[tier] || COPY_DAILY_CAP;
+      if ((trader.dailyCount || 0) >= dailyCap) return;
+      const timeSinceLast = Date.now() - (trader.lastTradeTime || 0);
+      if (!forceFirst && timeSinceLast < COPY_MIN_GAP_MS) return;
+      if (!forceFirst && Math.random() > 0.42) return;
+      executeCopyTrade(trader);
+    });
+    _saveCopyRuntime();
+  }
+
   function startCopyTradeEngine() {
     if (_copyTradeTimer) return;
+    _loadCopyRuntime();
     _copyTradeTimer = setInterval(() => {
-      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) return;
-      syncAdminCopyTraders();
-      const active = copyTraders.filter(t => t.active && _isTraderAllowedByAdmin(t.id));
-      if (active.length === 0) return;
+      _runCopyTick(false);
+    }, COPY_TICK_MS);
 
-      active.forEach(trader => {
-        const timeSinceLast = Date.now() - trader.lastTradeTime;
-        if (timeSinceLast < 35000) return; // Min 35s between trades per trader
-
-        if (Math.random() < 0.35) { // 35% chance each tick
-          executeCopyTrade(trader);
-        }
-      });
-    }, 12000); // Check every 12 seconds
-
-    // Start live P&L tracker for copy positions — synced to chart ticks
     if (!_copyPnlTimer) {
       _copyPnlTimer = setInterval(() => _updateCopyPositionsPnL(), 2000);
+    }
+
+    if (!_copyKickoffDone) {
+      _copyKickoffDone = true;
+      setTimeout(() => _runCopyTick(true), 4000);
     }
   }
 
@@ -196,7 +287,7 @@ const Trading = (() => {
   function executeCopyTrade(trader) {
     const cfg = _getAdminCopyConfig();
     if (!cfg.enabled || cfg.mode === 'disabled' || !_isTraderAllowedByAdmin(trader.id)) return;
-    if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.isActivated && !InvestmentReturns.isActivated()) return;
+    if (!_copyWalletReady()) return;
 
     const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'BNB/USD', 'XRP/USD'];
     const sym = symbols[Math.floor(Math.random() * symbols.length)];
@@ -214,10 +305,13 @@ const Trading = (() => {
     else if (outcomeRoll < wr * 0.93 + 0.05) outcome = 'breakeven';
     else outcome = 'loss';
 
-    // Position size: admin % of principal (±15% variance per trade)
-    const basePct = (cfg.percent || 15) / 100;
+    const tier = _getUserTier();
+    const deployPct = (typeof CopyTradeConfig !== 'undefined' && CopyTradeConfig.resolveDeploymentPercent)
+      ? CopyTradeConfig.resolveDeploymentPercent(cfg, tier)
+      : (cfg.percent || 15);
+    const basePct = deployPct / 100;
     if (basePct <= 0) return;
-    const tradePct = basePct * (0.85 + Math.random() * 0.3);
+    const tradePct = basePct * (0.88 + Math.random() * 0.24);
     const portfolioValue = (typeof InvestmentReturns !== 'undefined')
       ? InvestmentReturns.getSnapshot().walletBalance
       : 0;
@@ -225,11 +319,11 @@ const Trading = (() => {
     const tradeValue = portfolioValue * tradePct;
     const quantity = tradeValue / livePrice;
 
-    // Calculate exit target based on outcome
+    const nodeBoost = { bronze: 1, silver: 1.25, gold: 1.55, platinum: 1.9, diamond: 2.35 }[tier] || 1.25;
     let targetPnlPct;
-    if (outcome === 'win') targetPnlPct = 0.2 + Math.random() * 0.8;
-    else if (outcome === 'loss') targetPnlPct = -(0.3 + Math.random() * 0.9);
-    else targetPnlPct = (Math.random() - 0.5) * 0.1;
+    if (outcome === 'win') targetPnlPct = (0.35 + Math.random() * 1.1) * nodeBoost;
+    else if (outcome === 'loss') targetPnlPct = -(0.25 + Math.random() * 0.7);
+    else targetPnlPct = (Math.random() - 0.5) * 0.12;
 
     // Create a live-tracked position
     const copyPos = {
@@ -262,9 +356,12 @@ const Trading = (() => {
       }
     } catch {}
 
+    _ensureDailyReset(trader);
     trader.tradesExecuted++;
+    trader.dailyCount = (trader.dailyCount || 0) + 1;
     trader.lastTradeTime = Date.now();
     trader.subscribers += Math.floor(Math.random() * 5 - 1);
+    _saveCopyRuntime();
 
     _log(`COPY [${trader.name}] OPEN ${side.toUpperCase()} ${sym} @ $${livePrice.toFixed(2)} (${outcome})`);
 
@@ -315,6 +412,7 @@ const Trading = (() => {
 
     trader.totalCopied += Math.abs(pnl);
     trader.copiedBal += pnl;
+    _saveCopyRuntime();
 
     // Chart marker: exit — only if symbol matches active chart
     try {
@@ -346,6 +444,8 @@ const Trading = (() => {
   function stopCopyTradeEngine() {
     if (_copyTradeTimer) { clearInterval(_copyTradeTimer); _copyTradeTimer = null; }
     if (_copyPnlTimer) { clearInterval(_copyPnlTimer); _copyPnlTimer = null; }
+    _copyKickoffDone = false;
+    _saveCopyRuntime();
   }
 
   // ── Strategies ───────────────────────────────────────────
@@ -360,11 +460,12 @@ const Trading = (() => {
   const auditLog = [];
 
   // ── Place Order ──────────────────────────────────────────
-  function placeOrder({ sym, side, type, qty, price, sl, tp, oco = false, trailing = false }) {
+  function placeOrder({ id, sym, side, type, qty, price, sl, tp, oco = false, trailing = false }) {
     const asset = MarketData.getAllAssets().find(a => a.sym === sym || a.id === sym);
     const execPrice = asset ? asset.price : (price || 100);
+    const sharedId = id || `pos_${Date.now()}`;
     const order = {
-      id:     `ORD-${Date.now().toString(36).toUpperCase()}`,
+      id: sharedId,
       sym, side, type, qty: parseFloat(qty),
       price: execPrice, sl, tp,
       ts: Date.now(), status: 'FILLED',
@@ -373,30 +474,51 @@ const Trading = (() => {
     orderLog.unshift(order);
     if (orderLog.length > 200) orderLog.pop();
 
-    // Maybe open a position
     if (type !== 'limit' && type !== 'stop') {
       const pos = {
-        id: `pos_${Date.now()}`, sym, side,
+        id: sharedId, orderId: sharedId, sym, side,
         qty: parseFloat(qty), entry: execPrice, cur: execPrice,
         sl: sl || execPrice * (side === 'long' ? 0.97 : 1.03),
         tp: tp || execPrice * (side === 'long' ? 1.06 : 0.94),
       };
       positions.unshift(pos);
+      order.position = pos;
     }
 
     _log(`ORDER ${order.id} ${side.toUpperCase()} ${qty} ${sym} @ $${execPrice.toLocaleString()}`);
     return order;
   }
 
-  function closePosition(posId) {
-    const idx = positions.findIndex(p => p.id === posId);
+  function _persistClosedTrade(pos, exitPx) {
+    if (typeof UserAuth === 'undefined' || !UserAuth.isLoggedIn || !UserAuth.isLoggedIn()) return;
+    UserAuth.saveTrade({
+      symbol: pos.sym,
+      side: pos.side === 'long' ? 'buy' : 'sell',
+      order_type: 'market',
+      quantity: pos.qty,
+      entry_price: pos.entry,
+      exit_price: exitPx,
+      pnl: pos.pnl,
+      status: 'closed',
+      strategy: pos.strategy || 'Manual',
+      notes: pos.closeReason || '',
+      opened_at: new Date(pos.ts || Date.now()).toISOString(),
+      closed_at: new Date().toISOString(),
+    }).then(() => {
+      if (typeof InvestmentReturns !== 'undefined' && InvestmentReturns.forceBalanceSync) {
+        InvestmentReturns.forceBalanceSync();
+      }
+    }).catch(() => {});
+  }
+
+  function closePosition(posId, opts = {}) {
+    const idx = positions.findIndex(p => p.id === posId || p.orderId === posId);
     if (idx < 0) return null;
     const pos = positions.splice(idx, 1)[0];
     const asset = MarketData.getAllAssets().find(a => a.sym === pos.sym);
     const exitPx = asset ? asset.price : pos.cur;
     pos.pnl = pos.side === 'long' ? (exitPx - pos.entry) * pos.qty : (pos.entry - exitPx) * pos.qty;
     
-    // Credit/debit to InvestmentReturns wallet
     if (typeof InvestmentReturns !== 'undefined') {
       if (pos.pnl > 0) {
         InvestmentReturns.creditTradingProfit(pos.pnl, { symbol: pos.sym, side: pos.side, pnlPct: ((pos.pnl / (pos.entry * pos.qty)) * 100) });
@@ -404,6 +526,8 @@ const Trading = (() => {
         InvestmentReturns.debitTradingLoss(Math.abs(pos.pnl), { symbol: pos.sym, side: pos.side });
       }
     }
+
+    if (!opts.skipPersist) _persistClosedTrade(pos, exitPx);
     
     _log(`CLOSE POS ${pos.id} ${pos.sym} PnL: $${pos.pnl.toFixed(2)}`);
     return pos;
