@@ -3301,16 +3301,22 @@ const App = (() => {
 
   // ── Time Horizon Buttons (performance-timeline selector) ──
   function _initTimeHorizonButtons() {
-    const btns = document.querySelectorAll('.pt-btn');
-    const scenarios = document.querySelectorAll('.pt-scenario');
+    const root = document.getElementById('lp-ascent');
+    if (!root) return;
+    const btns = root.querySelectorAll('.ascent-h');
+    const panels = root.querySelectorAll('.ascent-panel');
     if (!btns.length) return;
     btns.forEach(btn => {
       btn.addEventListener('click', () => {
-        const years = btn.dataset.years;
-        btns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        scenarios.forEach(s => {
-          s.style.display = s.dataset.years === years ? 'block' : 'none';
+        const horizon = btn.dataset.horizon;
+        btns.forEach(b => {
+          b.classList.remove('is-active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('is-active');
+        btn.setAttribute('aria-selected', 'true');
+        panels.forEach(panel => {
+          panel.classList.toggle('is-active', panel.dataset.horizon === horizon);
         });
       });
     });

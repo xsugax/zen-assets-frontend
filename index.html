@@ -214,7 +214,7 @@
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
  <!-- Preload critical CSS -->
- <link rel="preload" href="css/main.css?v=105" as="style" />
+ <link rel="preload" href="css/main.css?v=106" as="style" />
  <link rel="preload" href="css/animations.css?v=103" as="style" />
 
  <!-- Font Awesome -->
@@ -227,9 +227,9 @@
  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js?v=100" defer></script>
 
  <link rel="stylesheet" href="css/animations.css?v=103" />
- <link rel="stylesheet" href="css/main.css?v=105" />
+ <link rel="stylesheet" href="css/main.css?v=106" />
  <link rel="stylesheet" href="css/responsive-utilities.css?v=100" />
- <link rel="stylesheet" href="css/zen-feel.css?v=102" />
+ <link rel="stylesheet" href="css/zen-feel.css?v=104" />
  <link rel="stylesheet" href="css/advanced-charts.css?v=100" />
  <link rel="stylesheet" href="css/auto-trader.css?v=100" />
  <link rel="stylesheet" href="css/investment-returns.css?v=100" />
@@ -321,7 +321,7 @@
  </div>
  <div class="ltn-links" id="ltn-links">
  <a href="#lp-activity">Markets</a>
- <a href="#lp-tiers">Plans</a>
+ <a href="#lp-ascent">Plans</a>
  <a href="#lp-how">How it works</a>
  <a href="#faq-section">FAQ</a>
  </div>
@@ -368,7 +368,7 @@
  <div class="lp-hero-copy">
  <p class="lp-kicker">Autonomous Capital Intelligence</p>
  <h1 class="lvp-title">Sovereign-Grade Infrastructure. <span class="lvp-glow">Autonomous Deployment.</span></h1>
- <p class="lvp-hook">ZEN ASSETS operates across <strong>five sovereign financial corridors</strong> &#8212; New York, London, Edinburgh, Shanghai, and Hong Kong &#8212; deploying capital through proprietary quantitative infrastructure that adapts in real time. The system identifies, allocates, and compounds across 120+ instruments simultaneously. <strong>Participants in the current allocation window have not exited.</strong></p>
+ <p class="lvp-hook">Capital compounds from the smallest plan to the highest, across five corridors &#8212; New York, London, Edinburgh, Shanghai, and Hong Kong.</p>
  <div class="lp-hero-ctas">
  <button type="button" class="ltn-btn ltn-register" onclick="AuthManager.switchView('register')">
  <i class="fa fa-user-plus"></i>
@@ -496,504 +496,85 @@
  </div>
  </section>
 
- <section class="lp-section lp-yield" id="lp-yield">
- <div class="scroll-section-label"><span><i class="fa fa-chart-column"></i> Deployment yields</span></div>
- <!-- Returns Breakdown -->
- <div class="returns-breakdown">
- <div class="rbd-header">
- <i class="fa fa-calendar-days"></i>
- <span>Deployment Yield by Interval</span>
+ <section class="lp-section lp-ascent" id="lp-ascent">
+ <div class="scroll-section-label"><span><i class="fa fa-layer-group"></i> Allocation plans</span></div>
+ <header class="ascent-head">
+ <p class="lp-kicker">Time horizon analysis</p>
+ <h2 class="ascent-title">What each plan can earn</h2>
+ <p class="ascent-lead">Choose a horizon. Every plan updates together, from the smallest allocation to the highest. Daily and weekly growth stays upward on the same published averages.</p>
+ </header>
+ <div class="ascent-horizons" role="tablist" aria-label="Time horizon">
+ <button type="button" class="ascent-h" role="tab" data-horizon="2w" aria-selected="false">2 weeks</button>
+ <button type="button" class="ascent-h" role="tab" data-horizon="1m" aria-selected="false">1 month</button>
+ <button type="button" class="ascent-h" role="tab" data-horizon="2m" aria-selected="false">2 months</button>
+ <button type="button" class="ascent-h" role="tab" data-horizon="3m" aria-selected="false">3 months</button>
+ <button type="button" class="ascent-h" role="tab" data-horizon="6m" aria-selected="false">6 months</button>
+ <button type="button" class="ascent-h is-active" role="tab" data-horizon="1y" aria-selected="true">1 year</button>
  </div>
- <div class="rbd-grid">
- <div class="rbd-item">
- <div class="rbd-period">DAILY</div>
- <div class="rbd-range">+0.15% &#8211; 1.10%</div>
- <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$150 &#8211; $1,096/day</strong></div>
- <div class="rbd-desc">Autonomous multi-corridor rebalancing, compounded daily</div>
- </div>
- <div class="rbd-item">
- <div class="rbd-period">WEEKLY</div>
- <div class="rbd-range">+1.06% &#8211; 7.69%</div>
- <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$1,058 &#8211; $7,692/week</strong></div>
- <div class="rbd-desc">Capital rotates across 120+ instruments in 5 sovereign corridors</div>
- </div>
- <div class="rbd-item">
- <div class="rbd-period">MONTHLY</div>
- <div class="rbd-range">+4.58% &#8211; 33.33%</div>
- <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$4,583 &#8211; $33,333/month</strong></div>
- <div class="rbd-desc">Predictive deployment adapts to macro conditions autonomously</div>
- </div>
- <div class="rbd-item highlight">
- <div class="rbd-period">ANNUAL</div>
- <div class="rbd-range">+55% &#8211; 400%</div>
- <div class="rbd-example">$100K &#8594; <strong class="rbd-profit">+$55,000 &#8211; $400,000/year</strong></div>
- <div class="rbd-desc">Node-dependent compounding: sovereign corridor yield + quantitative alpha</div>
- </div>
- </div>
- <div class="rbd-footnote">
- <i class="fa fa-shield-halved"></i>
- <span><strong>Full capital sovereignty.</strong> Reallocate between corridors, compound, or extract at any time. No lockups, no intermediaries, no waiting periods.</span>
+
+ <div class="ascent-panel" data-horizon="2w">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,051</strong></div><div class="ascent-earned">Earned <strong>+$51</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$25,921</strong></div><div class="ascent-earned">Earned <strong>+$921</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$105,562</strong></div><div class="ascent-earned">Earned <strong>+$5,562</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$541,808</strong></div><div class="ascent-earned">Earned <strong>+$41,808</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,253,151</strong></div><div class="ascent-earned">Earned <strong>+$253,151</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Wealth Growth Projections -->
- <div class="wealth-projection">
- <div class="wp-header">
- <span class="wp-title">$100,000 Deployment &#8594; 10-Year Corridor Comparison</span>
- <span class="wp-badge"><i class="fa fa-calculator"></i> Compound math</span>
- </div>
- <div class="wp-bars">
- <div class="wp-bar-item">
- <div class="wp-bar-label">
- <span class="wp-institution"><i class="fa fa-building-columns"></i> Bank Savings (0.5%)</span>
- <span class="wp-amount zen-counter" data-count-to="105114" data-count-prefix="$" data-count-decimals="0" data-count-comma="true">$0</span>
- </div>
- <div class="wp-bar-track">
- <div class="wp-bar-fill losing" style="width:3%"></div>
- </div>
- </div>
- <div class="wp-bar-item">
- <div class="wp-bar-label">
- <span class="wp-institution"><i class="fa fa-landmark"></i> S&#38;P 500 Index (10%)</span>
- <span class="wp-amount zen-counter" data-count-to="259374" data-count-prefix="$" data-count-decimals="0" data-count-comma="true">$0</span>
- </div>
- <div class="wp-bar-track">
- <div class="wp-bar-fill neutral" style="width:8%"></div>
- </div>
- </div>
- <div class="wp-bar-item">
- <div class="wp-bar-label">
- <span class="wp-institution"><i class="fa fa-chart-line"></i> Top-Tier Hedge Fund (22%)</span>
- <span class="wp-amount zen-counter" data-count-to="730641" data-count-prefix="$" data-count-decimals="0" data-count-comma="true">$0</span>
- </div>
- <div class="wp-bar-track">
- <div class="wp-bar-fill neutral" style="width:18%"></div>
- </div>
- </div>
- <div class="wp-bar-item wp-bar-highlight">
- <div class="wp-bar-label">
- <span class="wp-institution"><i class="fa fa-microchip"></i> ZEN Node III (145% avg)</span>
- <span class="wp-amount wp-amount-glow zen-counter" data-count-to="38338872" data-count-prefix="$" data-count-decimals="0" data-count-comma="true">$0</span>
- </div>
- <div class="wp-bar-track">
- <div class="wp-bar-fill winning" style="width:100%"></div>
- </div>
- <div class="wp-multiplier">148x S&#38;P 500 &#8212; autonomous multi-corridor compounding</div>
- </div>
- </div>
- <div class="wp-insight">
- <i class="fa fa-chart-line"></i>
- <span>The deployment infrastructure operates across sovereign corridors independently of any single market. Quantitative strategies compound on corridor-level yield. This structural separation is why ZEN outperforms traditional vehicles by orders of magnitude.</span>
+ <div class="ascent-panel" data-horizon="1m">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,110</strong></div><div class="ascent-earned">Earned <strong>+$110</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$27,000</strong></div><div class="ascent-earned">Earned <strong>+$2,000</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$112,083</strong></div><div class="ascent-earned">Earned <strong>+$12,083</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$590,833</strong></div><div class="ascent-earned">Earned <strong>+$90,833</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,550,000</strong></div><div class="ascent-earned">Earned <strong>+$550,000</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Investment Growth Calculator -->
- <div class="investment-calculator">
- <div class="ic-header">
- <i class="fa fa-calculator"></i>
- <div>
- <h4 class="ic-title">Compound Growth Calculator</h4>
- <p class="ic-subtitle">Projected returns based on tier APY rates with full reinvestment</p>
+ <div class="ascent-panel" data-horizon="2m">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,220</strong></div><div class="ascent-earned">Earned <strong>+$220</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$29,000</strong></div><div class="ascent-earned">Earned <strong>+$4,000</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$124,167</strong></div><div class="ascent-earned">Earned <strong>+$24,167</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$681,667</strong></div><div class="ascent-earned">Earned <strong>+$181,667</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$3,100,000</strong></div><div class="ascent-earned">Earned <strong>+$1,100,000</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Strategy Toggle -->
- <div class="ic-strategy-tabs">
- <button class="ic-tab active" data-strategy="fixed">
- <i class="fa fa-hand-holding-dollar"></i>
- <span>Lump Sum Deposit</span>
- </button>
- <button class="ic-tab" data-strategy="continuous">
- <i class="fa fa-repeat"></i>
- <span>Monthly Contributions</span>
- </button>
- </div>
-
- <!-- Fixed Lump Sum Strategy -->
- <div class="ic-strategy-content" id="strategy-fixed">
- <div class="ic-formula-box">
- <div class="icf-title">Compound Interest Formula</div>
- <div class="icf-formula">A = P &times; (1 + r)<sup>t</sup></div>
- <div class="icf-legend">
- <div class="icfl-item"><strong>A</strong> = Final Amount</div>
- <div class="icfl-item"><strong>P</strong> = Principal (initial deposit)</div>
- <div class="icfl-item"><strong>r</strong> = Annual interest rate (as decimal)</div>
- <div class="icfl-item"><strong>t</strong> = Time in years</div>
+ <div class="ascent-panel" data-horizon="3m">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,330</strong></div><div class="ascent-earned">Earned <strong>+$330</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$31,000</strong></div><div class="ascent-earned">Earned <strong>+$6,000</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$136,250</strong></div><div class="ascent-earned">Earned <strong>+$36,250</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$772,500</strong></div><div class="ascent-earned">Earned <strong>+$272,500</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$3,650,000</strong></div><div class="ascent-earned">Earned <strong>+$1,650,000</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Example Calculations -->
- <div class="ic-examples">
- <div class="zrt-wrap">
- <table class="zrt-table">
- <thead>
- <tr>
- <th class="zrt-th-period">Contract</th>
- <th class="zrt-th bronze"><span class="zrt-tier-dot" style="background:#cd7f32"></span>Bronze<span class="zrt-apy">66%</span></th>
- <th class="zrt-th silver"><span class="zrt-tier-dot" style="background:#c0c0c0"></span>Silver<span class="zrt-apy">96%</span></th>
- <th class="zrt-th gold"><span class="zrt-tier-dot" style="background:#d4a574"></span>Gold<span class="zrt-apy">145%</span></th>
- <th class="zrt-th platinum"><span class="zrt-tier-dot" style="background:#e5e4e2"></span>Platinum<span class="zrt-apy">218%</span></th>
- <th class="zrt-th diamond"><span class="zrt-tier-dot" style="background:#b9f2ff"></span>Diamond<span class="zrt-apy">330%</span></th>
- </tr>
- </thead>
- <tbody>
- <tr>
- <td class="zrt-period">1 Year</td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$166,000</span><span class="zrt-gain">+66%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$196,000</span><span class="zrt-gain">+96%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$245,000</span><span class="zrt-gain">+145%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$318,000</span><span class="zrt-gain">+218%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$430,000</span><span class="zrt-gain">+330%</span></td>
- </tr>
- <tr>
- <td class="zrt-period">3 Years</td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$457,533</span><span class="zrt-gain">+358%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$753,571</span><span class="zrt-gain">+654%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$1,470,612</span><span class="zrt-gain">+1,371%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$3,218,747</span><span class="zrt-gain">+3,119%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$7,921,800</span><span class="zrt-gain">+7,822%</span></td>
- </tr>
- <tr>
- <td class="zrt-period">5 Years</td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$1,260,714</span><span class="zrt-gain">+1,161%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$2,879,310</span><span class="zrt-gain">+2,779%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$8,820,672</span><span class="zrt-gain">+8,721%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$32,494,907</span><span class="zrt-gain">+32,395%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$145,871,476</span><span class="zrt-gain">+145,771%</span></td>
- </tr>
- <tr class="zrt-highlight">
- <td class="zrt-period">10 Years</td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$15,887,973</span><span class="zrt-gain">+15,788%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$82,910,161</span><span class="zrt-gain">+82,810%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$778,010,987</span><span class="zrt-gain">+777,911%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$10.56B</span><span class="zrt-gain">+10.56M%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$212.7B</span><span class="zrt-gain">+212.7M%</span></td>
- </tr>
- </tbody>
- </table>
- </div>
- <div class="ice-note">
- <i class="fa fa-info-circle"></i>
- <span>Starting balance: <strong>$100,000</strong> (one-time deployment). All yields reinvested autonomously. Returns driven by sovereign corridor deployment + quantitative alpha + yield infrastructure.</span>
- </div>
+ <div class="ascent-panel" data-horizon="6m">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$2,660</strong></div><div class="ascent-earned">Earned <strong>+$660</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$37,000</strong></div><div class="ascent-earned">Earned <strong>+$12,000</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$172,500</strong></div><div class="ascent-earned">Earned <strong>+$72,500</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$1,045,000</strong></div><div class="ascent-earned">Earned <strong>+$545,000</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$5,300,000</strong></div><div class="ascent-earned">Earned <strong>+$3,300,000</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Continuous Monthly Contributions Strategy -->
- <div class="ic-strategy-content" id="strategy-continuous" style="display:none">
- <div class="ic-formula-box">
- <div class="icf-title">Future Value of Annuity Formula</div>
- <div class="icf-formula">FV = PMT &times; [((1 + r/12)<sup>12t</sup> - 1) / (r/12)]</div>
- <div class="icf-legend">
- <div class="icfl-item"><strong>FV</strong> = Future Value</div>
- <div class="icfl-item"><strong>PMT</strong> = Monthly payment</div>
- <div class="icfl-item"><strong>r</strong> = Annual interest rate</div>
- <div class="icfl-item"><strong>t</strong> = Time in years</div>
- </div>
- <div class="icf-note">Monthly contributions at the beginning of each month with compound interest applied monthly.</div>
- </div>
-
- <div class="ic-examples">
- <div class="zrt-wrap">
- <table class="zrt-table">
- <thead>
- <tr>
- <th class="zrt-th-period">Contract</th>
- <th class="zrt-th bronze"><span class="zrt-tier-dot" style="background:#cd7f32"></span>Bronze<span class="zrt-apy">66%</span></th>
- <th class="zrt-th silver"><span class="zrt-tier-dot" style="background:#c0c0c0"></span>Silver<span class="zrt-apy">96%</span></th>
- <th class="zrt-th gold"><span class="zrt-tier-dot" style="background:#d4a574"></span>Gold<span class="zrt-apy">145%</span></th>
- <th class="zrt-th platinum"><span class="zrt-tier-dot" style="background:#e5e4e2"></span>Platinum<span class="zrt-apy">218%</span></th>
- <th class="zrt-th diamond"><span class="zrt-tier-dot" style="background:#b9f2ff"></span>Diamond<span class="zrt-apy">330%</span></th>
- </tr>
- </thead>
- <tbody>
- <tr>
- <td class="zrt-period">1 Year<span class="zrt-invested">$12K invested</span></td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$17,280</span><span class="zrt-gain">+44%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$19,800</span><span class="zrt-gain">+65%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$24,360</span><span class="zrt-gain">+103%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$31,920</span><span class="zrt-gain">+166%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$44,400</span><span class="zrt-gain">+270%</span></td>
- </tr>
- <tr>
- <td class="zrt-period">3 Years<span class="zrt-invested">$36K invested</span></td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$94,320</span><span class="zrt-gain">+162%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$148,680</span><span class="zrt-gain">+313%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$278,640</span><span class="zrt-gain">+674%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$584,280</span><span class="zrt-gain">+1,523%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$1,375,200</span><span class="zrt-gain">+3,720%</span></td>
- </tr>
- <tr>
- <td class="zrt-period">5 Years<span class="zrt-invested">$60K invested</span></td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$295,200</span><span class="zrt-gain">+392%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$604,800</span><span class="zrt-gain">+908%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$1,584,000</span><span class="zrt-gain">+2,540%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$4,860,000</span><span class="zrt-gain">+8,000%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$17,280,000</span><span class="zrt-gain">+28,700%</span></td>
- </tr>
- <tr class="zrt-highlight">
- <td class="zrt-period">10 Years<span class="zrt-invested">$120K invested</span></td>
- <td class="zrt-cell bronze"><span class="zrt-amount">$2,736,000</span><span class="zrt-gain">+2,180%</span></td>
- <td class="zrt-cell silver"><span class="zrt-amount">$9,600,000</span><span class="zrt-gain">+7,900%</span></td>
- <td class="zrt-cell gold"><span class="zrt-amount">$57,600,000</span><span class="zrt-gain">+47,900%</span></td>
- <td class="zrt-cell platinum"><span class="zrt-amount">$432,000,000</span><span class="zrt-gain">+359,900%</span></td>
- <td class="zrt-cell diamond"><span class="zrt-amount">$4.8B</span><span class="zrt-gain">+4M%</span></td>
- </tr>
- </tbody>
- </table>
- </div>
- <div class="ice-note">
- <i class="fa fa-info-circle"></i>
- <span>Monthly deployment: <strong>$1,000</strong> (total deployed shown). Dollar-cost averaging + corridor yield + autonomous compounding monthly for maximum growth.</span>
- </div>
+ <div class="ascent-panel is-active" data-horizon="1y">
+ <div class="ascent-ladder">
+ <article class="ascent-card bronze"><header class="ascent-card-top"><span class="ascent-name">Bronze</span><span class="ascent-min">$2,000 minimum</span><span class="ascent-apy">55&#8211;78% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$3,320</strong></div><div class="ascent-earned">Earned <strong>+$1,320</strong></div><div class="ascent-pace"><span>Daily +$4</span><span>Weekly +$25</span></div></article>
+ <article class="ascent-card silver"><header class="ascent-card-top"><span class="ascent-name">Silver</span><span class="ascent-min">$25,000 minimum</span><span class="ascent-apy">78&#8211;115% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$25,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$49,000</strong></div><div class="ascent-earned">Earned <strong>+$24,000</strong></div><div class="ascent-pace"><span>Daily +$66</span><span>Weekly +$462</span></div></article>
+ <article class="ascent-card gold"><header class="ascent-card-top"><span class="ascent-name">Gold</span><span class="ascent-min">$100,000 minimum</span><span class="ascent-apy">115&#8211;175% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$100,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$245,000</strong></div><div class="ascent-earned">Earned <strong>+$145,000</strong></div><div class="ascent-pace"><span>Daily +$397</span><span>Weekly +$2,788</span></div></article>
+ <article class="ascent-card platinum"><header class="ascent-card-top"><span class="ascent-name">Platinum</span><span class="ascent-min">$500,000 minimum</span><span class="ascent-apy">175&#8211;260% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$500,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$1,590,000</strong></div><div class="ascent-earned">Earned <strong>+$1,090,000</strong></div><div class="ascent-pace"><span>Daily +$2,986</span><span>Weekly +$20,962</span></div></article>
+ <article class="ascent-card diamond"><header class="ascent-card-top"><span class="ascent-name">Diamond</span><span class="ascent-min">$2,000,000 minimum</span><span class="ascent-apy">260&#8211;400% APY</span></header><div class="ascent-row"><span>You allocate</span><strong>$2,000,000</strong></div><div class="ascent-row expect"><span>You can expect</span><strong>$8,600,000</strong></div><div class="ascent-earned">Earned <strong>+$6,600,000</strong></div><div class="ascent-pace"><span>Daily +$18,082</span><span>Weekly +$126,923</span></div></article>
  </div>
  </div>
 
- <!-- Key Insights -->
- <div class="ic-insights">
- <div class="ici-box">
- <div class="ici-icon"><i class="fa fa-bolt"></i></div>
- <div>
- <div class="ici-title">Sovereign Corridor Infrastructure</div>
- <div class="ici-text">Capital deploys across 5 sovereign financial corridors simultaneously &#8212; New York, London, Edinburgh, Shanghai, Hong Kong. This <strong>multi-vector architecture</strong> generates yield independent of any single market.</div>
- </div>
- </div>
- <div class="ici-box">
- <div class="ici-icon"><i class="fa fa-lightbulb"></i></div>
- <div>
- <div class="ici-title">Autonomous Compounding</div>
- <div class="ici-text">Year 10 generates <strong>500x+ more</strong> than Year 1 from the same deployment rate. Corridor yields compound ON TOP of quantitative alpha. Exponential, not linear.</div>
- </div>
- </div>
- <div class="ici-box">
- <div class="ici-icon"><i class="fa fa-brain"></i></div>
- <div>
- <div class="ici-title">Triple-Vector Deployment</div>
- <div class="ici-text">Three independent deployment vectors compounding simultaneously across <strong>120+ global instruments</strong>. No institution, fund, or conventional platform offers this structural advantage.</div>
- </div>
- </div>
- </div>
-
- <!-- Contract Addictive Features -->
- <div class="ic-contract-perks">
- <div class="icp-header">
- <i class="fa fa-gem"></i>
- <span>Allocation Layer Access by Commitment</span>
- </div>
- <div class="icp-grid">
- <div class="icp-card" data-year="1">
- <div class="icp-year">1 YEAR</div>
- <div class="icp-perks">
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Daily compound deployment + corridor yield credited</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> 0.25&#8211;0.65% loyalty allocation every midnight</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Weekly acceleration event (1.2&#8211;2.8%)</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Full deployment engine access (120+ instruments)</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Real-time corridor intelligence dashboard</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> 24/7 priority support</div>
- </div>
- </div>
- <div class="icp-card" data-year="3">
- <div class="icp-year">3 YEARS</div>
- <div class="icp-badge">POPULAR</div>
- <div class="icp-perks">
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Everything in 1 Year +</div>
- <div class="icp-perk hot"><i class="fa fa-fire"></i> <strong>Monthly performance acceleration (2.5&#8211;5.8%)</strong></div>
- <div class="icp-perk hot"><i class="fa fa-fire"></i> <strong>Dedicated corridor allocation (priority deployment)</strong></div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Quarterly profit acceleration events</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Dedicated portfolio strategist</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Early access to new deployment vectors</div>
- </div>
- </div>
- <div class="icp-card" data-year="5">
- <div class="icp-year">5 YEARS</div>
- <div class="icp-badge elite">ELITE</div>
- <div class="icp-perks">
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Everything in 3 Years +</div>
- <div class="icp-perk hot"><i class="fa fa-fire"></i> <strong>Bi-annual wealth acceleration (8&#8211;15% bonus)</strong></div>
- <div class="icp-perk hot"><i class="fa fa-fire"></i> <strong>Priority sovereign corridor &#8212; 2x deployment allocation</strong></div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> VIP concierge &#38; tax advisory</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Institutional-grade hedging infrastructure</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Restricted intelligence community access</div>
- </div>
- </div>
- <div class="icp-card icp-glow" data-year="10">
- <div class="icp-year">10 YEARS</div>
- <div class="icp-badge legendary">LEGENDARY</div>
- <div class="icp-perks">
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Everything in 5 Years +</div>
- <div class="icp-perk hot"><i class="fa fa-fire"></i> <strong>Annual mega compound event (18&#8211;25% bonus)</strong></div>
- <div class="icp-perk hot"><i class="fa fa-crown"></i> <strong>Named allocation node &#8212; dedicated capital pathway</strong></div>
- <div class="icp-perk hot"><i class="fa fa-crown"></i> <strong>Legacy wealth architecture &#38; estate integration</strong></div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> In-person strategy sessions (NYC, London, Edinburgh, Shanghai)</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> Generational account linking</div>
- <div class="icp-perk"><i class="fa fa-check-circle"></i> $50M Lloyd's of London excess coverage</div>
- </div>
- </div>
- </div>
- </div>
- </div>
-
- <!-- Performance by Timeframe -->
- <div class="performance-timeline">
- <h4 class="pt-header"><i class="fa fa-hourglass-end"></i> Time Horizon Analysis</h4>
- <p class="pt-subtitle">Projected returns at Node III baseline (145% avg annual &#8212; sovereign corridor deployment)</p>
- 
- <div class="pt-selector">
- <button class="pt-btn active" data-years="1">1 Year</button>
- <button class="pt-btn" data-years="3">3 Years</button>
- <button class="pt-btn" data-years="5">5 Years</button>
- <button class="pt-btn" data-years="10">10 Years</button>
- </div>
-
- <div class="pt-scenarios">
- <!-- 1 Year -->
- <div class="pt-scenario active" data-years="1">
- <div class="pts-title">12-Month Projection</div>
- <div class="pts-grid">
- <div class="pts-item">
- <div class="pts-label">$2,000 (Bronze Min)</div>
- <div class="pts-value">&#x2192; $4,900</div>
- <div class="pts-gain">+$2,900 (+145%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$25,000 Principal</div>
- <div class="pts-value">&#x2192; $61,250</div>
- <div class="pts-gain">+$36,250 (+145%)</div>
- </div>
- <div class="pts-item pts-highlight">
- <div class="pts-label">$100,000 Principal</div>
- <div class="pts-value">&#x2192; $245,000</div>
- <div class="pts-gain">+$145,000 (+145%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$500,000 Principal</div>
- <div class="pts-value">&#x2192; $1,225,000</div>
- <div class="pts-gain">+$725,000 (+145%)</div>
- </div>
- </div>
- </div>
-
- <!-- 3 Years -->
- <div class="pt-scenario" data-years="3" style="display:none">
- <div class="pts-title">3-Year Projection &#8212; Corridor Compounding Phase</div>
- <div class="pts-grid">
- <div class="pts-item">
- <div class="pts-label">$2,000 (Bronze Min)</div>
- <div class="pts-value">&#x2192; $29,412</div>
- <div class="pts-gain">+$27,412 (+1,371%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$25,000 Principal</div>
- <div class="pts-value">&#x2192; $367,653</div>
- <div class="pts-gain">+$342,653 (+1,371%)</div>
- </div>
- <div class="pts-item pts-highlight">
- <div class="pts-label">$100,000 Principal</div>
- <div class="pts-value">&#x2192; $1,470,612</div>
- <div class="pts-gain">+$1,370,612 (+1,371%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$500,000 Principal</div>
- <div class="pts-value">&#x2192; $7,353,060</div>
- <div class="pts-gain">+$6,853,060 (+1,371%)</div>
- </div>
- </div>
- </div>
-
- <!-- 5 Years -->
- <div class="pt-scenario" data-years="5" style="display:none">
- <div class="pts-title">5-Year Projection &#8212; Exponential Growth Phase</div>
- <div class="pts-grid">
- <div class="pts-item">
- <div class="pts-label">$2,000 (Bronze Min)</div>
- <div class="pts-value">&#x2192; $176,413</div>
- <div class="pts-gain">+$174,413 (+8,721%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$25,000 Principal</div>
- <div class="pts-value">&#x2192; $2,205,168</div>
- <div class="pts-gain">+$2,180,168 (+8,721%)</div>
- </div>
- <div class="pts-item pts-highlight">
- <div class="pts-label">$100,000 Principal</div>
- <div class="pts-value">&#x2192; $8,820,672</div>
- <div class="pts-gain">+$8,720,672 (+8,721%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$500,000 Principal</div>
- <div class="pts-value">&#x2192; $44,103,360</div>
- <div class="pts-gain">+$43,603,360 (+8,721%)</div>
- </div>
- </div>
- </div>
-
- <!-- 10 Years -->
- <div class="pt-scenario" data-years="10" style="display:none">
- <div class="pts-title">10-Year Projection &#8212; Maximum Compounding</div>
- <div class="pts-grid">
- <div class="pts-item">
- <div class="pts-label">$2,000 (Bronze Min)</div>
- <div class="pts-value">&#x2192; $15,560,219</div>
- <div class="pts-gain">+$15,558,219 (+777,911%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$25,000 Principal</div>
- <div class="pts-value">&#x2192; $194,502,747</div>
- <div class="pts-gain">+$194,477,747 (+777,911%)</div>
- </div>
- <div class="pts-item pts-highlight">
- <div class="pts-label">$100,000 Principal</div>
- <div class="pts-value">&#x2192; $778,010,987</div>
- <div class="pts-gain">+$777,910,987 (+777,911%)</div>
- </div>
- <div class="pts-item">
- <div class="pts-label">$500,000 Principal</div>
- <div class="pts-value">&#x2192; $3.89B</div>
- <div class="pts-gain">+$3.89B (+777,911%)</div>
- </div>
- </div>
- </div>
- </div>
-
- <div class="pt-cta-banner">
- <i class="fa fa-info-circle"></i>
- <div>
- <strong>All projections assume full reinvestment at Node III rates (sovereign corridor + quantitative alpha).</strong>
- <p>Deployment infrastructure generates base yield independent of market direction. Autonomous alpha compounds on top. See risk disclosure for details.</p>
- </div>
- </div>
- </div>
-
- <!-- Referral Program -->
- <div class="referral-powerhouse">
- <div class="rp-header">
- <i class="fa fa-users"></i>
- <h4>Referral Program</h4>
-<p>Invite qualified participants and earn ongoing commission on their deployment performance.</p>
- </div>
- <div class="rp-grid">
- <div class="rp-card">
- <div class="rpc-icon"><i class="fa fa-user-plus"></i></div>
- <div class="rpc-title">Refer</div>
-<div class="rpc-desc">Share your unique referral link with qualified participants</div>
- </div>
- <div class="rp-icon-arrow"><i class="fa fa-arrow-right"></i></div>
- <div class="rp-card">
- <div class="rpc-icon"><i class="fa fa-handshake"></i></div>
-<div class="rpc-title">They Deploy</div>
- <div class="rpc-desc">Your referral initializes their allocation at any node level</div>
- </div>
- <div class="rp-icon-arrow"><i class="fa fa-arrow-right"></i></div>
- <div class="rp-card rp-card-highlight">
- <div class="rpc-icon"><i class="fa fa-percent"></i></div>
- <div class="rpc-title">Earn Commission</div>
- <div class="rpc-desc">12&#8211;25% of their annual returns, credited monthly</div>
- </div>
- </div>
- <div class="rp-note">
- <i class="fa fa-shield-halved"></i>
-<span>Referral commissions are paid from platform revenue, not from referred participants&#8217; capital. Full terms available in your dashboard after initialization.</span>
- </div>
+ <p class="ascent-note">Illustrated at the published average for each node: Bronze 66%, Silver 96%, Gold 145%, Platinum 218%, Diamond 330%. One year on Gold at $100,000 remains $245,000. Past performance does not guarantee future results.</p>
+ <div class="ascent-cta">
+ <button type="button" class="ltn-btn ltn-register" onclick="AuthManager.switchView('register')"><i class="fa fa-user-plus"></i><span>Open Account</span></button>
  </div>
  </section>
 
@@ -1018,48 +599,6 @@
  <div class="atf-footer">
  <span class="atf-win-rate"><i class="fa fa-bullseye"></i> 96.4% deployment accuracy &#8212; <strong id="atf-daily-profit">$8.4M</strong> yield today</span>
  </div>
- </div>
- </section>
-
- <section class="lp-section lp-tiers" id="lp-tiers">
- <div class="scroll-section-label"><span><i class="fa fa-layer-group"></i> Allocation plans</span></div>
- <!-- Tier Cards -->
- <div class="membership-tiers-preview">
-<h4 class="mtp-header"><i class="fa fa-layer-group"></i> Allocation Nodes &#8212; Sovereign Infrastructure</h4>
- <div class="tier-cards-mini">
- <div class="tier-mini bronze">
- <div class="tm-tier">BRONZE</div>
- <div class="tm-return">55-78% APY</div>
- <div class="tm-min">$2K minimum</div>
- <div class="tm-spots">Open enrollment</div>
- </div>
- <div class="tier-mini silver">
- <div class="tm-tier">SILVER</div>
- <div class="tm-return">78-115% APY</div>
- <div class="tm-min">$25K minimum</div>
- <div class="tm-spots">Open enrollment</div>
- </div>
- <div class="tier-mini gold">
- <div class="tm-popular">MOST POPULAR</div>
- <div class="tm-tier">GOLD</div>
- <div class="tm-return">115-175% APY</div>
- <div class="tm-min">$100K minimum</div>
- <div class="tm-spots">312 active participants</div>
- </div>
- <div class="tier-mini platinum">
- <div class="tm-tier">PLATINUM</div>
- <div class="tm-return">175-260% APY</div>
- <div class="tm-min">$500K minimum</div>
- <div class="tm-spots">89 active participants</div>
- </div>
- <div class="tier-mini diamond">
- <div class="tm-tier">DIAMOND</div>
- <div class="tm-return">260-400% APY</div>
- <div class="tm-min">$2M minimum</div>
- <div class="tm-spots">Institutional only</div>
- </div>
- </div>
-<p class="mtp-footer">*Returns powered by sovereign corridor deployment + autonomous quantitative infrastructure. Past performance does not guarantee future results.</p>
  </div>
  </section>
 
@@ -4115,38 +3654,30 @@
 <script src="js/investment-returns.js?v=100"></script>
 <script src="js/gamification.js?v=100"></script>
 <script src="js/plugins.js?v=100"></script>
-<script src="js/app.js?v=108"></script>
+<script src="js/app.js?v=109"></script>
 
 <!-- Performance Timeline Selector & Referral Interactivity -->
 <script>
 (function() {
  'use strict';
  
- // Performance Timeline Selector
- document.querySelectorAll('.pt-btn').forEach(function(btn) {
- btn.addEventListener('click', function(e) {
- e.preventDefault();
- const years = this.getAttribute('data-years');
- 
- // Update button states
- document.querySelectorAll('.pt-btn').forEach(function(b) {
- b.classList.remove('active');
+ var ascent = document.getElementById('lp-ascent');
+ if (ascent) {
+ ascent.querySelectorAll('.ascent-h').forEach(function(btn) {
+ btn.addEventListener('click', function() {
+ var horizon = this.getAttribute('data-horizon');
+ ascent.querySelectorAll('.ascent-h').forEach(function(b) {
+ b.classList.remove('is-active');
+ b.setAttribute('aria-selected', 'false');
  });
- this.classList.add('active');
- 
- // Update scenario visibility
- document.querySelectorAll('.pt-scenario').forEach(function(scenario) {
- scenario.style.display = 'none';
- scenario.classList.remove('active');
+ this.classList.add('is-active');
+ this.setAttribute('aria-selected', 'true');
+ ascent.querySelectorAll('.ascent-panel').forEach(function(panel) {
+ panel.classList.toggle('is-active', panel.getAttribute('data-horizon') === horizon);
  });
- 
- const activeScenario = document.querySelector('[data-years="' + years + '"].pt-scenario');
- if (activeScenario) {
- activeScenario.style.display = 'block';
- activeScenario.classList.add('active');
+ });
+ });
  }
- });
- });
  
  // Testimonial Carousel
  window.switchTestimonial = function(index) {

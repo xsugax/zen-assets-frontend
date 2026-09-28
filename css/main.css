@@ -532,12 +532,11 @@ small { font-size: .8em; opacity: .7; display: block; }
   flex-direction: column;
 }
 .lp-hero { order: 1; }
-#lp-how { order: 2; }
-.lp-yield { order: 3; }
-.lp-activity { order: 4; }
-.lp-tiers { order: 5; }
-.lp-proof { order: 6; }
-.lp-faq { order: 7; }
+#lp-ascent { order: 2; }
+#lp-how { order: 3; }
+.lp-proof { order: 4; }
+.lp-activity { order: 5; }
+.lp-faq { order: 6; }
 
 .lp-kicker {
   margin: 0 0 10px;

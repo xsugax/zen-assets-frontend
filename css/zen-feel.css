@@ -298,3 +298,167 @@
 #app .copy-engine-gate {
   background: linear-gradient(135deg, rgba(12, 16, 24, 0.98), rgba(16, 22, 32, 0.94));
 }
+
+/* ── Pre-login allocation ascent ──────────────────────────── */
+#login-screen .lp-ascent {
+  gap: 18px;
+}
+#login-screen .ascent-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+}
+#login-screen .ascent-title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: 650;
+  color: #f4efe6;
+}
+#login-screen .ascent-lead,
+#login-screen .ascent-note {
+  margin: 0;
+  color: #b7c3d1;
+  font-size: 14px;
+  line-height: 1.55;
+}
+#login-screen .ascent-horizons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#login-screen .ascent-h {
+  appearance: none;
+  border: 1px solid rgba(212, 165, 116, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d7deE6;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+#login-screen .ascent-h.is-active {
+  color: #1a1408;
+  background: linear-gradient(180deg, #f0d7a4, #c9a36a);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+}
+#login-screen .ascent-panel { display: none; }
+#login-screen .ascent-panel.is-active { display: block; }
+#login-screen .ascent-ladder {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+#login-screen .ascent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  border-radius: 18px;
+  color: #f3f6fa;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 28%, rgba(8,12,18,0.35));
+  border: 1px solid rgba(212, 165, 116, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    0 18px 40px rgba(0,0,0,0.28);
+  backdrop-filter: blur(16px);
+}
+#login-screen .ascent-card.bronze { min-height: 286px; }
+#login-screen .ascent-card.silver { min-height: 314px; }
+#login-screen .ascent-card.gold { min-height: 342px; border-color: rgba(212, 165, 116, 0.55); }
+#login-screen .ascent-card.platinum { min-height: 370px; }
+#login-screen .ascent-card.diamond {
+  min-height: 404px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(201,162,39,0.08) 30%, rgba(8,12,18,0.4));
+}
+#login-screen .ascent-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#login-screen .ascent-name {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e7d3a8;
+}
+#login-screen .ascent-min,
+#login-screen .ascent-apy,
+#login-screen .ascent-row span {
+  font-size: 12px;
+  color: #9aabbd;
+}
+#login-screen .ascent-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#login-screen .ascent-row strong {
+  font-size: 15px;
+  font-weight: 650;
+  color: #f7f4ee;
+}
+#login-screen .ascent-row.expect strong {
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  color: #f0d7a4;
+}
+#login-screen .ascent-earned {
+  margin-top: auto;
+  font-size: 13px;
+  color: #c5d0dc;
+}
+#login-screen .ascent-earned strong,
+#login-screen .ascent-pace span {
+  color: #2ebd85;
+  font-weight: 650;
+}
+#login-screen .ascent-pace {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+#login-screen .ascent-note { max-width: 760px; }
+#login-screen .ascent-cta { display: flex; }
+#login-screen .ai-trade-feed {
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(8,12,18,0.35));
+  border: 1px solid rgba(212, 165, 116, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px);
+}
+@media (max-width: 980px) {
+  #login-screen .ascent-ladder {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #login-screen .ascent-card,
+  #login-screen .ascent-card.bronze,
+  #login-screen .ascent-card.silver,
+  #login-screen .ascent-card.gold,
+  #login-screen .ascent-card.platinum,
+  #login-screen .ascent-card.diamond {
+    min-height: 0;
+  }
+  #login-screen .ascent-horizons {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #login-screen .ascent-h { flex: 0 0 auto; }
+  #login-screen .ascent-title { font-size: 26px; }
+}
+@media (min-width: 981px) {
+  #login-screen .login-brand-section { max-width: 1240px; }
+}
+
